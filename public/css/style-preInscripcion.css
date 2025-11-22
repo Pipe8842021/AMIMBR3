@@ -1,0 +1,331 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+@import url(colores.css);
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background: var(--dark-bg);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+header {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    height: 70px;
+    background: var(--dark-bg);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+    z-index: 1000;
+}
+
+.logo-section {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.logo-section img {
+    width: 45px;
+    height: 45px;
+    border-radius: 12px;
+    border: 2px solid var(--primary-blue);
+}
+
+.logo-section h1 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    background: var(--gradient-primary-blue);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.logo-section a {
+    text-decoration: none;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.theme-toggle {
+    width: 50px;
+    height: 26px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 13px;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.theme-toggle::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    background: var(--primary-blue);
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.login-btn {
+    padding: 0.5rem 1.5rem;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.login-btn:hover {
+    background: var(--hover-bg);
+    border-color: var(--primary-blue);
+}
+
+.container {
+    background: var(--card-bg);
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    max-width: 1200px;
+    width: calc(100% - 40px);
+    margin: auto;
+    margin-top: 100px;
+    padding: 30px 40px;
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.header h1 {
+    color: var(--primary-blue);
+    font-size: 1.8em;
+    margin-bottom: 5px;
+}
+
+.header p {
+    color: var(--text-secondary);
+    font-size: 1em;
+}
+
+#preregistrationForm {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group:nth-child(5),
+.form-group:nth-child(6),
+.checkbox-group,
+.btn {
+    grid-column: 1 / -1;
+}
+
+label {
+    display: block;
+    color: var(--text-primary);
+    font-weight: 600;
+    margin-bottom: 6px;
+    font-size: 0.9em;
+}
+
+input, select, textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid var(--border-color);
+    background-color: var(--dark-bg);
+    border-radius: 10px;
+    font-size: 0.95em;
+    transition: all 0.3s ease;
+    font-family: inherit;
+    color: var(--text-primary);
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.required {
+    color: var(primary-orange);
+}
+
+.btn {
+    padding: 12px;
+    background: var(--gradient-primary-blue);
+    color: var(--text-primary);
+    border: none;
+    border-radius: 10px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    margin-top: 5px;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    margin-top: 5px;
+}
+
+.checkbox-group input[type="checkbox"] {
+    width: auto;
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+.checkbox-group label {
+    margin-bottom: 0;
+    font-weight: 400;
+    cursor: pointer;
+}
+
+@media (max-width: 900px) and (min-width: 601px) {
+    .container {
+        max-width: 700px;
+        padding: 25px 30px;
+    }
+    
+    #preregistrationForm {
+        gap: 12px 15px;
+    }
+    
+    input, select, textarea {
+        padding: 9px 11px;
+        font-size: 0.9em;
+    }
+}
+
+@media (max-width: 768px) and (min-width: 601px) {
+    #preregistrationForm {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-group:nth-child(5),
+    .form-group:nth-child(6) {
+        grid-column: 1;
+    }
+}
+
+@media (max-width: 600px) {
+    body {
+        padding: 0;
+    }
+    
+    header {
+        height: 60px;
+        padding: 0 1rem;
+    }
+    
+    .logo-section img {
+        width: 35px;
+        height: 35px;
+    }
+    
+    .logo-section h1 {
+        font-size: 1.2rem;
+    }
+    
+    .login-btn {
+        padding: 0.4rem 1rem;
+        font-size: 0.9em;
+    }
+    
+    .container {
+        width: calc(100% - 20px);
+        margin: 70px auto 10px;
+        padding: 20px;
+        border-radius: 15px;
+    }
+    
+    .header h1 {
+        font-size: 1.5em;
+    }
+    
+    .header p {
+        font-size: 0.95em;
+    }
+    
+    #preregistrationForm {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .form-group:nth-child(5),
+    .form-group:nth-child(6) {
+        grid-column: 1;
+    }
+    
+    label {
+        font-size: 0.85em;
+    }
+    
+    input, select, textarea {
+        padding: 10px;
+        font-size: 0.9em;
+    }
+    
+    .btn {
+        padding: 12px;
+        font-size: 0.95em;
+    }
+}
+
+@media (min-width: 1400px) {
+    .container {
+        max-width: 1300px;
+    }
+}
