@@ -1,241 +1,82 @@
+/*Formulario de preinscripcion */
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to Amimbré!</title>
-    <link rel="shortcut icon" href="img/3.png">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
-    <link rel="stylesheet" href="css/style-index.css">
-    <link rel="stylesheet" href="css/colores.css">
+    <title>Preinscripción - Curso 2025</title>
+    <link rel="stylesheet" href="../assets/css/style-preInscripcion.css">
+    <link rel="stylesheet" href="../assets/css/colores.css">
 </head>
 <body>
-    <!-- Header -->
     <header>
         <div class="logo-section">
-            <img src="img/1.jpg" alt="BanaExport Logo">
-            <h1>Amimbré</h1>
+            <img src="../assets/img/1.jpg" alt="BanaExport Logo">
+            <a href="index.html"><h1>Amimbré</h1></a>
         </div>
-
-        <ul class="nav-links">
-            <li><a href="#inicio">Inicio</a></li>
-            <li><a href="#sobre-nosotros">Sobre Nosotros</a></li>
-            <li><a href="#disciplinas">Disciplinas</a></li>
-            <li><a href="#galeria">Galería</a></li>
-            <li><a href="#contacto">Contacto</a></li>
-        </ul>
 
         <div class="header-actions">
             <div class="theme-toggle"></div>
-            <a href="login.php" class="login-btn">Iniciar Sesión</a>
+            <a href="../auth/login.php" class="login-btn">Iniciar Sesión</a>
         </div>
     </header>
 
-    <section class="hero" id="inicio">
-        <div class="hero-content">
-            <h1>Formación Artística y Cultural<br>
-                <span class="highlight">al Ritmo de Amimbré</span>
-            </h1>
-            <p>
-                En Amimbré, la creatividad se convierte en talento. Formamos artistas en música, danza, teatro, artes plásticas, audiovisuales y literatura, inspirando expresión y amor por la cultura.
-            </p>
-            <a href="login.php" class="cta-button">
-                Acceder al Sistema
-            </a>
-            <a href="pre-inscripcion.php" class="cta-button">
-                Prematriculate
-            </a>
+    <div class="container">
+        <div class="header">
+            <h1>Preinscripción</h1>
+            <p>Completa el formulario para reservar tu cupo</p>
         </div>
-    </section>
 
-    <!-- Features Section -->
-    <section class="features" id="sobre-nosotros">
-        <div class="section-header">
-            <h2>Sobre Amimbré</h2>
-            <p>
-                Con años de experiencia impulsando el arte y la cultura, Amimbré se ha consolidado como una institución comprometida con la formación artística integral en disciplinas como la música, la danza, el teatro, las artes plásticas, los audiovisuales y la literatura. <br><br>
-                Nuestro compromiso con la creatividad, la calidad y la innovación pedagógica nos ha permitido formar generaciones de artistas que expresan su talento y transforman su entorno a través del arte. <br><br>
-                Trabajamos de la mano con docentes y creadores locales, promoviendo espacios de aprendizaje sostenibles, inclusivos y llenos de inspiración, donde cada estudiante puede desarrollar su esencia artística y compartirla con el mundo.
-            </p>
-        </div>
-        
-        <div class="features-grid">
-            <div class="feature-card">
-                <div class="feature-icon">
-                    <i class="fas fa-bullseye"></i>
-                </div>
-                <h3>Misión</h3>
-                <p>Formar artistas integrales mediante procesos pedagógicos y creativos que fortalezcan la sensibilidad, la expresión y el amor por la cultura, impulsando el desarrollo humano a través del arte.</p>
-            </div>
-            
-            <div class="feature-card">
-                <div class="feature-icon">
-                    <i class="fa-solid fa-globe"></i>
-                </div>
-                <h3>Visión</h3>
-                <p>Ser una institución líder en formación artística reconocida por su excelencia, innovación y compromiso con el crecimiento cultural de la comunidad.</p>
-            </div>
-            
-            <div class="feature-card">
-                <div class="feature-icon">
-                    <i class="fa-solid fa-users-line"></i>
-                </div>
-                <h3>Valores</h3>
-                <p>Disciplina, creatividad, respeto y trabajo comunitario. Fomentamos el crecimiento artístico y humano a través de la música, promoviendo la sensibilidad, la cooperación y el compromiso con la cultura local.</p>
-
-            </div>
-        </div>
-    </section>
-
-    <!-- Capabilities Section -->
-    <section class="capabilities" id="disciplinas">
-        <h2>Nuestras Disciplinas</h2>
-        <p>Explora las diferentes áreas artísticas en las que puedes desarrollar tu talento</p>
-
-        <div class="capabilities-container">
-            <div class="capability-box">
-                <i class="fa-solid fa-children"></i>
-                <h4>Iniciación musical infantil</h4>
-                <p>Desarrollo de habilidades musicales desde el juego, la exploración y el ritmo.</p>
+        <form id="preregistrationForm">
+            <div class="form-group">
+                <label for="nombre">Nombre completo <span class="required">*</span></label>
+                <input type="text" id="nombre" name="nombre" required>
             </div>
 
-            <div class="capability-box">
-                <i class="fa-solid fa-guitar"></i>
-                <h4>Guitarra</h4>
-                <p>Formación técnica y expresiva en repertorio clásico y popular.</p>
+            <div class="form-group">
+                <label for="email">Correo electrónico <span class="required">*</span></label>
+                <input type="email" id="email" name="email" required>
             </div>
 
-            <div class="capability-box">
-                <span class="material-symbols-outlined">piano</span>
-                <h4>Piano</h4>
-                <p>Aprendizaje progresivo desde fundamentos hasta interpretación avanzada.</p>
+            <div class="form-group">
+                <label for="telefono">Teléfono <span class="required">*</span></label>
+                <input type="tel" id="telefono" name="telefono" required>
             </div>
 
-            <div class="capability-box">
-                <span class="material-symbols-outlined">air</span>
-                <h4>Instrumentos de viento</h4>
-                <p>Formación en flauta, clarinete, saxofón o trompeta con técnica y lectura musical.</p>
+            <div class="form-group">
+                <label for="documento">Documento de identidad <span class="required">*</span></label>
+                <input type="text" id="documento" name="documento" required>
             </div>
 
-            <div class="capability-box">
-                <span class="material-symbols-outlined">artist</span>
-                <h4>Técnica vocal y canto</h4>
-                <p>Desarrollo de una voz sana, afinada y expresiva para diferentes géneros.</p>
+            <div class="form-group">
+                <label for="curso">Curso de interés <span class="required">*</span></label>
+                <select id="curso" name="curso" required>
+                    <option value="">Selecciona un curso</option>
+                    <option value="iniciacion-infantil">Iniciación Infantil</option>
+                    <option value="guitarra">Guitarra</option>
+                    <option value="piano">Piano</option>
+                    <option value="vientos">Vientos</option>
+                    <option value="canto">Canto</option>
+                    <option value="lenguaje-musical">Lenguaje musical</option>
+                    <option value="ensambles">Ensambles musicales</option>
+                    <option value="prep-universitaria">Preparación Universitaria</option>
+                </select>
             </div>
 
-            <div class="capability-box">
-                <span class="material-symbols-outlined">lyrics</span>
-                <h4>Teoría y lenguaje musical</h4>
-                <p>Bases sólidas para leer, escribir y comprender la música con independencia.</p>
+            <div class="form-group">
+                <label for="mensaje">Mensaje o consulta (opcional)</label>
+                <textarea id="mensaje" name="mensaje" placeholder="Cuéntanos sobre tus expectativas o dudas..."></textarea>
             </div>
 
-            <div class="capability-box">
-                <span class="material-symbols-outlined">motion_play</span>
-                <h4>Ensambles musicales</h4>
-                <p>Práctica colectiva para desarrollar escucha, disciplina y trabajo en grupo.</p>
+            <div class="checkbox-group">
+                <input type="checkbox" id="terminos" name="terminos" required>
+                <label for="terminos">Acepto los términos y condiciones <span class="required">*</span></label>
             </div>
 
-            <div class="capability-box">
-                <span class="material-symbols-outlined">school</span>
-                <h4>Preparación para ingreso universitario</h4>
-                <p>Acompañamiento académico para aspirantes a programas profesionales de música.</p>
-            </div>
-        </div>
-    </section>
+            <button type="submit" class="btn">Enviar Preinscripción</button>
+        </form>
+    </div>
 
-    <!-- Galería Masonry -->
-    <section class="gallery">
-        <div class="gallery-header">
-            <h2>Galería</h2>
-            <p>Explora nuestra colección de actividades y momentos destacados</p>
-        </div>
-        
-        <div class="masonry-grid">
-            <div class="masonry-item">
-                <img src="img/G1.jpg" alt="Galería imagen 1">
-            </div>
-            <div class="masonry-item">
-                <img src="img/G2.jpg" alt="Galería imagen 2">
-            </div>
-            <div class="masonry-item">
-                <img src="img/G3.jpg" alt="Galería imagen 3">
-            </div>
-            <div class="masonry-item">
-                <img src="img/G4.jpg" alt="Galería imagen 4">
-            </div>
-            <div class="masonry-item">
-                <img src="img/G5.jpg" alt="Galería imagen 5">
-            </div>
-            <div class="masonry-item">
-                <img src="img/G6.jpg" alt="Galería imagen 6">
-            </div>
-            <div class="masonry-item">
-                <img src="img/G7.jpg" alt="Galería imagen 7">
-            </div>
-            <div class="masonry-item">
-                <img src="img/G8.jpg" alt="Galería imagen 8">
-            </div>
-            <div class="masonry-item">
-                <img src="img/G9.jpg" alt="Galería imagen 9">
-            </div>
-            <div class="masonry-item">
-                <img src="img/G10.jpg" alt="Galería imagen 10">
-            </div>
-            <div class="masonry-item">
-                <img src="img/G11.jpg" alt="Galería imagen 11">
-            </div>
-            <div class="masonry-item">
-                <img src="img/G12.jpg" alt="Galería imagen 12">
-            </div>
-            <div class="masonry-item">
-                <img src="img/G13.jpg" alt="Galería imagen 13">
-            </div>
-            <div class="masonry-item">
-                <img src="img/G14.jpg" alt="Galería imagen 14">
-            </div>
-        </div>
-    </section>
-
-    <!-- Footer -->
-    <footer>
-        <div class="footer-container">
-            <div class="footer-section">
-                <h4>Amimbré</h4>
-                <p>
-                    Escuela de Musica en el Carmen de Viboral - Antioquia
-                </p>
-            </div>
-            
-            <div class="footer-section">
-                <h4>Contacto</h4>
-                <p>soporte@amimbre.com</p>
-                <p>+57 (4) 123-4567</p>
-                <p>El Carmen de Viboral, Antioquia</p>
-            </div>
-            
-            <div class="footer-section">
-                <h4>Legal</h4>
-                <a href="#">Política de Privacidad</a>
-                <a href="#">Términos y Condiciones</a>
-                <a href="#">Protección de Datos</a>
-            </div>
-            
-            <div class="footer-section">
-                <h4>Soporte</h4>
-                <a href="#">Centro de Ayuda</a>
-                <a href="#">Capacitación</a>
-                <a href="#">Manual de Usuario</a>
-            </div>
-        </div>
-        
-        <div class="footer-bottom">
-            © 2025 Amimbré Todos los derechos reservados.<br>
-            Cumple con Ley 1581/2012, Ley 594/2000 y normativas DIAN
-        </div>
-    </footer>
+    <script src="../assets/js/script-preinscripcion.js"></script>
 </body>
 </html>
