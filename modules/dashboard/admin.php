@@ -11,22 +11,119 @@ if (!isset($user)) {
 
 $flash = get_flash_message();
 
-// Obtener estadísticas básicas
+// Obtener estadísticas reales
 try {
-    $stmt = $pdo->query("SELECT COUNT(*) FROM usuarios WHERE estado = 'activo'");
-    $total_usuarios = $stmt->fetchColumn();
+    // 1. Estudiantes activos
+    $stmt = $pdo->query("
+        SELECT COUNT(*) as total 
+        FROM usuarios 
+        WHERE rol = 'estudiante' AND estado = 'activo'
+    ");
+    $estudiantes_activos = $stmt->fetch()['total'];
     
-    $stmt = $pdo->query("SELECT COUNT(*) FROM preinscripciones WHERE estado = 'pendiente'");
-    $preinscripciones_pendientes = $stmt->fetchColumn();
+    // Estudiantes del mes pasado
+    $stmt = $pdo->query("
+        SELECT COUNT(*) as total 
+        FROM usuarios 
+        WHERE rol = 'estudiante' 
+        AND estado = 'activo'
+        AND fecha_registro < DATE_SUB(NOW(), INTERVAL 1 MONTH)
+    ");
+    $estudiantes_mes_pasado = $stmt->fetch()['total'];
     
-    $stmt = $pdo->query("SELECT COUNT(*) FROM cursos WHERE estado = 'activo'");
-    $total_cursos = $stmt->fetchColumn();
+    // Calcular porcentaje de cambio
+    $cambio_estudiantes = $estudiantes_mes_pasado > 0 
+        ? round((($estudiantes_activos - $estudiantes_mes_pasado) / $estudiantes_mes_pasado) * 100) 
+        : 0;
     
-    $stmt = $pdo->query("SELECT COUNT(*) FROM matriculas WHERE estado = 'activa'");
-    $matriculas_activas = $stmt->fetchColumn();
+    // 2. Cursos activos
+    $stmt = $pdo->query("
+        SELECT COUNT(*) as total 
+        FROM cursos 
+        WHERE estado = 'activo'
+    ");
+    $cursos_activos = $stmt->fetch()['total'];
+    
+    // Grupos activos
+    $stmt = $pdo->query("
+        SELECT COUNT(*) as total 
+        FROM grupos 
+        WHERE estado = 'activo'
+    ");
+    $grupos_activos = $stmt->fetch()['total'];
+    
+    // 3. Total documentos (simulado por ahora, se puede agregar tabla después)
+    $total_documentos = 0;
+    $documentos_semana = 0;
+    
+    // 4. Profesores activos
+    $stmt = $pdo->query("
+        SELECT COUNT(*) as total 
+        FROM usuarios 
+        WHERE rol = 'profesor' AND estado = 'activo'
+    ");
+    $profesores_activos = $stmt->fetch()['total'];
+    
+    // 5. Actividad reciente (últimas 4 acciones)
+    $stmt = $pdo->query("
+        SELECT 
+            la.fecha_acceso,
+            u.nombre as usuario_nombre,
+            u.rol
+        FROM logs_acceso la
+        INNER JOIN usuarios u ON la.usuario_id = u.id
+        ORDER BY la.fecha_acceso DESC
+        LIMIT 4
+    ");
+    $actividades = $stmt->fetchAll();
+    
+    // 6. Prematrículas pendientes
+    $stmt = $pdo->query("
+        SELECT COUNT(*) as total 
+        FROM preinscripciones 
+        WHERE estado = 'pendiente'
+    ");
+    $prematriculas_pendientes = $stmt->fetch()['total'];
     
 } catch (PDOException $e) {
     error_log("Error obteniendo estadísticas: " . $e->getMessage());
+    // Valores por defecto en caso de error
+    $estudiantes_activos = 0;
+    $cambio_estudiantes = 0;
+    $cursos_activos = 0;
+    $grupos_activos = 0;
+    $total_documentos = 0;
+    $documentos_semana = 0;
+    $profesores_activos = 0;
+    $actividades = [];
+    $prematriculas_pendientes = 0;
+}
+
+// Función para tiempo transcurrido
+function tiempo_transcurrido($fecha) {
+    $ahora = new DateTime();
+    $tiempo = new DateTime($fecha);
+    $diferencia = $ahora->diff($tiempo);
+    
+    if ($diferencia->days > 0) {
+        return "Hace " . $diferencia->days . " día" . ($diferencia->days > 1 ? "s" : "");
+    } elseif ($diferencia->h > 0) {
+        return "Hace " . $diferencia->h . " hora" . ($diferencia->h > 1 ? "s" : "");
+    } elseif ($diferencia->i > 0) {
+        return "Hace " . $diferencia->i . " minuto" . ($diferencia->i > 1 ? "s" : "");
+    } else {
+        return "Hace unos segundos";
+    }
+}
+
+// Función para icono según rol
+function icono_rol($rol) {
+    $iconos = [
+        'admin' => ['icono' => 'admin_panel_settings', 'clase' => 'warning'],
+        'profesor' => ['icono' => 'school', 'clase' => 'info'],
+        'estudiante' => ['icono' => 'person', 'clase' => 'success']
+    ];
+    return $iconos[$rol] ?? ['icono' => 'person', 'clase' => 'info'];
 }
 ?>
 <!DOCTYPE html>
@@ -36,212 +133,12 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Administrador - Amimbré</title>
     <link rel="shortcut icon" href="../../assets/img/3.png">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="../../assets/css/colores.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: var(--hover-bg);
-            color: var(--text-primary);
-            min-height: 100vh;
-        }
-
-        /* Sidebar */
-        .sidebar {
-            width: 260px;
-            background: var(--card-bg);
-            border-right: 1px solid var(--border-color);
-            padding: 2rem 0;
-            position: fixed;
-            height: 100vh;
-            overflow-y: auto;
-        }
-
-        .logo-section {
-            padding: 0 1.5rem 2rem;
-            border-bottom: 1px solid var(--border-color);
-            text-align: center;
-        }
-
-        .logo-section img {
-            width: 60px;
-            height: 60px;
-            border-radius: 12px;
-            margin-bottom: 0.5rem;
-        }
-
-        .logo-section h2 {
-            font-size: 1.3rem;
-            background: var(--gradient-primary-blue);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .menu {
-            padding: 1.5rem 0;
-        }
-
-        .menu-item {
-            padding: 0.75rem 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            color: var(--text-secondary);
-            text-decoration: none;
-            transition: all 0.3s;
-        }
-
-        .menu-item:hover, .menu-item.active {
-            background: var(--hover-bg);
-            color: var(--primary-blue);
-            border-left: 3px solid var(--primary-blue);
-        }
-
-        .menu-item i {
-            width: 20px;
-        }
-
-        /* Main Content */
-        .main-content {
-            margin-left: 260px;
-            flex: 1;
-            padding: 2rem;
-        }
-
-        .dashboard-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .dashboard-title h1 {
-            color: var(--text-primary);
-            font-size: 2rem;
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
-
-        .dashboard-title p {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-        }
-
-        .dashboard-date {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        /* Stats Grid */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .stat-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-        }
-
-        .stat-icon.blue {
-            background: rgba(20, 121, 176, 0.1);
-            color: var(--primary-blue);
-        }
-
-        .stat-icon.green {
-            background: rgba(78, 195, 54, 0.1);
-            color: var(--primary-green);
-        }
-
-        .stat-icon.orange {
-            background: rgba(255, 109, 0, 0.1);
-            color: var(--primary-orange);
-        }
-
-        .stat-icon.yellow {
-            background: rgba(233, 233, 62, 0.1);
-            color: var(--primary-yellow);
-        }
-
-        .stat-info h3 {
-            font-size: 2rem;
-            font-weight: 700;
-            margin-bottom: 0.25rem;
-        }
-
-        .stat-info p {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
-
-        .alert {
-            padding: 1rem 1.5rem;
-            border-radius: 8px;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .alert-success {
-            background: rgba(78, 195, 54, 0.1);
-            border: 1px solid var(--primary-green);
-            color: var(--primary-green);
-        }
-
-        .alert-error {
-            background: rgba(255, 109, 0, 0.1);
-            border: 1px solid var(--primary-orange);
-            color: var(--primary-orange);
-        }
-        @media (max-width: 768px) {
-            .main-content {
-                margin-left: 0;
-                padding: 80px 20px 20px;
-            }
-
-            .sidebar.collapsed ~ .main-content {
-                margin-left: 0;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .dashboard-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 10px;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="../../assets/css/style-dashboardAdmin.css">
+</head>
+<body>
 </head>
 <body>
     <!-- Include Header/Sidebar -->
@@ -253,13 +150,24 @@ try {
         <div class="dashboard-header">
             <div class="dashboard-title">
                 <h1>Dashboard</h1>
-                <p>Bienvenido, <?php echo htmlspecialchars($user['nombre']); ?></p>
+                <p>Bienvenido, <?php echo htmlspecialchars($user['nombre']); ?> (Administrador)</p>
             </div>
             <div class="dashboard-date">
+                <span class="material-symbols-rounded" style="vertical-align: middle; margin-right: 5px;">calendar_today</span>
                 <?php
                 setlocale(LC_TIME, 'es_CO.UTF-8', 'es_CO', 'Spanish_Colombia');
                 date_default_timezone_set('America/Bogota');
-                echo strftime("%A, %d de %B de %Y");
+                
+                // Días y meses en español
+                $dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+                $meses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+                
+                $dia_semana = $dias[date('w')];
+                $dia = date('d');
+                $mes = $meses[date('n')];
+                $anio = date('Y');
+                
+                echo "$dia_semana, $dia de $mes de $anio";
                 ?>
             </div>
         </div>
@@ -271,45 +179,161 @@ try {
         </div>
         <?php endif; ?>
 
-        <!-- Estadísticas -->
+        <!-- Stats Cards -->
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-icon blue">
-                    <i class="fas fa-users"></i>
+                <div class="stat-header">
+                    <span class="stat-title">Estudiantes Activos</span>
+                    <div class="stat-icon students">
+                        <span class="material-symbols-rounded">school</span>
+                    </div>
                 </div>
-                <div class="stat-info">
-                    <h3><?php echo $total_usuarios ?? 0; ?></h3>
-                    <p>Usuarios Activos</p>
-                </div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-icon green">
-                    <i class="fas fa-graduation-cap"></i>
-                </div>
-                <div class="stat-info">
-                    <h3><?php echo $matriculas_activas ?? 0; ?></h3>
-                    <p>Matrículas Activas</p>
+                <div class="stat-value"><?php echo number_format($estudiantes_activos); ?></div>
+                <div class="stat-change <?php echo $cambio_estudiantes >= 0 ? 'positive' : 'negative'; ?>">
+                    <span class="material-symbols-rounded">
+                        <?php echo $cambio_estudiantes >= 0 ? 'arrow_upward' : 'arrow_downward'; ?>
+                    </span>
+                    <?php echo abs($cambio_estudiantes); ?>% desde el mes pasado
                 </div>
             </div>
 
             <div class="stat-card">
-                <div class="stat-icon orange">
-                    <i class="fas fa-file-alt"></i>
+                <div class="stat-header">
+                    <span class="stat-title">Cursos Activos</span>
+                    <div class="stat-icon courses">
+                        <span class="material-symbols-rounded">menu_book</span>
+                    </div>
                 </div>
-                <div class="stat-info">
-                    <h3><?php echo $preinscripciones_pendientes ?? 0; ?></h3>
-                    <p>Preinscripciones Pendientes</p>
+                <div class="stat-value"><?php echo number_format($cursos_activos); ?></div>
+                <div class="stat-change">
+                    <span>En <?php echo $grupos_activos; ?> grupos</span>
                 </div>
             </div>
 
             <div class="stat-card">
-                <div class="stat-icon yellow">
-                    <i class="fas fa-book"></i>
+                <div class="stat-header">
+                    <span class="stat-title">Prematrículas</span>
+                    <div class="stat-icon documents">
+                        <span class="material-symbols-rounded">description</span>
+                    </div>
                 </div>
-                <div class="stat-info">
-                    <h3><?php echo $total_cursos ?? 0; ?></h3>
-                    <p>Cursos Activos</p>
+                <div class="stat-value"><?php echo number_format($prematriculas_pendientes); ?></div>
+                <div class="stat-change">
+                    <span>Pendientes de revisión</span>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-title">Profesores</span>
+                    <div class="stat-icon teachers">
+                        <span class="material-symbols-rounded">groups</span>
+                    </div>
+                </div>
+                <div class="stat-value"><?php echo number_format($profesores_activos); ?></div>
+                <div class="stat-change">
+                    <span>Personal docente activo</span>
+                </div>
+            </div>
+        </div>
+        <!-- Content Grid -->
+        <div class="content-grid">
+            <!-- Actividad Reciente -->
+            <div class="activity-container">
+                <div class="section-header">
+                    <h3 class="section-title">Actividad Reciente</h3>
+                    <p class="section-subtitle">Últimos accesos al sistema</p>
+                </div>
+                <div class="activity-list">
+                    <?php if (count($actividades) > 0): ?>
+                        <?php foreach($actividades as $actividad): ?>
+                            <?php 
+                            $icono = icono_rol($actividad['rol']);
+                            $rol_texto = [
+                                'admin' => 'Administrador',
+                                'profesor' => 'Profesor',
+                                'estudiante' => 'Estudiante'
+                            ][$actividad['rol']] ?? 'Usuario';
+                            ?>
+                            <div class="activity-item">
+                                <div class="activity-icon <?php echo $icono['clase']; ?>">
+                                    <span class="material-symbols-rounded"><?php echo $icono['icono']; ?></span>
+                                </div>
+                                <div class="activity-content">
+                                    <div class="activity-title">
+                                        <?php echo htmlspecialchars($actividad['usuario_nombre']); ?> accedió al sistema
+                                    </div>
+                                    <div class="activity-time">
+                                        <?php echo tiempo_transcurrido($actividad['fecha_acceso']); ?> • <?php echo $rol_texto; ?>
+                                    </div>
+                                </div>
+                                <span class="activity-badge new">Acceso</span>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <div class="activity-item">
+                            <div class="activity-icon info">
+                                <span class="material-symbols-rounded">info</span>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-title">No hay actividad reciente</div>
+                                <div class="activity-time">El sistema está iniciando</div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="quick-actions-container">
+                <div class="section-header">
+                    <h3 class="section-title">Acciones Rápidas</h3>
+                    <p class="section-subtitle">Tareas frecuentes</p>
+                </div>
+                <div class="quick-actions-grid">
+                    <a href="../prematriculas/index.php" class="quick-action">
+                        <div class="quick-action-icon enrollment">
+                            <span class="material-symbols-rounded">person_add</span>
+                        </div>
+                        <div class="quick-action-content">
+                            <div class="quick-action-title">Prematrículas</div>
+                            <div class="quick-action-desc"><?php echo $prematriculas_pendientes; ?> pendientes</div>
+                        </div>
+                        <span class="material-symbols-rounded" style="color: var(--text-secondary);">arrow_forward</span>
+                    </a>
+
+                    <a href="../usuarios/crear.php" class="quick-action">
+                        <div class="quick-action-icon documents">
+                            <span class="material-symbols-rounded">group_add</span>
+                        </div>
+                        <div class="quick-action-content">
+                            <div class="quick-action-title">Nuevo Usuario</div>
+                            <div class="quick-action-desc">Registrar usuario</div>
+                        </div>
+                        <span class="material-symbols-rounded" style="color: var(--text-secondary);">arrow_forward</span>
+                    </a>
+
+                    <a href="../cursos/index.php" class="quick-action">
+                        <div class="quick-action-icon grades">
+                            <span class="material-symbols-rounded">menu_book</span>
+                        </div>
+                        <div class="quick-action-content">
+                            <div class="quick-action-title">Gestionar Cursos</div>
+                            <div class="quick-action-desc"><?php echo $cursos_activos; ?> activos</div>
+                        </div>
+                        <span class="material-symbols-rounded" style="color: var(--text-secondary);">arrow_forward</span>
+                    </a>
+
+                    <a href="../reportes/index.php" class="quick-action">
+                        <div class="quick-action-icon reports">
+                            <span class="material-symbols-rounded">assessment</span>
+                        </div>
+                        <div class="quick-action-content">
+                            <div class="quick-action-title">Ver Reportes</div>
+                            <div class="quick-action-desc">Análisis y estadísticas</div>
+                        </div>
+                        <span class="material-symbols-rounded" style="color: var(--text-secondary);">arrow_forward</span>
+                    </a>
                 </div>
             </div>
         </div>
