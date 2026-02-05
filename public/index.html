@@ -1,4 +1,3 @@
-/*Index o landing page*/
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,6 +12,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="../assets/css/style-index.css">
     <link rel="stylesheet" href="../assets/css/colores.css">
+    <link rel="shortcut icon" href="../assets/img/3.png">
 </head>
 <body>
     <!-- Header -->
@@ -22,19 +22,81 @@
             <h1>Amimbré</h1>
         </div>
 
-        <ul class="nav-links">
+        <nav class="nav-links">
             <li><a href="#inicio">Inicio</a></li>
             <li><a href="#sobre-nosotros">Sobre Nosotros</a></li>
             <li><a href="#disciplinas">Disciplinas</a></li>
             <li><a href="#galeria">Galería</a></li>
             <li><a href="#contacto">Contacto</a></li>
-        </ul>
+        </nav>
 
         <div class="header-actions">
             <div class="theme-toggle"></div>
             <a href="../auth/login.php" class="login-btn">Iniciar Sesión</a>
         </div>
+
+        <!-- Hamburger Menu Button -->
+        <button class="hamburger-menu" aria-label="Toggle menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
     </header>
+
+    <!-- Mobile Menu Overlay -->
+    <div class="mobile-menu-overlay"></div>
+
+    <!-- Mobile Sidebar Menu -->
+    <div class="mobile-sidebar">
+        <div class="mobile-sidebar-header">
+            <div class="logo-section">
+                <img src="../assets/img/1.jpg" alt="Amimbré Logo">
+                <h2>Amimbré</h2>
+            </div>
+            <button class="close-menu" aria-label="Close menu">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="mobile-sidebar-content">
+            <div class="mobile-user-info">
+                <div class="user-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <p class="user-name">Visitante</p>
+            </div>
+
+            <nav class="mobile-nav">
+                <a href="#inicio" class="mobile-nav-item">
+                    <i class="fas fa-home"></i>
+                    <span>Inicio</span>
+                </a>
+                <a href="#sobre-nosotros" class="mobile-nav-item">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Sobre Nosotros</span>
+                </a>
+                <a href="#disciplinas" class="mobile-nav-item">
+                    <i class="fas fa-music"></i>
+                    <span>Disciplinas</span>
+                </a>
+                <a href="#galeria" class="mobile-nav-item">
+                    <i class="fas fa-images"></i>
+                    <span>Galería</span>
+                </a>
+                <a href="#contacto" class="mobile-nav-item">
+                    <i class="fas fa-envelope"></i>
+                    <span>Contacto</span>
+                </a>
+            </nav>
+
+            <div class="mobile-sidebar-footer">
+                <a href="../auth/login.php" class="mobile-login-btn">
+                    <i class="fas fa-sign-in-alt"></i>
+                    <span>Iniciar Sesión</span>
+                </a>
+            </div>
+        </div>
+    </div>
 
     <section class="hero" id="inicio">
         <div class="hero-content">
@@ -44,12 +106,14 @@
             <p>
                 En Amimbré, la creatividad se convierte en talento. Formamos artistas en música, danza, teatro, artes plásticas, audiovisuales y literatura, inspirando expresión y amor por la cultura.
             </p>
-            <a href="../auth/login.php" class="cta-button">
-                Acceder al Sistema
-            </a>
-            <a href="pre-inscripcion.php" class="cta-button">
-                Prematriculate
-            </a>
+            <div class="hero-buttons">
+                <a href="../auth/login.php" class="cta-button">
+                    Acceder al Sistema
+                </a>
+                <a href="pre-inscripcion.php" class="cta-button">
+                    Prematriculate
+                </a>
+            </div>
         </div>
     </section>
 
@@ -87,7 +151,6 @@
                 </div>
                 <h3>Valores</h3>
                 <p>Disciplina, creatividad, respeto y trabajo comunitario. Fomentamos el crecimiento artístico y humano a través de la música, promoviendo la sensibilidad, la cooperación y el compromiso con la cultura local.</p>
-
             </div>
         </div>
     </section>
@@ -201,21 +264,56 @@
         </div>
     </section>
 
+    <section class="contact" id="contacto">
+        <div class="contact-header">
+            <h2>Contáctanos</h2>
+            <p>¿Tienes preguntas? Estamos aquí para ayudarte. Escríbenos mediante uno de nuestros medios de contacto y te responderemos lo antes posible.</p>
+        </div>
+        <div class="contacts">
+            <div class="contacts-cards">
+                <div class="card-cont" id="direccion">
+                    <div class="ic"><span class="material-symbols-outlined">location_on</span></div>
+                    <div class="contenido">
+                        <h4>Dirección</h4>
+                        <p>a 35-83, Río Negro-El Carmen De Viboral #35-1</p>
+                    </div>
+                </div>
+                <div class="card-cont" id="telefono">
+                    <div class="ic"><span class="material-symbols-outlined">call</span></div>
+                    <div class="contenido">
+                        <h4>Teléfono</h4>
+                        <p>312 717 0569</p>
+                    </div>
+                </div>
+                <div class="card-cont" id="email">
+                    <div class="ic"><span class="material-symbols-outlined">mail</span></div>
+                    <div class="contenido">
+                        <h4>Email</h4>
+                        <p>amimbreexample@email.com</p>
+                    </div>
+                </div>
+                <div class="card-cont" id="horario">
+                    <div class="ic"><span class="material-symbols-outlined">schedule</span></div>
+                    <div class="contenido">
+                        <h4>Horario de Atención</h4>
+                        <p>Lunes - Sábado: 7:00 a 5:00</p>
+                    </div>
+                </div>
+            </div>
+            <div class="contacts-maps">
+                <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2358.9853264072804!2d-75.33740089772753!3d6.086895923133506!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8e46a31fbc405185%3A0x80d6716251316e32!2sEscuela%20de%20m%C3%BAsica%20Amimbr%C3%A9!5e0!3m2!1sen!2sco!4v1770219115929!5m2!1sen!2sco" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+            </div>
+        </div>
+    </section>
+
     <!-- Footer -->
     <footer>
         <div class="footer-container">
             <div class="footer-section">
                 <h4>Amimbré</h4>
                 <p>
-                    Escuela de Musica en el Carmen de Viboral - Antioquia
+                    Escuela de Música en el Carmen de Viboral - Antioquia
                 </p>
-            </div>
-            
-            <div class="footer-section">
-                <h4>Contacto</h4>
-                <p>soporte@amimbre.com</p>
-                <p>+57 (4) 123-4567</p>
-                <p>El Carmen de Viboral, Antioquia</p>
             </div>
             
             <div class="footer-section">
@@ -238,5 +336,7 @@
             Cumple con Ley 1581/2012, Ley 594/2000 y normativas DIAN
         </div>
     </footer>
+
+    <script src="../assets/js/script-menuidx.js"></script>
 </body>
 </html>
