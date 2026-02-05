@@ -1,12 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Responsive Sidebar with Dropdown Menu by AbdulDev</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
-  <link rel="stylesheet" href="../assets/css/colores.css">
-</head>
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 
@@ -20,6 +11,25 @@
     body {
     min-height: 100vh;
     background: var(--card-bg);
+    }
+
+    /* Overlay para mobile */
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 9;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .sidebar-overlay.active {
+        display: block;
+        opacity: 1;
     }
 
     .sidebar {
@@ -44,12 +54,13 @@
     align-items: center;
     justify-content: space-between;
     }
+    
     .sidebar-header .header-logo {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex: 1;
-        }
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 1;
+    }
 
     .sidebar-header .header-logo img {
         width: 45px;
@@ -112,7 +123,6 @@
     padding-bottom: 20px;
     height: calc(100vh - 227px);
     scrollbar-color: transparent transparent;
-    
     }
 
     .sidebar .sidebar-nav .primary-nav:hover {
@@ -243,218 +253,307 @@
     display: none;
     }
 
-/* Responsive codes for small screens */
-@media (max-width: 768px) {
-    .sidebar-menu-button {
-        position: fixed;
-        left: 20px;
-        top: 20px;
-        height: 40px;
-        width: 42px;
-        display: flex;
-        color: var(--text-primary);
-        background: var(--primary-blue);
-        transition: 0.5s;
+    /* Responsive codes for small screens */
+    @media (max-width: 768px) {
+        .sidebar-menu-button {
+            position: fixed;
+            left: 20px;
+            top: 20px;
+            height: 40px;
+            width: 42px;
+            display: flex;
+            color: var(--text-primary);
+            background: var(--primary-blue);
+            transition: all 0.3s ease;
+            z-index: 1001;
+            border-radius: 8px;
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .sidebar-menu-button:hover {
+            background-color: var(--primary-green);
+        }
+
+        /* Ocultar botón cuando sidebar está abierto */
+        .sidebar-menu-button.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.8);
+        }
+
+        /* Sidebar oculto por defecto en móvil */
+        .sidebar {
+            left: -270px;
+        }
+
+        /* Sidebar visible cuando NO tiene clase collapsed */
+        .sidebar:not(.collapsed) {
+            left: 0;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+        }
+
+        /* En móvil, collapsed = oculto */
+        .sidebar.collapsed {
+            width: 270px;
+            left: -270px;
+        }
+
+        .sidebar.collapsed .sidebar-header .sidebar-toggler {
+            transform: none;
+        }
+
+        .sidebar.collapsed .sidebar-nav .primary-nav {
+            transform: translateY(15px);
+        }
+
+        /* Ajustar contenido principal en móvil */
+        .main-content {
+            margin-left: 0 !important;
+            width: 100%;
+        }
     }
 
-    .sidebar-menu-button:hover {
-        background-color: var(--primary-green);
-    }
+    /* Para pantallas grandes (Desktop) */
+    @media (min-width: 769px) {
+        /* Ajustar contenido principal cuando sidebar está expandido */
+        .main-content {
+            margin-left: 270px;
+            transition: margin-left 0.4s ease;
+        }
 
-    .sidebar.collapsed {
-        width: 270px;
-        left: -270px;
+        /* Ajustar contenido principal cuando sidebar está colapsado */
+        .sidebar.collapsed ~ .main-content {
+            margin-left: 85px;
+        }
     }
-
-    .sidebar.collapsed .sidebar-header .sidebar-toggler {
-        transform: none;
-    }
-
-    .sidebar.collapsed .sidebar-nav .primary-nav {
-    transform: translateY(15px);
-    }
-}
 </style>
-<body>
-    <!-- Mobile Sidebar Menu Button Codes -->
-    <button class="sidebar-menu-button">
-        <span class="material-symbols-rounded">menu</span>
-    </button>
 
-    <aside class="sidebar">
-        <!-- Sidebar Header Codes -->
-        <header class="sidebar-header">
-            <div class="header-logo">
-                <img src="../../assets/img/3.png" alt="Amimbré">
-            </div>
+<!-- Overlay para cerrar sidebar en móvil -->
+<div class="sidebar-overlay"></div>
+
+<!-- Mobile Sidebar Menu Button -->
+<button class="sidebar-menu-button">
+    <span class="material-symbols-rounded">menu</span>
+</button>
+
+<aside class="sidebar collapsed">
+    <!-- Sidebar Header -->
+    <header class="sidebar-header">
+        <div class="header-logo">
+            <img src="../../assets/img/3.png" alt="Amimbré">
+        </div>
         <button class="sidebar-toggler">
             <span class="material-symbols-rounded">chevron_left</span>
         </button>
-        </header>
+    </header>
 
-        <nav class="sidebar-nav">
-        <!-- Primary Top Nav Codes -->
+    <nav class="sidebar-nav">
+        <!-- Primary Top Nav -->
         <ul class="nav-list primary-nav">
             <li class="nav-item">
-            <a href="#" class="nav-link">
-                <span class="material-symbols-rounded">dashboard</span>
-                <span class="nav-label">Dashboard</span>
-            </a>
-            <ul class="dropdown-menu">
-                <li class="nav-item"><a class="nav-link dropdown-title">Dashboard</a></li>
-            </ul>
+                <a href="#" class="nav-link">
+                    <span class="material-symbols-rounded">dashboard</span>
+                    <span class="nav-label">Dashboard</span>
+                </a>
+                <ul class="dropdown-menu">
+                    <li class="nav-item"><a class="nav-link dropdown-title">Dashboard</a></li>
+                </ul>
             </li>
 
             <li class="nav-item dropdown-container">
-            <a href="#" class="nav-link dropdown-toggle">
-                <span class="material-symbols-rounded">description</span>
-                <span class="nav-label">Inscripciones</span>
-                <span class="dropdown-icon material-symbols-rounded">keyboard_arrow_down</span>
-            </a>
-            <ul class="dropdown-menu">
-                <li class="nav-item"><a class="nav-link dropdown-title">Inscripciones</a></li>
-                <li class="nav-item"><a href="#" class="nav-link dropdown-link">Prematrículas</a></li>
-                <li class="nav-item"><a href="#" class="nav-link dropdown-link">Matrículas</a></li>
-            </ul>
+                <a href="#" class="nav-link dropdown-toggle">
+                    <span class="material-symbols-rounded">description</span>
+                    <span class="nav-label">Inscripciones</span>
+                    <span class="dropdown-icon material-symbols-rounded">keyboard_arrow_down</span>
+                </a>
+                <ul class="dropdown-menu">
+                    <li class="nav-item"><a class="nav-link dropdown-title">Inscripciones</a></li>
+                    <li class="nav-item"><a href="#" class="nav-link dropdown-link">Prematrículas</a></li>
+                    <li class="nav-item"><a href="#" class="nav-link dropdown-link">Matrículas</a></li>
+                </ul>
             </li>
 
             <li class="nav-item">
-            <a href="#" class="nav-link">
-                <span class="material-symbols-rounded">group</span>
-                <span class="nav-label">Usuarios</span>
-            </a>
-            <ul class="dropdown-menu">
-                <li class="nav-item"><a class="nav-link dropdown-title">Usuarios</a></li>
-            </ul>
+                <a href="#" class="nav-link">
+                    <span class="material-symbols-rounded">group</span>
+                    <span class="nav-label">Usuarios</span>
+                </a>
+                <ul class="dropdown-menu">
+                    <li class="nav-item"><a class="nav-link dropdown-title">Usuarios</a></li>
+                </ul>
             </li>
 
             <li class="nav-item">
-            <a href="#" class="nav-link">
-                <span class="material-symbols-rounded">menu_book</span>
-                <span class="nav-label">Cursos</span>
-            </a>
-            <ul class="dropdown-menu">
-                <li class="nav-item"><a class="nav-link dropdown-title">Cursos</a></li>
-            </ul>
+                <a href="#" class="nav-link">
+                    <span class="material-symbols-rounded">menu_book</span>
+                    <span class="nav-label">Cursos</span>
+                </a>
+                <ul class="dropdown-menu">
+                    <li class="nav-item"><a class="nav-link dropdown-title">Cursos</a></li>
+                </ul>
             </li>
 
             <li class="nav-item">
-            <a href="#" class="nav-link">
-                <span class="material-symbols-rounded">grade</span>
-                <span class="nav-label">Notas</span>
-            </a>
-            <ul class="dropdown-menu">
-                <li class="nav-item"><a class="nav-link dropdown-title">Notas</a></li>
-            </ul>
+                <a href="#" class="nav-link">
+                    <span class="material-symbols-rounded">grade</span>
+                    <span class="nav-label">Notas</span>
+                </a>
+                <ul class="dropdown-menu">
+                    <li class="nav-item"><a class="nav-link dropdown-title">Notas</a></li>
+                </ul>
             </li>
 
-            <!-- Dropdown Codes -->
             <li class="nav-item dropdown-container">
-            <a href="#" class="nav-link dropdown-toggle">
-                <span class="material-symbols-rounded">folder</span>
-                <span class="nav-label">Documentación</span>
-                <span class="dropdown-icon material-symbols-rounded">keyboard_arrow_down</span>
-            </a>
-            <ul class="dropdown-menu">
-                <li class="nav-item"><a class="nav-link dropdown-title">Documentación</a></li>
-                <li class="nav-item"><a href="#" class="nav-link dropdown-link">Academica</a></li>
-                <li class="nav-item"><a href="#" class="nav-link dropdown-link">Institucional</a></li>
-            </ul>
+                <a href="#" class="nav-link dropdown-toggle">
+                    <span class="material-symbols-rounded">folder</span>
+                    <span class="nav-label">Documentación</span>
+                    <span class="dropdown-icon material-symbols-rounded">keyboard_arrow_down</span>
+                </a>
+                <ul class="dropdown-menu">
+                    <li class="nav-item"><a class="nav-link dropdown-title">Documentación</a></li>
+                    <li class="nav-item"><a href="#" class="nav-link dropdown-link">Academica</a></li>
+                    <li class="nav-item"><a href="#" class="nav-link dropdown-link">Institucional</a></li>
+                </ul>
             </li>
 
             <li class="nav-item">
-            <a href="#" class="nav-link">
-                <span class="material-symbols-rounded">notifications</span>
-                <span class="nav-label">Notificaciones</span>
-            </a>
-            <ul class="dropdown-menu">
-                <li class="nav-item"><a class="nav-link dropdown-title">Notificaciones</a></li>
-            </ul>
+                <a href="#" class="nav-link">
+                    <span class="material-symbols-rounded">notifications</span>
+                    <span class="nav-label">Notificaciones</span>
+                </a>
+                <ul class="dropdown-menu">
+                    <li class="nav-item"><a class="nav-link dropdown-title">Notificaciones</a></li>
+                </ul>
             </li>
 
             <li class="nav-item">
-            <a href="#" class="nav-link">
-                <span class="material-symbols-rounded">assessment</span>
-                <span class="nav-label">Reportes</span>
-            </a>
-            <ul class="dropdown-menu">
-                <li class="nav-item"><a class="nav-link dropdown-title">Reportes</a></li>
-            </ul>
+                <a href="#" class="nav-link">
+                    <span class="material-symbols-rounded">assessment</span>
+                    <span class="nav-label">Reportes</span>
+                </a>
+                <ul class="dropdown-menu">
+                    <li class="nav-item"><a class="nav-link dropdown-title">Reportes</a></li>
+                </ul>
             </li>
 
             <li class="nav-item">
-            <a href="#" class="nav-link">
-                <span class="material-symbols-rounded">settings</span>
-                <span class="nav-label">Configuración</span>
-            </a>
-            <ul class="dropdown-menu">
-                <li class="nav-item"><a class="nav-link dropdown-title">Configuración</a></li>
-            </ul>
+                <a href="#" class="nav-link">
+                    <span class="material-symbols-rounded">settings</span>
+                    <span class="nav-label">Configuración</span>
+                </a>
+                <ul class="dropdown-menu">
+                    <li class="nav-item"><a class="nav-link dropdown-title">Configuración</a></li>
+                </ul>
             </li>
         </ul>
 
-        <!-- Secondary Bottom Nav Codes -->
+        <!-- Secondary Bottom Nav -->
         <ul class="nav-list secondary-nav">
             <li class="nav-item">
-            <a href="#" class="nav-link">
-                <span class="material-symbols-rounded">help</span>
-                <span class="nav-label">Ayuda</span>
-            </a>
-            <ul class="dropdown-menu">
-                <li class="nav-item"><a class="nav-link dropdown-title">Ayuda</a></li>
-            </ul>
+                <a href="#" class="nav-link">
+                    <span class="material-symbols-rounded">help</span>
+                    <span class="nav-label">Ayuda</span>
+                </a>
+                <ul class="dropdown-menu">
+                    <li class="nav-item"><a class="nav-link dropdown-title">Ayuda</a></li>
+                </ul>
             </li>
             <li class="nav-item">
-            <a href="#" class="nav-link">
-                <span class="material-symbols-rounded">logout</span>
-                <span class="nav-label">Cerrar Sesión</span>
-            </a>
-            <ul class="dropdown-menu">
-                <li class="nav-item"><a class="nav-link dropdown-title">Cerrar Sesión</a></li>
-            </ul>
+                <a href="#" class="nav-link">
+                    <span class="material-symbols-rounded">logout</span>
+                    <span class="nav-label">Cerrar Sesión</span>
+                </a>
+                <ul class="dropdown-menu">
+                    <li class="nav-item"><a class="nav-link dropdown-title">Cerrar Sesión</a></li>
+                </ul>
             </li>
         </ul>
-        </nav>
-    </aside>
+    </nav>
+</aside>
 
-    <script>
-        // Toggle visibility of a dropdown menu
-            const toggleDropdown = (dropdown, menu, isOpen) => {
-            dropdown.classList.toggle("open", isOpen);
-            menu.style.height = isOpen ? `${menu.scrollHeight}px` : 0;
-            };
+<script>
+    // Toggle visibility of a dropdown menu
+    const toggleDropdown = (dropdown, menu, isOpen) => {
+        dropdown.classList.toggle("open", isOpen);
+        menu.style.height = isOpen ? `${menu.scrollHeight}px` : 0;
+    };
 
-            // Close all open dropdowns
-            const closeAllDropdowns = () => {
-            document.querySelectorAll(".dropdown-container.open").forEach((openDropdown) => {
-                toggleDropdown(openDropdown, openDropdown.querySelector(".dropdown-menu"), false);
-            });
-            };
+    // Close all open dropdowns
+    const closeAllDropdowns = () => {
+        document.querySelectorAll(".dropdown-container.open").forEach((openDropdown) => {
+            toggleDropdown(openDropdown, openDropdown.querySelector(".dropdown-menu"), false);
+        });
+    };
 
-            // Click event to all dropdown toggles
-            document.querySelectorAll(".dropdown-toggle").forEach((dropdownToggle) => {
-            dropdownToggle.addEventListener("click", (e) => {
-                e.preventDefault();
+    // Click event to all dropdown toggles
+    document.querySelectorAll(".dropdown-toggle").forEach((dropdownToggle) => {
+        dropdownToggle.addEventListener("click", (e) => {
+            e.preventDefault();
 
-                const dropdown = dropdownToggle.closest(".dropdown-container");
-                const menu = dropdown.querySelector(".dropdown-menu");
-                const isOpen = dropdown.classList.contains("open");
+            const dropdown = dropdownToggle.closest(".dropdown-container");
+            const menu = dropdown.querySelector(".dropdown-menu");
+            const isOpen = dropdown.classList.contains("open");
 
-                closeAllDropdowns(); // Close all open dropdowns
-                toggleDropdown(dropdown, menu, !isOpen); // Current Toggle dropdown visibility
-            });
-            });
+            closeAllDropdowns();
+            toggleDropdown(dropdown, menu, !isOpen);
+        });
+    });
 
-            // Click event to sidebar toggle buttons
-            document.querySelectorAll(".sidebar-toggler, .sidebar-menu-button").forEach((button) => {
-            button.addEventListener("click", () => {
-                closeAllDropdowns(); // Close all open dropdowns
-                document.querySelector(".sidebar").classList.toggle("collapsed"); // Toggle collapsed class on sidebar
-            });
-            });
+    const sidebar = document.querySelector(".sidebar");
+    const sidebarOverlay = document.querySelector(".sidebar-overlay");
+    const menuButton = document.querySelector(".sidebar-menu-button");
+    const isMobile = () => window.innerWidth <= 768;
 
-            // Default Collapse Sidebar for small screens
-            if (window.innerWidth <= 1024) document.querySelector(".sidebar").classList.add("collapsed");
-    </script>
-</body>
-</html>
+    // Función para toggle del sidebar
+    const toggleSidebar = () => {
+        sidebar.classList.toggle("collapsed");
+        
+        // En móvil, mostrar/ocultar overlay y botón
+        if (isMobile()) {
+            sidebarOverlay.classList.toggle("active");
+            menuButton.classList.toggle("hidden");
+        }
+    };
+
+    // Click event to sidebar toggle buttons
+    document.querySelectorAll(".sidebar-toggler, .sidebar-menu-button").forEach((button) => {
+        button.addEventListener("click", () => {
+            closeAllDropdowns();
+            toggleSidebar();
+        });
+    });
+
+    // Cerrar sidebar al hacer clic en el overlay (solo móvil)
+    sidebarOverlay.addEventListener("click", () => {
+        if (isMobile() && !sidebar.classList.contains("collapsed")) {
+            toggleSidebar();
+        }
+    });
+
+    // Inicializar estado según tamaño de pantalla
+    const initSidebar = () => {
+        if (isMobile()) {
+            sidebar.classList.add("collapsed");
+            sidebarOverlay.classList.remove("active");
+            menuButton.classList.remove("hidden");
+        } else {
+            sidebar.classList.remove("collapsed");
+            sidebarOverlay.classList.remove("active");
+            menuButton.classList.remove("hidden");
+        }
+    };
+
+    // Ejecutar al cargar
+    initSidebar();
+
+    // Re-inicializar al cambiar tamaño de ventana
+    let resizeTimer;
+    window.addEventListener("resize", () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            initSidebar();
+            closeAllDropdowns();
+        }, 250);
+    });
+</script>

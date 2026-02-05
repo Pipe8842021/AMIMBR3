@@ -5,32 +5,10 @@
             box-sizing: border-box;
         }
 
-        :root {
-            --bg: #ffffff;
-            --fg: #0a0a0a;
-            --primary: #1a5570;
-            --primary-hover: #2B7A9B;
-            --accent: #f5f5f5;
-            --border: #e5e5e5;
-            --muted: #737373;
-            --input-bg: #ffffff;
-        }
-
-        .dark {
-            --bg: #0a0a0a;
-            --fg: #fafafa;
-            --primary: #fafafa;
-            --primary-hover: #e5e5e5;
-            --accent: #262626;
-            --border: #262626;
-            --muted: #a3a3a3;
-            --input-bg: #171717;
-        }
-
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg);
-            color: var(--fg);
+            background: var(--text-primary);
+            color: var(--dark-bg);
             overflow-x: hidden;
         }
 
@@ -43,7 +21,7 @@
         .left-side {
             display: none;
             position: relative;
-            background: #226a8b;
+            background: var(--gradient-primary-blue);
             overflow: hidden;
         }
 
@@ -82,7 +60,7 @@
             right: 3rem;
             text-align: center;
             z-index: 10;
-            color: var(--border);
+            color: var(--border-cl);
         }
 
         .bottom-text h2 {
@@ -103,7 +81,7 @@
             align-items: center;
             justify-content: center;
             padding: 2rem;
-            background: var(--bg);
+            background: var(--text-primary);
         }
 
         .form-container {
@@ -128,7 +106,7 @@
             width: 4rem;
             height: 4rem;
             border-radius: 50%;
-            background: linear-gradient(135deg, #1a5570, #f5f5f5);
+            background: linear-gradient(135deg, var(--primary-blue), var(--text-primary));
         }
 
         .logo-img {
@@ -137,7 +115,7 @@
             object-fit: contain;
             background-color: #b8b8b817;
             padding: 10px;
-            border: 1px solid var(--border);
+            border: 1px solid var(--border-cl);
             border-radius: 10px;
         }
 
@@ -183,23 +161,23 @@
 
         .forgot-link {
             font-size: 0.875rem;
-            color: #1a5570;
+            color: var(--primary-blue);
             text-decoration: none;
             transition: color 0.2s;
         }
 
         .forgot-link:hover {
-            color: #2B7A9B;
+            color: var(--subtle-blue);
         }
 
         .form-input {
             width: 100%;
             height: 3rem;
             padding: 0 1rem;
-            border: 1px solid var(--border);
+            border: 1px solid var(--border-cl);
             border-radius: 0.5rem;
-            background: var(--input-bg);
-            color: var(--fg);
+            background: var(--text-primary);
+            color: var(--dark-bg);
             font-size: 1rem;
             transition: all 0.2s;
         }
@@ -232,18 +210,18 @@
         .btn-primary {
             width: 100%;
             height: 3rem;
-            background: #226a8b;    
-            color: white;
+            background: #328db4;   
+            color: var(--text-primary);
             border: none;
             border-radius: 0.5rem;
             font-size: 1rem;
             font-weight: 500;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: 0.2s;
         }
 
         .btn-primary:hover {
-            background: #328db4;
+            background: var(--gradient-primary-blue);
         }
 
         .divider {
@@ -259,12 +237,12 @@
             left: 0;
             right: 0;
             height: 1px;
-            background: var(--border);
+            background: var(--border-cl);
         }
 
         .divider span {
             position: relative;
-            background: var(--bg);
+            background: var(--text-primary);
             padding: 0 0.5rem;
             font-size: 0.75rem;
             text-transform: uppercase;
@@ -284,17 +262,17 @@
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
-            border: 1px solid var(--border);
+            border: 1px solid var(--border-cl);
             border-radius: 0.5rem;
             background: transparent;
-            color: var(--fg);
+            color: var(--dark-bg);
             font-size: 1rem;
             cursor: pointer;
             transition: all 0.2s;
         }
 
         .btn-social:hover {
-            background: var(--accent);
+            background: var(--text-primary);
         }
 
         .btn-social svg {

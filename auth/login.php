@@ -85,6 +85,7 @@ if (is_logged_in()) {
     <link rel="shortcut icon" href="../assets/img/3.png">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link rel="stylesheet" href="../assets/css/style-login.css">
+    <link rel="stylesheet" href="../assets/css/colores.css">
 </head>
 <body>
     <div class="container">
@@ -133,8 +134,8 @@ if (is_logged_in()) {
                     <div class="form-group">
                         <label class="form-label" for="email">Correo electrónico</label>
                         <input class="form-input" type="email" id="email" name="email" 
-                               placeholder="tu@email.com" required 
-                               value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>">
+                                placeholder="tu@email.com" required 
+                                value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>">
                     </div>
 
                     <div class="form-group">
@@ -143,7 +144,7 @@ if (is_logged_in()) {
                             <a href="recuperar-password.php" class="forgot-link">¿Olvidaste tu contraseña?</a>
                         </div>
                         <input class="form-input" type="password" id="password" name="password" 
-                               placeholder="••••••••" required>
+                                placeholder="••••••••" required>
                     </div>
 
                     <div class="checkbox-group">
