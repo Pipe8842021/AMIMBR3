@@ -4,12 +4,41 @@
  * Vista completa del panel de administración
  */
 
-// No requiere auth_check porque ya se validó en index.php
-if (!isset($user)) {
-    die('Acceso no autorizado');
+// Incluir configuración de sesión y base de datos
+require_once '../../config/session.php';
+require_once '../../config/database.php';
+
+// Verificar autenticación
+require_once '../../includes/auth_check.php';
+
+// Verificar que sea administrador
+require_role('admin');
+
+// Obtener datos del usuario actual
+try {
+    $stmt = $pdo->prepare("
+        SELECT id, nombre, email, rol, estado, foto_perfil 
+        FROM usuarios 
+        WHERE id = ? AND estado = 'activo'
+    ");
+    $stmt->execute([$_SESSION['user_id']]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$user) {
+        session_destroy();
+        header("Location: ../../auth/login.php?error=usuario_no_encontrado");
+        exit;
+    }
+} catch (PDOException $e) {
+    error_log("Error al obtener datos de usuario: " . $e->getMessage());
+    die("Error del sistema. Por favor, intenta más tarde.");
 }
 
-$flash = get_flash_message();
+// Obtener mensaje flash si existe
+$flash = null;
+if (function_exists('get_flash_message')) {
+    $flash = get_flash_message();
+}
 
 // Obtener estadísticas reales
 try {
@@ -19,7 +48,7 @@ try {
         FROM usuarios 
         WHERE rol = 'estudiante' AND estado = 'activo'
     ");
-    $estudiantes_activos = $stmt->fetch()['total'];
+    $estudiantes_activos = $stmt->fetch()['total'] ?? 0;
     
     // Estudiantes del mes pasado
     $stmt = $pdo->query("
@@ -29,7 +58,7 @@ try {
         AND estado = 'activo'
         AND fecha_registro < DATE_SUB(NOW(), INTERVAL 1 MONTH)
     ");
-    $estudiantes_mes_pasado = $stmt->fetch()['total'];
+    $estudiantes_mes_pasado = $stmt->fetch()['total'] ?? 0;
     
     // Calcular porcentaje de cambio
     $cambio_estudiantes = $estudiantes_mes_pasado > 0 
@@ -42,7 +71,7 @@ try {
         FROM cursos 
         WHERE estado = 'activo'
     ");
-    $cursos_activos = $stmt->fetch()['total'];
+    $cursos_activos = $stmt->fetch()['total'] ?? 0;
     
     // Grupos activos
     $stmt = $pdo->query("
@@ -50,11 +79,7 @@ try {
         FROM grupos 
         WHERE estado = 'activo'
     ");
-    $grupos_activos = $stmt->fetch()['total'];
-    
-    // 3. Total documentos (simulado por ahora, se puede agregar tabla después)
-    $total_documentos = 0;
-    $documentos_semana = 0;
+    $grupos_activos = $stmt->fetch()['total'] ?? 0;
     
     // 4. Profesores activos
     $stmt = $pdo->query("
@@ -62,7 +87,7 @@ try {
         FROM usuarios 
         WHERE rol = 'profesor' AND estado = 'activo'
     ");
-    $profesores_activos = $stmt->fetch()['total'];
+    $profesores_activos = $stmt->fetch()['total'] ?? 0;
     
     // 5. Actividad reciente (últimas 4 acciones)
     $stmt = $pdo->query("
@@ -83,7 +108,7 @@ try {
         FROM preinscripciones 
         WHERE estado = 'pendiente'
     ");
-    $prematriculas_pendientes = $stmt->fetch()['total'];
+    $prematriculas_pendientes = $stmt->fetch()['total'] ?? 0;
     
 } catch (PDOException $e) {
     error_log("Error obteniendo estadísticas: " . $e->getMessage());
@@ -92,8 +117,6 @@ try {
     $cambio_estudiantes = 0;
     $cursos_activos = 0;
     $grupos_activos = 0;
-    $total_documentos = 0;
-    $documentos_semana = 0;
     $profesores_activos = 0;
     $actividades = [];
     $prematriculas_pendientes = 0;
@@ -139,10 +162,14 @@ function icono_rol($rol) {
     <link rel="stylesheet" href="../../assets/css/style-dashboardAdmin.css">
 </head>
 <body>
-</head>
-<body>
     <!-- Include Header/Sidebar -->
-    <?php require_once '../../includes/header.php'; ?>
+    <?php 
+    if (file_exists('../../includes/header.php')) {
+        require_once '../../includes/header.php'; 
+    } else {
+        echo '<p style="padding: 20px; background: #fff3cd; color: #856404;">Advertencia: El archivo header.php no existe</p>';
+    }
+    ?>
 
     <!-- Main Dashboard Content -->
     <main class="main-content">
@@ -155,7 +182,6 @@ function icono_rol($rol) {
             <div class="dashboard-date">
                 <span class="material-symbols-rounded" style="vertical-align: middle; margin-right: 5px;">calendar_today</span>
                 <?php
-                setlocale(LC_TIME, 'es_CO.UTF-8', 'es_CO', 'Spanish_Colombia');
                 date_default_timezone_set('America/Bogota');
                 
                 // Días y meses en español
@@ -173,7 +199,7 @@ function icono_rol($rol) {
         </div>
 
         <?php if ($flash): ?>
-        <div class="alert alert-<?php echo $flash['type']; ?>">
+        <div class="alert alert-<?php echo htmlspecialchars($flash['type']); ?>">
             <i class="fas fa-info-circle"></i>
             <?php echo htmlspecialchars($flash['message']); ?>
         </div>
@@ -236,6 +262,7 @@ function icono_rol($rol) {
                 </div>
             </div>
         </div>
+
         <!-- Content Grid -->
         <div class="content-grid">
             <!-- Actividad Reciente -->
