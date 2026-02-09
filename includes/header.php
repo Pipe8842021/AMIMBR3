@@ -341,7 +341,7 @@
     <!-- Sidebar Header -->
     <header class="sidebar-header">
         <div class="header-logo">
-            <img src="../../assets/img/3.png" alt="Amimbré">
+            <img src="/AMIMBR3/assets/img/3.png" alt="Amimbré">
         </div>
         <button class="sidebar-toggler">
             <span class="material-symbols-rounded">chevron_left</span>
@@ -352,7 +352,7 @@
         <!-- Primary Top Nav -->
         <ul class="nav-list primary-nav">
             <li class="nav-item">
-                <a href="#" class="nav-link">
+                <a href="/AMIMBR3/modules/dashboard/admin.php" class="nav-link">
                     <span class="material-symbols-rounded">dashboard</span>
                     <span class="nav-label">Dashboard</span>
                 </a>
@@ -412,8 +412,8 @@
                 </a>
                 <ul class="dropdown-menu">
                     <li class="nav-item"><a class="nav-link dropdown-title">Documentación</a></li>
-                    <li class="nav-item"><a href="#" class="nav-link dropdown-link">Academica</a></li>
-                    <li class="nav-item"><a href="#" class="nav-link dropdown-link">Institucional</a></li>
+                    <li class="nav-item"><a href="/AMIMBR3/modules/documentos/administrativos/documentos_administrativos_index.php" class="nav-link dropdown-link">Administrativa</a></li>
+                    <li class="nav-item"><a href="/AMIMBR3/modules/documentos/institucionales/documentos_institucionales_index.php" class="nav-link dropdown-link">Institucional</a></li>
                 </ul>
             </li>
 
@@ -434,6 +434,16 @@
                 </a>
                 <ul class="dropdown-menu">
                     <li class="nav-item"><a class="nav-link dropdown-title">Reportes</a></li>
+                </ul>
+            </li>
+
+            <li class="nav-item">
+                <a href="#" class="nav-link">
+                    <span class="material-symbols-rounded">schedule</span>
+                    <span class="nav-label">Horario</span>
+                </a>
+                <ul class="dropdown-menu">
+                    <li class="nav-item"><a class="nav-link dropdown-title">Horario</a></li>
                 </ul>
             </li>
 
