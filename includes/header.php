@@ -357,13 +357,13 @@
             </a>
             <ul class="dropdown-menu">
                 <li class="nav-item"><a class="nav-link dropdown-title">Documentación</a></li>
-                <li class="nav-item"><a href="#" class="nav-link dropdown-link">Academica</a></li>
-                <li class="nav-item"><a href="#" class="nav-link dropdown-link">Institucional</a></li>
+                <li class="nav-item"><a href="/AMIMBR3/modules/documentos/administrativos/documentos_administrativos_index.php" class="nav-link dropdown-link">Administrativa</a></li>
+                <li class="nav-item"><a href="/AMIMBR3/modules/documentos/institucionales/documentos_institucionales_index.php" class="nav-link dropdown-link">Institucional</a></li>
             </ul>
             </li>
 
             <li class="nav-item">
-                <a href="../modules/notificaciones/index.php" class="nav-link">
+                <a href="/AMIMBR3/modules/notificaciones/index.php" class="nav-link">
                     <span class="material-symbols-rounded">notifications</span>
                     <span class="nav-label">Notificaciones</span>
                 </a>
