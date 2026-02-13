@@ -319,7 +319,7 @@
             </li>
 
             <li class="nav-item">
-            <a href="#" class="nav-link">
+            <a href="/AMIMBR3/modules/usuarios/index.php" class="nav-link">
                 <span class="material-symbols-rounded">group</span>
                 <span class="nav-label">Usuarios</span>
             </a>
