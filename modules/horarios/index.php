@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Dashboard Router
  * Redirige al dashboard específico según el rol del usuario
@@ -12,17 +13,17 @@ $rol = $user['rol'] ?? null;
 // Redirigir según el rol
 switch ($rol) {
     case 'admin':
-        require_once 'admin.php';
+        require_once '../modules/horarios/admin.php';
         break;
-    
+
     case 'profesor':
-        require_once 'profesor.php';
+        require_once 'horarios/profesor.php';
         break;
-    
+
     case 'estudiante':
-        require_once 'estudiante.php';
+        require_once 'horarios/estudiante.php';
         break;
-    
+
     default:
         // Si no tiene rol válido, cerrar sesión
         set_flash_message('Rol de usuario no válido', 'error');
