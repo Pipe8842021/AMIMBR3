@@ -329,7 +329,7 @@
             </li>
 
             <li class="nav-item">
-            <a href="#" class="nav-link">
+            <a href="/AMIMBR3/modules/cursos/index.php" class="nav-link">
                 <span class="material-symbols-rounded">menu_book</span>
                 <span class="nav-label">Cursos</span>
             </a>
