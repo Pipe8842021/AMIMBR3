@@ -357,8 +357,8 @@
             </a>
             <ul class="dropdown-menu">
                 <li class="nav-item"><a class="nav-link dropdown-title">Documentación</a></li>
-                <li class="nav-item"><a href="/AMIMBR3/modules/documentos/administrativos/documentos_administrativos_index.php" class="nav-link dropdown-link">Administrativa</a></li>
-                <li class="nav-item"><a href="/AMIMBR3/modules/documentos/institucionales/documentos_institucionales_index.php" class="nav-link dropdown-link">Institucional</a></li>
+                <li class="nav-item"><a href="/AMIMBR3/modules/documentos/administrativos/" class="nav-link dropdown-link">Administrativa</a></li>
+                <li class="nav-item"><a href="/AMIMBR3/modules/documentos/institucionales/" class="nav-link dropdown-link">Institucional</a></li>
             </ul>
             </li>
 
@@ -396,7 +396,7 @@
         <!-- Secondary Bottom Nav Codes -->
         <ul class="nav-list secondary-nav">
             <li class="nav-item">
-            <a href="#" class="nav-link">
+            <a href="/AMIMBR3/modules/ayuda/ayuda_index.php" class="nav-link">
                 <span class="material-symbols-rounded">help</span>
                 <span class="nav-label">Ayuda</span>
             </a>
