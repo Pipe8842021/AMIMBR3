@@ -396,17 +396,6 @@
                 </li>
             </ul>
 
-<<<<<<< HEAD
-        <!-- Secondary Bottom Nav Codes -->
-        <ul class="nav-list secondary-nav">
-            <li class="nav-item">
-            <a href="/AMIMBR3/modules/ayuda/ayuda_index.php" class="nav-link">
-                <span class="material-symbols-rounded">help</span>
-                <span class="nav-label">Ayuda</span>
-            </a>
-            <ul class="dropdown-menu">
-                <li class="nav-item"><a class="nav-link dropdown-title">Ayuda</a></li>
-=======
             <!-- Secondary Bottom Nav Codes -->
             <ul class="nav-list secondary-nav">
                 <li class="nav-item">
@@ -427,7 +416,6 @@
                         <li class="nav-item"><a class="nav-link dropdown-title">Cerrar Sesión</a></li>
                     </ul>
                 </li>
->>>>>>> main
             </ul>
         </nav>
     </aside>
