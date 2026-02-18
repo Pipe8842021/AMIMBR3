@@ -47,14 +47,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 
 // --- DATOS INICIALES ---
-$stmt = $pdo->prepare("SELECT nombre, email, rol, usuario FROM usuarios WHERE id = ?");
+$stmt = $pdo->prepare("SELECT nombre, email, rol, telefono FROM usuarios WHERE id = ?");
 $stmt->execute([$user_id]);
 $usuario_actual = $stmt->fetch();
 
 // Lista de usuarios para la pestaña de permisos (solo si es admin)
 $lista_usuarios = [];
 if ($user_rol === 'admin') {
-    $lista_usuarios = $pdo->query("SELECT id, nombre, usuario, rol FROM usuarios WHERE id != $user_id ORDER BY rol ASC")->fetchAll();
+    $lista_usuarios = $pdo->query("SELECT id, nombre, telefono, rol FROM usuarios WHERE id != $user_id ORDER BY rol ASC")->fetchAll();
 }
 ?>
 
@@ -310,7 +310,7 @@ if ($user_rol === 'admin') {
                             <tbody>
                                 <?php foreach ($lista_usuarios as $u): ?>
                                     <tr>
-                                        <td><strong><?php echo htmlspecialchars($u['usuario']); ?></strong></td>
+                                        <td><strong><?php echo htmlspecialchars($u['nombre']); ?></strong></td>
                                         <td><?php echo htmlspecialchars($u['nombre']); ?></td>
                                         <td><span class="role-badge role-<?php echo $u['rol']; ?>"><?php echo $u['rol']; ?></span></td>
                                         <form method="POST">
