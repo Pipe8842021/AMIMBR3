@@ -366,3 +366,24 @@ select {
         width: 100%;
     }
 }
+
+.main-content {
+    margin-left: 270px;     /* espacio para el sidebar */
+    padding: 30px;
+    min-height: 100vh;
+    box-sizing: border-box;
+    transition: margin-left 0.4s ease;
+}
+
+/* Cuando el sidebar está colapsado */
+.sidebar.collapsed ~ .main-content {
+    margin-left: 85px;
+}
+
+/* Responsive (móvil) */
+@media (max-width: 768px) {
+    .main-content {
+        margin-left: 0;
+        padding-top: 80px; /* espacio para botón menú */
+    }
+}
