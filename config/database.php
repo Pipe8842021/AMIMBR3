@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Configuración de Base de Datos - Amimbré
  * Sistema de Gestión de Escuela Musical
@@ -22,16 +23,15 @@ date_default_timezone_set('America/Bogota');
 try {
     // Crear conexión PDO
     $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
-    
+
     $options = [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false,
         PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES " . DB_CHARSET
     ];
-    
+
     $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
-    
 } catch (PDOException $e) {
     // En producción, no mostrar detalles del error
     if (getenv('ENVIRONMENT') === 'production') {
@@ -44,7 +44,8 @@ try {
 /**
  * Función helper para sanitizar entrada
  */
-function sanitize_input($data) {
+function sanitize_input($data)
+{
     $data = trim($data);
     $data = stripslashes($data);
     $data = htmlspecialchars($data, ENT_QUOTES, 'UTF-8');
@@ -54,27 +55,30 @@ function sanitize_input($data) {
 /**
  * Función helper para validar email
  */
-function validate_email($email) {
+function validate_email($email)
+{
     return filter_var($email, FILTER_VALIDATE_EMAIL);
 }
 
 /**
  * Función helper para generar token seguro
  */
-function generate_token($length = 32) {
+function generate_token($length = 32)
+{
     return bin2hex(random_bytes($length));
 }
 
 /**
  * Función para registrar logs
  */
-function log_activity($pdo, $user_id, $action, $details = null) {
+function log_activity($pdo, $user_id, $action, $details = null)
+{
     try {
         $stmt = $pdo->prepare("
             INSERT INTO logs_actividad (usuario_id, accion, detalles, ip_address, user_agent, fecha)
             VALUES (?, ?, ?, ?, ?, NOW())
         ");
-        
+
         $stmt->execute([
             $user_id,
             $action,
@@ -82,7 +86,7 @@ function log_activity($pdo, $user_id, $action, $details = null) {
             $_SERVER['REMOTE_ADDR'] ?? 'Unknown',
             $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown'
         ]);
-        
+
         return true;
     } catch (PDOException $e) {
         error_log("Error logging activity: " . $e->getMessage());
@@ -93,17 +97,18 @@ function log_activity($pdo, $user_id, $action, $details = null) {
 /**
  * Función para verificar permisos de usuario
  */
-function check_permission($role, $required_role) {
+function check_permission($role, $required_role)
+{
     $roles_hierarchy = [
         'admin' => 4,
         'profesor' => 3,
         'estudiante' => 2,
         'visitante' => 1
     ];
-    
+
     $user_level = $roles_hierarchy[$role] ?? 0;
     $required_level = $roles_hierarchy[$required_role] ?? 0;
-    
+
     return $user_level >= $required_level;
 }
 

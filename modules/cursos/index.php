@@ -4,14 +4,9 @@
  * Sistema Amimbré
  */
 
-// Incluir configuración de sesión y base de datos
 require_once '../../config/session.php';
 require_once '../../config/database.php';
-
-// Verificar autenticación
 require_once '../../includes/auth_check.php';
-
-// Verificar que sea administrador
 require_role('admin');
 
 // Obtener datos del usuario actual
@@ -41,15 +36,12 @@ $filter_nivel = isset($_GET['nivel']) ? $_GET['nivel'] : 'todos';
 
 // Obtener estadísticas de cursos
 try {
-    // Total de cursos
     $stmt = $pdo->query("SELECT COUNT(*) as total FROM cursos");
     $total_cursos = $stmt->fetch()['total'] ?? 0;
     
-    // Cursos activos
     $stmt = $pdo->query("SELECT COUNT(*) as total FROM cursos WHERE estado = 'activo'");
     $cursos_activos = $stmt->fetch()['total'] ?? 0;
     
-    // Estudiantes inscritos (en cursos activos)
     $stmt = $pdo->query("
         SELECT COUNT(DISTINCT m.estudiante_id) as total 
         FROM matriculas m
@@ -58,7 +50,6 @@ try {
     ");
     $estudiantes_inscritos = $stmt->fetch()['total'] ?? 0;
     
-    // Grupos sin profesor asignado
     $stmt = $pdo->query("
         SELECT COUNT(*) as total 
         FROM grupos 
@@ -99,20 +90,17 @@ $query = "
 
 $params = [];
 
-// Aplicar filtro de búsqueda
 if (!empty($search)) {
     $query .= " AND (c.nombre LIKE ? OR c.descripcion LIKE ?)";
     $params[] = "%$search%";
     $params[] = "%$search%";
 }
 
-// Aplicar filtro de nivel
 if ($filter_nivel !== 'todos') {
     $query .= " AND c.nivel = ?";
     $params[] = $filter_nivel;
 }
 
-// Aplicar filtro de estado (categoría)
 if ($filter_categoria !== 'todos') {
     $query .= " AND c.estado = ?";
     $params[] = $filter_categoria;
@@ -132,9 +120,9 @@ try {
 // Función para obtener clase de badge según nivel
 function get_nivel_badge($nivel) {
     $badges = [
-        'basico' => ['texto' => 'Básico', 'clase' => 'nivel-basico'],
-        'intermedio' => ['texto' => 'Intermedio', 'clase' => 'nivel-intermedio'],
-        'avanzado' => ['texto' => 'Avanzado', 'clase' => 'nivel-avanzado']
+        'basico'     => ['texto' => 'Básico',     'clase' => 'nivel-basico'],
+        'intermedio' => ['texto' => 'Intermedio',  'clase' => 'nivel-intermedio'],
+        'avanzado'   => ['texto' => 'Avanzado',    'clase' => 'nivel-avanzado']
     ];
     return $badges[$nivel] ?? ['texto' => 'Sin nivel', 'clase' => ''];
 }
@@ -142,6 +130,55 @@ function get_nivel_badge($nivel) {
 // Función para obtener clase de badge según estado
 function get_estado_badge($estado) {
     return $estado === 'activo' ? 'estado-activo' : 'estado-inactivo';
+}
+
+/**
+ * Resuelve la ruta pública de la imagen de un curso.
+ * - Si la BD tiene un nombre de archivo (ej: curso_abc123.jpg), apunta a assets/img/cursos/
+ * - Si la BD tiene una ruta relativa completa (legado), la usa directamente.
+ * - Si no hay imagen, intenta el array de nombres conocidos.
+ * - Si nada coincide, devuelve la imagen por defecto.
+ *
+ * Siempre devuelve una cadena segura para usar en src="".
+ */
+function get_imagen_curso(string $nombre, ?string $imagenBD): string {
+    $rutaBase   = '../../assets/img/cursos/';
+    $porDefecto = $rutaBase . 'musica-default.jpg';
+
+    // 1. Si hay imagen en BD
+    if (!empty($imagenBD)) {
+        // Si ya es una ruta relativa (contiene '/'), usarla tal cual (compatibilidad legado)
+        if (strpos($imagenBD, '/') !== false) {
+            return htmlspecialchars($imagenBD);
+        }
+        // Si es solo un nombre de archivo, construir la ruta
+        return htmlspecialchars($rutaBase . $imagenBD);
+    }
+
+    // 2. Sin imagen en BD → buscar por nombre de curso
+    $imagenesCursos = [
+        'Piano'                          => 'piano.jpg',
+        'Piano Clásico'                  => 'piano.jpg',
+        'Guitarra'                       => 'guitarra.jpg',
+        'Guitarra Acústica'              => 'guitarra.jpg',
+        'Canto y Técnica Vocal'          => 'canto.jpg',
+        'Técnica Vocal y Canto'          => 'canto.jpg',
+        'Violín'                         => 'violin.jpg',
+        'Violín Clásico'                 => 'violin.jpg',
+        'Ensambles Musicales'            => 'ensambles.jpg',
+        'Ensamble musical'               => 'ensambles.jpg',
+        'Iniciación Musical Infantil'    => 'iniciacion_infantil.jpg',
+        'Instrumentos de Viento'         => 'viento.jpg',
+        'Preparación Universitaria'      => 'preparacion_universitaria.jpg',
+        'Teoría y Lenguaje Musical'      => 'teoria_lenguaje.jpg',
+    ];
+
+    if (isset($imagenesCursos[$nombre])) {
+        return htmlspecialchars($rutaBase . $imagenesCursos[$nombre]);
+    }
+
+    // 3. Imagen por defecto
+    return htmlspecialchars($porDefecto);
 }
 ?>
 <!DOCTYPE html>
@@ -157,16 +194,13 @@ function get_estado_badge($estado) {
     <link rel="stylesheet" href="../../assets/css/style-cursos.css">
 </head>
 <body>
-    <!-- Include Header/Sidebar -->
     <?php 
     if (file_exists('../../includes/header.php')) {
         require_once '../../includes/header.php'; 
     }
     ?>
 
-    <!-- Main Content -->
     <main class="main-content">
-        <!-- Header -->
         <div class="page-header">
             <div class="header-content">
                 <div class="title-section">
@@ -179,6 +213,20 @@ function get_estado_badge($estado) {
                 </a>
             </div>
         </div>
+
+        <?php if (isset($_GET['success']) && $_GET['success'] === 'curso_creado'): ?>
+        <div class="alert alert-success" id="alertaExito">
+            <span class="material-symbols-rounded">check_circle</span>
+            <span>Curso creado exitosamente.</span>
+        </div>
+        <script>
+            // Auto-ocultar la alerta de éxito después de 4 segundos
+            setTimeout(function() {
+                const alerta = document.getElementById('alertaExito');
+                if (alerta) alerta.style.display = 'none';
+            }, 4000);
+        </script>
+        <?php endif; ?>
 
         <!-- Stats Cards -->
         <div class="stats-grid">
@@ -239,15 +287,15 @@ function get_estado_badge($estado) {
                 <div class="filter-group">
                     <select name="categoria" id="categoria" onchange="this.form.submit()">
                         <option value="todos" <?php echo $filter_categoria === 'todos' ? 'selected' : ''; ?>>Todas las categorías</option>
-                        <option value="activo" <?php echo $filter_categoria === 'activo' ? 'selected' : ''; ?>>Activos</option>
+                        <option value="activo"   <?php echo $filter_categoria === 'activo'   ? 'selected' : ''; ?>>Activos</option>
                         <option value="inactivo" <?php echo $filter_categoria === 'inactivo' ? 'selected' : ''; ?>>Inactivos</option>
                     </select>
 
                     <select name="nivel" id="nivel" onchange="this.form.submit()">
-                        <option value="todos" <?php echo $filter_nivel === 'todos' ? 'selected' : ''; ?>>Todos</option>
-                        <option value="basico" <?php echo $filter_nivel === 'basico' ? 'selected' : ''; ?>>Básico</option>
+                        <option value="todos"      <?php echo $filter_nivel === 'todos'      ? 'selected' : ''; ?>>Todos</option>
+                        <option value="basico"     <?php echo $filter_nivel === 'basico'     ? 'selected' : ''; ?>>Básico</option>
                         <option value="intermedio" <?php echo $filter_nivel === 'intermedio' ? 'selected' : ''; ?>>Intermedio</option>
-                        <option value="avanzado" <?php echo $filter_nivel === 'avanzado' ? 'selected' : ''; ?>>Avanzado</option>
+                        <option value="avanzado"   <?php echo $filter_nivel === 'avanzado'   ? 'selected' : ''; ?>>Avanzado</option>
                     </select>
                 </div>
             </form>
@@ -258,27 +306,18 @@ function get_estado_badge($estado) {
             <?php if (count($cursos) > 0): ?>
                 <?php foreach($cursos as $curso): ?>
                     <?php 
-                    $nivel_badge = get_nivel_badge($curso['nivel']);
+                    $nivel_badge  = get_nivel_badge($curso['nivel']);
                     $estado_clase = get_estado_badge($curso['estado']);
-                    
-                    // Imagen por defecto según el curso
-                    $imagen_default = match($curso['nombre']) {
-                        'Piano Clásico', 'Piano' => 'piano.jpg',
-                        'Guitarra Acústica', 'Guitarra' => 'guitarra.jpg',
-                        'Canto y Técnica Vocal', 'Técnica Vocal y Canto' => 'canto.jpg',
-                        'Violín', 'Violín Clásico' => 'violin.jpg',
-                        default => 'musica-default.jpg',
-                        'Ensamble musical', 'Ensambles musicales' => 'ensamble.jpg'
-                    };
-                    
-                    $imagen_curso = !empty($curso['imagen']) ? $curso['imagen'] : "../../assets/img/cursos/{$imagen_default}";
+                    $imagen_src   = get_imagen_curso($curso['nombre'], $curso['imagen']);
                     ?>
                     
                     <div class="curso-card">
                         <div class="curso-imagen">
-                            <img src="<?php echo htmlspecialchars($imagen_curso); ?>" 
-                                 alt="<?php echo htmlspecialchars($curso['nombre']); ?>"
-                                 onerror="this.src='../../assets/img/cursos/musica-default.jpg'">
+                            <img 
+                                src="<?php echo $imagen_src; ?>" 
+                                alt="<?php echo htmlspecialchars($curso['nombre']); ?>"
+                                onerror="this.onerror=null; this.src='../../assets/img/cursos/musica-default.jpg';"
+                            >
                             <span class="badge-nivel <?php echo $nivel_badge['clase']; ?>">
                                 <?php echo $nivel_badge['texto']; ?>
                             </span>
@@ -302,11 +341,11 @@ function get_estado_badge($estado) {
                             <div class="curso-info">
                                 <div class="info-item">
                                     <span class="material-symbols-rounded">person</span>
-                                    <span><?php echo $curso['profesores'] ?? 'Sin profesor'; ?></span>
+                                    <span><?php echo htmlspecialchars($curso['profesores'] ?? 'Sin profesor'); ?></span>
                                 </div>
                                 <div class="info-item">
                                     <span class="material-symbols-rounded">schedule</span>
-                                    <span><?php echo $curso['duracion_meses']; ?> meses</span>
+                                    <span><?php echo (int)$curso['duracion_meses']; ?> meses</span>
                                 </div>
                                 <div class="info-item">
                                     <span class="material-symbols-rounded">payments</span>
@@ -317,11 +356,15 @@ function get_estado_badge($estado) {
                             <div class="curso-stats">
                                 <div class="stat-item">
                                     <span class="material-symbols-rounded">groups</span>
-                                    <span><?php echo $curso['total_grupos']; ?> grupos</span>
+                                    <span><?php echo (int)$curso['total_grupos']; ?> grupos</span>
                                 </div>
                                 <div class="stat-item">
                                     <span class="material-symbols-rounded">school</span>
-                                    <span><?php echo $curso['estudiantes_matriculados']; ?>/<?php echo $curso['cupo_maximo'] * $curso['total_grupos']; ?></span>
+                                    <?php
+                                    $matriculados = (int)$curso['estudiantes_matriculados'];
+                                    $capacidad    = (int)$curso['cupo_maximo'] * (int)$curso['total_grupos'];
+                                    ?>
+                                    <span><?php echo $matriculados; ?>/<?php echo $capacidad; ?></span>
                                 </div>
                             </div>
 
@@ -334,7 +377,7 @@ function get_estado_badge($estado) {
                                     <span class="material-symbols-rounded">edit</span>
                                 </a>
                                 <button 
-                                    onclick="confirmarEliminacion(<?php echo $curso['id']; ?>, '<?php echo htmlspecialchars($curso['nombre'], ENT_QUOTES); ?>')" 
+                                    onclick="confirmarEliminacion(<?php echo (int)$curso['id']; ?>, '<?php echo htmlspecialchars($curso['nombre'], ENT_QUOTES); ?>')" 
                                     class="btn-action btn-eliminar" 
                                     title="Eliminar">
                                     <span class="material-symbols-rounded">delete</span>
@@ -404,12 +447,12 @@ function get_estado_badge($estado) {
         }
 
         // Cerrar modal al hacer clic fuera
-        window.onclick = function(event) {
+        window.addEventListener('click', function(event) {
             const modal = document.getElementById('modalEliminar');
             if (event.target === modal) {
                 cerrarModal();
             }
-        }
+        });
     </script>
 </body>
 </html>
