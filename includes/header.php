@@ -338,16 +338,6 @@
             </ul>
             </li>
 
-            <li class="nav-item">
-            <a href="#" class="nav-link">
-                <span class="material-symbols-rounded">grade</span>
-                <span class="nav-label">Notas</span>
-            </a>
-            <ul class="dropdown-menu">
-                <li class="nav-item"><a class="nav-link dropdown-title">Notas</a></li>
-            </ul>
-            </li>
-
             <!-- Dropdown Codes -->
             <li class="nav-item dropdown-container">
             <a href="#" class="nav-link dropdown-toggle">
@@ -357,7 +347,7 @@
             </a>
             <ul class="dropdown-menu">
                 <li class="nav-item"><a class="nav-link dropdown-title">Documentación</a></li>
-                <li class="nav-item"><a href="/AMIMBR3/modules/documentos/administrativos/" class="nav-link dropdown-link">Administrativa</a></li>
+                <li class="nav-item"><a href="/AMIMBR3/modules/documentos/administrativos/index.php" class="nav-link dropdown-link">Administrativa</a></li>
                 <li class="nav-item"><a href="/AMIMBR3/modules/documentos/institucionales/" class="nav-link dropdown-link">Institucional</a></li>
             </ul>
             </li>
@@ -380,6 +370,16 @@
                 <ul class="dropdown-menu">
                     <li class="nav-item"><a class="nav-link dropdown-title">Reportes</a></li>
                 </ul>
+            </li>
+
+            <li class="nav-item">
+            <a href="/AMIMBR3/modules/horarios/index.php" class="nav-link">
+                <span class="material-symbols-rounded">calendar_today</span>
+                <span class="nav-label">Horario</span>
+            </a>
+            <ul class="dropdown-menu">
+                <li class="nav-item"><a class="nav-link dropdown-title">Horario</a></li>
+            </ul>
             </li>
 
             <li class="nav-item">

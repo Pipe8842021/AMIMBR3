@@ -14,7 +14,16 @@
         }
 
         /* Main Content */
+        .main-content {
+            margin-left: 270px;
+            padding: 30px;
+            transition: margin-left 0.4s ease;
+            min-height: 100vh;
+        }
 
+        .sidebar.collapsed ~ .main-content {
+            margin-left: 85px;
+        }
 
         /* Header del Dashboard */
         .dashboard-header {
