@@ -396,7 +396,7 @@
         <!-- Secondary Bottom Nav Codes -->
         <ul class="nav-list secondary-nav">
             <li class="nav-item">
-            <a href="#" class="nav-link">
+            <a href="/AMIMBR3/modules/ayuda/ayuda_index.php" class="nav-link">
                 <span class="material-symbols-rounded">help</span>
                 <span class="nav-label">Ayuda</span>
             </a>
