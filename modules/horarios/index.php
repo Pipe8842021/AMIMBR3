@@ -1,32 +1,31 @@
 <?php
 
 /**
- * Dashboard Router
- * Redirige al dashboard específico según el rol del usuario
+ * Horarios Router - modules/horarios/index.php
+ * Redirige a la vista de horario específica según el rol
  */
-
+require_once '../../config/session.php';
+require_once '../../config/database.php';
 require_once '../../includes/auth_check.php';
 
-$user = get_session_user();
-$rol = $user['rol'] ?? null;
+// Supongamos que tu función para obtener el usuario es similar a esta:
+$rol = $_SESSION['user_rol'] ?? null;
 
 // Redirigir según el rol
 switch ($rol) {
     case 'admin':
-        require_once '../modules/horarios/admin.php';
-        break;
+        header('Location: admin.php');
+        exit;
 
     case 'profesor':
-        require_once 'horarios/profesor.php';
-        break;
+        header('Location: profesor.php');
+        exit;
 
     case 'estudiante':
-        require_once 'horarios/estudiante.php';
-        break;
+        header('Location: estudiante.php');
+        exit;
 
     default:
-        // Si no tiene rol válido, cerrar sesión
-        set_flash_message('Rol de usuario no válido', 'error');
         header('Location: ../../auth/logout.php');
         exit;
 }
