@@ -259,7 +259,7 @@ function formatear_fecha($fecha) {
             </div>
 
             <div class="stat-card">
-                <div class="stat-icon" style="background: var(--subtle-orange); color: var(--primary-orange);">
+                <div class="stat-icon" style="background: var(--subtle-yellow); color: var(--primary-yellow);">
                     <span class="material-symbols-rounded">picture_as_pdf</span>
                 </div>
                 <div class="stat-content">
