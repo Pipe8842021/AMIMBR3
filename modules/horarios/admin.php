@@ -21,9 +21,9 @@ $hoy = date('j');
 $mensaje_feedback = "";
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'guardar_horario') {
     try {
-        $stmt = $pdo->prepare("INSERT INTO horarios (curso_id, dia_semana, hora_inicio, hora_fin, aula) VALUES (?, ?, ?, ?, ?)");
+        $stmt = $pdo->prepare("INSERT INTO horarios (grupo_id, dia_semana, hora_inicio, hora_fin, aula) VALUES (?, ?, ?, ?, ?)");
         $stmt->execute([
-            $_POST['curso_id'],
+            $_POST['grupo_id'],
             $_POST['dia_semana'],
             $_POST['hora_inicio'],
             $_POST['hora_fin'],
@@ -399,11 +399,11 @@ $dias_en_mes = date('t', strtotime("$anio_actual-$mes_actual-01"));
                 <input type="hidden" name="action" value="guardar_horario">
 
                 <div class="form-group">
-                    <label>Seleccionar curso Activo</label>
+                    <label>Seleccionar Grupo Activo</label>
                     <select name="grupo_id" required class="input-form">
                         <?php
-                        $cursos = $pdo->query("SELECT id, nombre FROM cursos WHERE estado =  'activo'")->fetchAll();
-                        foreach ($cursos as $c) echo "<option value='{$c['id']}'>{$c['nombre']}</option>";
+                        $grupos = $pdo->query("SELECT id, nombre FROM grupos WHERE estado =  'activo'")->fetchAll();
+                        foreach ($grupos as $g) echo "<option value='{$g['id']}'>{$g['nombre']}</option>";
                         ?>
                     </select>
                 </div>
