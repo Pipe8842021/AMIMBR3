@@ -678,3 +678,15 @@ body {
         width: 100%;
     }
 }
+
+/* Ajuste cuando el sidebar se colapsa */
+.sidebar.collapsed ~ .main-content {
+    margin-left: 85px;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .sidebar.collapsed ~ .main-content {
+        margin-left: 0;
+    }
+}

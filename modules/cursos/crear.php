@@ -47,13 +47,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
         
         if (in_array($ext, $allowed)) {
-            $new_filename = uniqid('curso_') . '.' . $ext;
-            $upload_path = "../../assets/img/cursos/" . $new_filename;
-            
-            if (move_uploaded_file($_FILES['imagen']['tmp_name'], $upload_path)) {
-                $imagen = $new_filename;
+            // Verificar tamaño máximo (5MB)
+            if ($_FILES['imagen']['size'] > 5 * 1024 * 1024) {
+                $errores[] = "La imagen no puede superar 5MB";
             } else {
-                $errores[] = "Error al subir la imagen";
+                $new_filename = uniqid('curso_') . '.' . $ext;
+                $upload_dir = __DIR__ . '/../../assets/img/cursos/';
+                
+                // Crear directorio si no existe
+                if (!is_dir($upload_dir)) {
+                    mkdir($upload_dir, 0755, true);
+                }
+                
+                $upload_path = $upload_dir . $new_filename;
+                
+                if (move_uploaded_file($_FILES['imagen']['tmp_name'], $upload_path)) {
+                    // Guardar SOLO el nombre del archivo en BD
+                    // index.php construirá la ruta completa con $rutaImagenes
+                    $imagen = $new_filename;
+                } else {
+                    $errores[] = "Error al subir la imagen. Verifique permisos del directorio.";
+                }
             }
         } else {
             $errores[] = "Formato de imagen no permitido. Use JPG, PNG o WEBP";
@@ -285,6 +299,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             const preview = document.getElementById('preview');
             
             if (file) {
+                // Validar tamaño antes de mostrar preview (5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('La imagen no puede superar 5MB');
+                    event.target.value = '';
+                    preview.innerHTML = '';
+                    return;
+                }
+
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     preview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
