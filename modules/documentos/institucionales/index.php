@@ -57,20 +57,36 @@ try {
     $stmt->execute();
     $bitacoras = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Obtener certificados
-    $stmt = $pdo->query("
-        SELECT cc.*, 
-               e.nombre as estudiante_nombre,
-               c.nombre as curso_nombre
-        FROM calificaciones_certificados cc
-        INNER JOIN usuarios e ON cc.estudiante_id = e.id
-        INNER JOIN cursos c ON cc.curso_id = c.id
-        WHERE cc.estado = 'aprobado'
-        ORDER BY cc.fecha_aprobacion DESC
-    ");
+    // Obtener certificados según rol
+    if ($user['rol'] === 'estudiante') {
+        // Estudiantes solo ven sus propios certificados
+        $stmt = $pdo->prepare("
+            SELECT cc.*, 
+                   e.nombre as estudiante_nombre,
+                   c.nombre as curso_nombre
+            FROM calificaciones_certificados cc
+            INNER JOIN usuarios e ON cc.estudiante_id = e.id
+            INNER JOIN cursos c ON cc.curso_id = c.id
+            WHERE cc.estado = 'aprobado' AND cc.estudiante_id = ?
+            ORDER BY cc.fecha_aprobacion DESC
+        ");
+        $stmt->execute([$user['id']]);
+    } else {
+        // Admin y profesores ven todos
+        $stmt = $pdo->query("
+            SELECT cc.*, 
+                   e.nombre as estudiante_nombre,
+                   c.nombre as curso_nombre
+            FROM calificaciones_certificados cc
+            INNER JOIN usuarios e ON cc.estudiante_id = e.id
+            INNER JOIN cursos c ON cc.curso_id = c.id
+            WHERE cc.estado = 'aprobado'
+            ORDER BY cc.fecha_aprobacion DESC
+        ");
+    }
     $certificados = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Obtener comunicados (si la tabla existe)
+    // Obtener comunicados (todos los roles pueden ver)
     try {
         $stmt = $pdo->query("
             SELECT dc.*, u.nombre as autor_nombre
@@ -84,15 +100,38 @@ try {
         $comunicados = [];
     }
     
-    // Obtener actas (si la tabla existe)
+    // Obtener actas según rol y visibilidad
     try {
-        $stmt = $pdo->query("
-            SELECT da.*, u.nombre as autor_nombre
-            FROM documentos_actas da
-            INNER JOIN usuarios u ON da.creado_por = u.id
-            WHERE da.estado = 'activo'
-            ORDER BY da.fecha_reunion DESC
-        ");
+        if ($user['rol'] === 'admin') {
+            // Admin ve todas
+            $stmt = $pdo->query("
+                SELECT da.*, u.nombre as autor_nombre
+                FROM documentos_actas da
+                INNER JOIN usuarios u ON da.creado_por = u.id
+                WHERE da.estado = 'activo'
+                ORDER BY da.fecha_reunion DESC
+            ");
+        } elseif ($user['rol'] === 'profesor') {
+            // Profesores ven: solo_admin=NO, admin_profesores=SI, todos=SI
+            $stmt = $pdo->query("
+                SELECT da.*, u.nombre as autor_nombre
+                FROM documentos_actas da
+                INNER JOIN usuarios u ON da.creado_por = u.id
+                WHERE da.estado = 'activo' 
+                  AND (da.visibilidad = 'admin_profesores' OR da.visibilidad = 'todos')
+                ORDER BY da.fecha_reunion DESC
+            ");
+        } else {
+            // Estudiantes solo ven: todos=SI
+            $stmt = $pdo->query("
+                SELECT da.*, u.nombre as autor_nombre
+                FROM documentos_actas da
+                INNER JOIN usuarios u ON da.creado_por = u.id
+                WHERE da.estado = 'activo' 
+                  AND da.visibilidad = 'todos'
+                ORDER BY da.fecha_reunion DESC
+            ");
+        }
         $actas = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
         $actas = [];
@@ -102,7 +141,13 @@ try {
     $stmt = $pdo->query("SELECT COUNT(*) as total FROM bitacoras WHERE estado = 'activo'");
     $total_bitacoras = $stmt->fetch()['total'];
     
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM calificaciones_certificados WHERE estado = 'aprobado'");
+    // Contar certificados según rol
+    if ($user['rol'] === 'estudiante') {
+        $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM calificaciones_certificados WHERE estado = 'aprobado' AND estudiante_id = ?");
+        $stmt->execute([$user['id']]);
+    } else {
+        $stmt = $pdo->query("SELECT COUNT(*) as total FROM calificaciones_certificados WHERE estado = 'aprobado'");
+    }
     $total_certificados = $stmt->fetch()['total'];
     
     $total_comunicados = count($comunicados);

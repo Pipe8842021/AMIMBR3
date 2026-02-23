@@ -55,8 +55,17 @@ try {
         $stmt->execute([$doc_id]);
         $documento = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        // Todos pueden ver certificados
-        $tiene_acceso = true;
+        // Verificar permisos: admin o el estudiante dueño del certificado
+        if ($user['rol'] === 'admin') {
+            $tiene_acceso = true;
+        } elseif ($user['rol'] === 'estudiante' && $documento && $documento['estudiante_id'] == $user['id']) {
+            $tiene_acceso = true;
+        } elseif ($user['rol'] === 'profesor') {
+            // Los profesores pueden ver todos los certificados
+            $tiene_acceso = true;
+        } else {
+            $tiene_acceso = false;
+        }
         
     } elseif ($tipo === 'comunicado') {
         // COMUNICADO
@@ -99,10 +108,12 @@ try {
             
             if ($user['rol'] === 'admin') {
                 $tiene_acceso = true;
-            } elseif ($visibilidad === 'admin_profesores' && $user['rol'] === 'profesor') {
+            } elseif ($user['rol'] === 'profesor' && in_array($visibilidad, ['admin_profesores', 'todos'])) {
                 $tiene_acceso = true;
-            } elseif ($visibilidad === 'todos') {
+            } elseif ($user['rol'] === 'estudiante' && $visibilidad === 'todos') {
                 $tiene_acceso = true;
+            } else {
+                $tiene_acceso = false;
             }
         }
     }

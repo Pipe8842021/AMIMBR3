@@ -37,7 +37,7 @@ try {
     if ($tipo === 'certificado') {
         // CERTIFICADO
         $stmt = $pdo->prepare("
-            SELECT ruta_pdf, codigo_certificado, 
+            SELECT ruta_pdf, codigo_certificado, estudiante_id,
                    e.nombre as estudiante_nombre,
                    c.nombre as curso_nombre
             FROM calificaciones_certificados cc
@@ -57,7 +57,17 @@ try {
             
             // Generar nombre descriptivo si no existe
             $archivo_nombre = 'Certificado_' . str_replace(' ', '_', $doc['estudiante_nombre']) . '_' . str_replace(' ', '_', $doc['curso_nombre']) . '.pdf';
-            $tiene_acceso = true; // Todos pueden descargar certificados
+            
+            // Verificar permisos
+            if ($user['rol'] === 'admin') {
+                $tiene_acceso = true;
+            } elseif ($user['rol'] === 'estudiante' && $doc['estudiante_id'] == $user_id) {
+                $tiene_acceso = true; // Solo su propio certificado
+            } elseif ($user['rol'] === 'profesor') {
+                $tiene_acceso = true;
+            } else {
+                $tiene_acceso = false;
+            }
         } else {
             error_log("Certificado no encontrado en BD: ID=" . $doc_id);
         }
@@ -97,10 +107,12 @@ try {
             $visibilidad = $doc['visibilidad'] ?? 'solo_admin';
             if ($user['rol'] === 'admin') {
                 $tiene_acceso = true;
-            } elseif ($visibilidad === 'admin_profesores' && $user['rol'] === 'profesor') {
+            } elseif ($user['rol'] === 'profesor' && in_array($visibilidad, ['admin_profesores', 'todos'])) {
                 $tiene_acceso = true;
-            } elseif ($visibilidad === 'todos') {
+            } elseif ($user['rol'] === 'estudiante' && $visibilidad === 'todos') {
                 $tiene_acceso = true;
+            } else {
+                $tiene_acceso = false;
             }
         }
     }

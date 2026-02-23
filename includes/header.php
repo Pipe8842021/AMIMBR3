@@ -351,7 +351,7 @@
                     <ul class="dropdown-menu">
                         <li class="nav-item"><a class="nav-link dropdown-title">Documentación</a></li>
                         <li class="nav-item"><a href="/AMIMBR3/modules/documentos/administrativos/index.php" class="nav-link dropdown-link">Administrativa</a></li>
-                        <li class="nav-item"><a href="/AMIMBR3/modules/documentos/institucionales/" class="nav-link dropdown-link">Institucional</a></li>
+                        <li class="nav-item"><a href="/AMIMBR3/modules/documentos/institucionales/index.php" class="nav-link dropdown-link">Institucional</a></li>
                     </ul>
                 </li>
 
