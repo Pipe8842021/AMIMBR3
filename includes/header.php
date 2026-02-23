@@ -431,43 +431,26 @@
     </aside>
 
     <script>
-        // Toggle visibility of a dropdown menu
-        const toggleDropdown = (dropdown, menu, isOpen) => {
-            dropdown.classList.toggle("open", isOpen);
-            menu.style.height = isOpen ? `${menu.scrollHeight}px` : 0;
-        };
+        // ESTE SCRIPT SE QUEDA: Es solo para los tres puntitos de la tabla
+        function toggleMenu(button) {
+            const menu = button.nextElementSibling;
+            const allMenus = document.querySelectorAll('.dropdown-menu'); // Menus de la tabla
 
-        // Close all open dropdowns
-        const closeAllDropdowns = () => {
-            document.querySelectorAll(".dropdown-container.open").forEach((openDropdown) => {
-                toggleDropdown(openDropdown, openDropdown.querySelector(".dropdown-menu"), false);
+            allMenus.forEach(m => {
+                if (m !== menu && !m.classList.contains('sidebar-nav')) m.classList.remove('show');
             });
-        };
 
-        // Click event to all dropdown toggles
-        document.querySelectorAll(".dropdown-toggle").forEach((dropdownToggle) => {
-            dropdownToggle.addEventListener("click", (e) => {
-                e.preventDefault();
+            menu.classList.toggle('show');
+        }
 
-                const dropdown = dropdownToggle.closest(".dropdown-container");
-                const menu = dropdown.querySelector(".dropdown-menu");
-                const isOpen = dropdown.classList.contains("open");
-
-                closeAllDropdowns(); // Close all open dropdowns
-                toggleDropdown(dropdown, menu, !isOpen); // Current Toggle dropdown visibility
-            });
+        // Cerrar menús de la tabla al hacer clic fuera
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.actions-menu')) {
+                document.querySelectorAll('.users-table .dropdown-menu').forEach(m => {
+                    m.classList.remove('show');
+                });
+            }
         });
-
-        // Click event to sidebar toggle buttons
-        document.querySelectorAll(".sidebar-toggler, .sidebar-menu-button").forEach((button) => {
-            button.addEventListener("click", () => {
-                closeAllDropdowns(); // Close all open dropdowns
-                document.querySelector(".sidebar").classList.toggle("collapsed"); // Toggle collapsed class on sidebar
-            });
-        });
-
-        // Default Collapse Sidebar for small screens
-        if (window.innerWidth <= 1024) document.querySelector(".sidebar").classList.add("collapsed");
     </script>
 </body>
 
