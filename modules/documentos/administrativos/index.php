@@ -259,7 +259,7 @@ function formatear_fecha($fecha) {
             </div>
 
             <div class="stat-card">
-                <div class="stat-icon" style="background: var(--subtle-orange); color: var(--primary-orange);">
+                <div class="stat-icon" style="background: var(--subtle-yellow); color: var(--primary-yellow);">
                     <span class="material-symbols-rounded">picture_as_pdf</span>
                 </div>
                 <div class="stat-content">
@@ -413,7 +413,7 @@ function formatear_fecha($fecha) {
                     <h3>No hay documentos</h3>
                     <p>No se encontraron documentos con los filtros seleccionados</p>
                     <?php if ($user['rol'] === 'admin'): ?>
-                    <button class="btn-primary" onclick="window.location.href='crear.php'">
+                    <button class="btn-primary" onclick="window.location.href='crear.php'" style="margin: auto;">
                         <span class="material-symbols-rounded">add</span>
                         Crear primer documento
                     </button>

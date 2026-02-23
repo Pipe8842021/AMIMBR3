@@ -514,7 +514,7 @@ $icono = icono_archivo($documento['tipo_archivo']);
                                 <div class="info-value">
                                     <?php
                                     $visibilidad_labels = [
-                                        'solo_admin' => 'Solo Administradores',
+                                        'solo_admin' => 'Solo Adminis',
                                         'profesores' => 'Todos los Profesores',
                                         'profesor_especifico' => 'Profesor Específico',
                                         'todos_excepto_estudiantes' => 'Todos excepto Estudiantes'
