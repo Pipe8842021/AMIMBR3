@@ -413,7 +413,7 @@ function formatear_fecha($fecha) {
                     <h3>No hay documentos</h3>
                     <p>No se encontraron documentos con los filtros seleccionados</p>
                     <?php if ($user['rol'] === 'admin'): ?>
-                    <button class="btn-primary" onclick="window.location.href='crear.php'">
+                    <button class="btn-primary" onclick="window.location.href='crear.php'" style="margin: auto;">
                         <span class="material-symbols-rounded">add</span>
                         Crear primer documento
                     </button>

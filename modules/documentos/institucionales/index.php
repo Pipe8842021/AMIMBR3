@@ -70,6 +70,34 @@ try {
     ");
     $certificados = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
+    // Obtener comunicados (si la tabla existe)
+    try {
+        $stmt = $pdo->query("
+            SELECT dc.*, u.nombre as autor_nombre
+            FROM documentos_comunicados dc
+            INNER JOIN usuarios u ON dc.publicado_por = u.id
+            WHERE dc.estado = 'activo'
+            ORDER BY dc.fecha_publicacion DESC
+        ");
+        $comunicados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        $comunicados = [];
+    }
+    
+    // Obtener actas (si la tabla existe)
+    try {
+        $stmt = $pdo->query("
+            SELECT da.*, u.nombre as autor_nombre
+            FROM documentos_actas da
+            INNER JOIN usuarios u ON da.creado_por = u.id
+            WHERE da.estado = 'activo'
+            ORDER BY da.fecha_reunion DESC
+        ");
+        $actas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        $actas = [];
+    }
+    
     // Obtener estadísticas
     $stmt = $pdo->query("SELECT COUNT(*) as total FROM bitacoras WHERE estado = 'activo'");
     $total_bitacoras = $stmt->fetch()['total'];
@@ -77,15 +105,18 @@ try {
     $stmt = $pdo->query("SELECT COUNT(*) as total FROM calificaciones_certificados WHERE estado = 'aprobado'");
     $total_certificados = $stmt->fetch()['total'];
     
+    $total_comunicados = count($comunicados);
+    $total_actas = count($actas);
+    
     // Calcular totales para estadísticas
-    $total_archivos = $total_bitacoras + $total_certificados;
-    $total_comunicados = 0; // Placeholder para futuras funcionalidades
-    $total_actas = 0; // Placeholder para futuras funcionalidades
+    $total_archivos = $total_bitacoras + $total_certificados + $total_comunicados + $total_actas;
     
 } catch (PDOException $e) {
     error_log("Error obteniendo documentos: " . $e->getMessage());
     $bitacoras = [];
     $certificados = [];
+    $comunicados = [];
+    $actas = [];
     $total_archivos = 0;
     $total_bitacoras = 0;
     $total_comunicados = 0;
@@ -138,6 +169,45 @@ if ($tipo_filter === 'todos' || $tipo_filter === 'certificado') {
                 'nivel' => ucfirst($cert['nivel_aprobado']),
                 'calificacion' => $cert['calificacion_final'],
                 'codigo' => $cert['codigo_certificado']
+            ]
+        ];
+    }
+}
+
+if ($tipo_filter === 'todos' || $tipo_filter === 'comunicado') {
+    foreach ($comunicados as $com) {
+        $documentos[] = [
+            'tipo' => 'comunicado',
+            'id' => $com['id'],
+            'titulo' => $com['titulo'],
+            'descripcion' => $com['descripcion'] ?? '',
+            'categoria' => 'Comunicado',
+            'badge_class' => 'comunicado',
+            'fecha' => $com['fecha_publicacion'],
+            'autor' => $com['autor_nombre'],
+            'metadata' => [
+                'categoria' => ucfirst($com['categoria']),
+                'prioridad' => ucfirst($com['prioridad']),
+                'dirigido_a' => ucfirst($com['dirigido_a'])
+            ]
+        ];
+    }
+}
+
+if ($tipo_filter === 'todos' || $tipo_filter === 'acta') {
+    foreach ($actas as $acta) {
+        $documentos[] = [
+            'tipo' => 'acta',
+            'id' => $acta['id'],
+            'titulo' => $acta['titulo'],
+            'descripcion' => $acta['descripcion'] ?? '',
+            'categoria' => 'Acta',
+            'badge_class' => 'acta',
+            'fecha' => $acta['fecha_reunion'],
+            'autor' => $acta['autor_nombre'],
+            'metadata' => [
+                'tipo_reunion' => ucfirst(str_replace('_', ' ', $acta['tipo_reunion'])),
+                'lugar' => $acta['lugar']
             ]
         ];
     }
@@ -322,15 +392,29 @@ usort($documentos, function($a, $b) {
                                 </span>
                             </div>
                             <div class="document-actions">
-                                <button class="btn-action" onclick="window.location.href='<?php echo $doc['tipo']; ?>/ver.php?id=<?php echo $doc['id']; ?>'">
-                                    <span class="material-symbols-rounded">visibility</span>
-                                    Ver
-                                </button>
+                                <?php if ($doc['tipo'] === 'bitacora'): ?>
+                                    <button class="btn-action" onclick="window.location.href='bitacoras/ver.php?id=<?php echo $doc['id']; ?>'">
+                                        <span class="material-symbols-rounded">visibility</span>
+                                        Ver
+                                    </button>
+                                <?php else: ?>
+                                    <button class="btn-action" onclick="window.location.href='ver.php?tipo=<?php echo $doc['tipo']; ?>&id=<?php echo $doc['id']; ?>'">
+                                        <span class="material-symbols-rounded">visibility</span>
+                                        Ver
+                                    </button>
+                                <?php endif; ?>
                                 <?php if ($user['rol'] === 'admin'): ?>
-                                <button class="btn-action-danger" 
-                                        onclick="if(confirm('¿Eliminar este documento?')) window.location.href='<?php echo $doc['tipo']; ?>/eliminar.php?id=<?php echo $doc['id']; ?>'">
-                                    <span class="material-symbols-rounded">delete</span>
-                                </button>
+                                    <?php if ($doc['tipo'] === 'bitacora'): ?>
+                                        <button class="btn-action-danger" 
+                                                onclick="if(confirm('¿Eliminar este documento?')) window.location.href='bitacoras/eliminar.php?id=<?php echo $doc['id']; ?>'">
+                                            <span class="material-symbols-rounded">delete</span>
+                                        </button>
+                                    <?php else: ?>
+                                        <button class="btn-action-danger" 
+                                                onclick="if(confirm('¿Eliminar este documento?')) window.location.href='eliminar.php?tipo=<?php echo $doc['tipo']; ?>&id=<?php echo $doc['id']; ?>'">
+                                            <span class="material-symbols-rounded">delete</span>
+                                        </button>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                             </div>
                         </div>

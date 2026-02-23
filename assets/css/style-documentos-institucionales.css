@@ -1,4 +1,4 @@
-@import url('../../../assets/css/colores.css');
+@import url(colores.css);
 
 * {
     margin: 0;
