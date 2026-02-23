@@ -1,31 +1,20 @@
 <?php
-
-/**
- * Horarios Router - modules/horarios/index.php
- * Redirige a la vista de horario específica según el rol
- */
 require_once '../../config/session.php';
-require_once '../../config/database.php';
 require_once '../../includes/auth_check.php';
 
-// Supongamos que tu función para obtener el usuario es similar a esta:
 $rol = $_SESSION['user_rol'] ?? null;
 
-// Redirigir según el rol
 switch ($rol) {
     case 'admin':
         header('Location: admin.php');
-        exit;
-
+        break;
     case 'profesor':
         header('Location: profesor.php');
-        exit;
-
+        break;
     case 'estudiante':
         header('Location: estudiante.php');
-        exit;
-
+        break;
     default:
         header('Location: ../../auth/logout.php');
-        exit;
 }
+exit;
