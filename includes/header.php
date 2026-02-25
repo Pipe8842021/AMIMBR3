@@ -351,10 +351,20 @@
                     <ul class="dropdown-menu">
                         <li class="nav-item"><a class="nav-link dropdown-title">Documentación</a></li>
                         <li class="nav-item"><a href="/AMIMBR3/modules/documentos/administrativos/index.php" class="nav-link dropdown-link">Administrativa</a></li>
-                        <li class="nav-item"><a href="/AMIMBR3/modules/documentos/institucionales/" class="nav-link dropdown-link">Institucional</a></li>
+                        <li class="nav-item"><a href="/AMIMBR3/modules/documentos/institucionales/index.php" class="nav-link dropdown-link">Institucional</a></li>
                     </ul>
                 </li>
 
+
+                <li class="nav-item">
+                    <a href="/AMIMBR3/modules/grupos/index.php" class="nav-link">
+                        <span class="material-symbols-rounded">group_add</span>
+                        <span class="nav-label">Grupos</span>
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li class="nav-item"><a class="nav-link dropdown-title">Grupos</a></li>
+                    </ul>
+                </li>
                 <li class="nav-item">
                     <a href="/AMIMBR3/modules/notificaciones/index.php" class="nav-link">
                         <span class="material-symbols-rounded">notifications</span>

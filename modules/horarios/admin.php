@@ -402,7 +402,7 @@ $dias_en_mes = date('t', strtotime("$anio_actual-$mes_actual-01"));
                     <label>Seleccionar Grupo Activo</label>
                     <select name="grupo_id" required class="input-form">
                         <?php
-                        $grupos = $pdo->query("SELECT id, nombre FROM grupos WHERE estado = 'activo'")->fetchAll();
+                        $grupos = $pdo->query("SELECT id, nombre FROM grupos WHERE estado =  'activo'")->fetchAll();
                         foreach ($grupos as $g) echo "<option value='{$g['id']}'>{$g['nombre']}</option>";
                         ?>
                     </select>
