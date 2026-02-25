@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Gestión de Usuarios - Vista Principal
  * Módulo para listar, filtrar y gestionar usuarios del sistema
@@ -23,7 +24,7 @@ try {
     ");
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
-    
+
     if (!$user) {
         session_destroy();
         header("Location: ../../auth/login.php?error=usuario_no_encontrado");
@@ -51,24 +52,23 @@ try {
     // Total de usuarios
     $stmt = $pdo->query("SELECT COUNT(*) as total FROM usuarios");
     $total_usuarios = $stmt->fetch()['total'] ?? 0;
-    
+
     // Usuarios activos e inactivos
     $stmt = $pdo->query("SELECT COUNT(*) as total FROM usuarios WHERE estado = 'activo'");
     $usuarios_activos = $stmt->fetch()['total'] ?? 0;
-    
+
     $stmt = $pdo->query("SELECT COUNT(*) as total FROM usuarios WHERE estado = 'inactivo'");
     $usuarios_inactivos = $stmt->fetch()['total'] ?? 0;
-    
+
     // Por rol
     $stmt = $pdo->query("SELECT COUNT(*) as total FROM usuarios WHERE rol = 'admin' AND estado = 'activo'");
     $total_admin = $stmt->fetch()['total'] ?? 0;
-    
+
     $stmt = $pdo->query("SELECT COUNT(*) as total FROM usuarios WHERE rol = 'profesor' AND estado = 'activo'");
     $total_profesores = $stmt->fetch()['total'] ?? 0;
-    
+
     $stmt = $pdo->query("SELECT COUNT(*) as total FROM usuarios WHERE rol = 'estudiante' AND estado = 'activo'");
     $total_estudiantes = $stmt->fetch()['total'] ?? 0;
-    
 } catch (PDOException $e) {
     error_log("Error obteniendo estadísticas: " . $e->getMessage());
     $total_usuarios = $usuarios_activos = $usuarios_inactivos = 0;
@@ -79,24 +79,24 @@ try {
 try {
     $sql = "SELECT u.* FROM usuarios u WHERE 1=1";
     $params = [];
-    
+
     if ($filtro_rol) {
         $sql .= " AND u.rol = ?";
         $params[] = $filtro_rol;
     }
-    
+
     if ($filtro_estado) {
         $sql .= " AND u.estado = ?";
         $params[] = $filtro_estado;
     }
-    
+
     if ($busqueda) {
         $sql .= " AND (u.nombre LIKE ? OR u.email LIKE ? OR u.documento LIKE ?)";
         $params[] = "%$busqueda%";
         $params[] = "%$busqueda%";
         $params[] = "%$busqueda%";
     }
-    
+
     // Si hay filtro de curso, hacer JOIN con matrículas
     if ($filtro_curso) {
         $sql = "SELECT DISTINCT u.* FROM usuarios u 
@@ -104,7 +104,7 @@ try {
                 INNER JOIN grupos g ON m.grupo_id = g.id 
                 WHERE g.curso_id = ?";
         $params = [$filtro_curso];
-        
+
         if ($filtro_rol) {
             $sql .= " AND u.rol = ?";
             $params[] = $filtro_rol;
@@ -119,17 +119,16 @@ try {
             $params[] = "%$busqueda%";
         }
     }
-    
+
     $sql .= " ORDER BY u.fecha_registro DESC";
-    
+
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
+
     // Obtener cursos para el filtro
     $stmt = $pdo->query("SELECT id, nombre FROM cursos WHERE estado = 'activo' ORDER BY nombre");
     $cursos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
 } catch (PDOException $e) {
     error_log("Error obteniendo usuarios: " . $e->getMessage());
     $usuarios = [];
@@ -137,14 +136,16 @@ try {
 }
 
 // Función para formatear fecha
-function formatear_fecha($fecha) {
+function formatear_fecha($fecha)
+{
     if (!$fecha) return 'N/A';
     $fecha_obj = new DateTime($fecha);
     return $fecha_obj->format('d/m/Y');
 }
 
 // Función para obtener clase de badge de rol
-function badge_rol($rol) {
+function badge_rol($rol)
+{
     $clases = [
         'admin' => 'badge-admin',
         'profesor' => 'badge-profesor',
@@ -154,7 +155,8 @@ function badge_rol($rol) {
 }
 
 // Función para obtener texto de rol
-function texto_rol($rol) {
+function texto_rol($rol)
+{
     $textos = [
         'admin' => 'Administrador',
         'profesor' => 'Profesor',
@@ -165,6 +167,7 @@ function texto_rol($rol) {
 ?>
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -175,11 +178,12 @@ function texto_rol($rol) {
     <link rel="stylesheet" href="../../assets/css/colores.css">
     <link rel="stylesheet" href="../../assets/css/usuarios.css">
 </head>
+
 <body>
     <!-- Include Header/Sidebar -->
-    <?php 
+    <?php
     if (file_exists('../../includes/header.php')) {
-        require_once '../../includes/header.php'; 
+        require_once '../../includes/header.php';
     }
     ?>
 
@@ -203,12 +207,12 @@ function texto_rol($rol) {
         </div>
 
         <?php if ($flash): ?>
-        <div class="alert alert-<?php echo htmlspecialchars($flash['type']); ?>">
-            <span class="material-symbols-rounded">
-                <?php echo $flash['type'] === 'success' ? 'check_circle' : 'info'; ?>
-            </span>
-            <?php echo htmlspecialchars($flash['message']); ?>
-        </div>
+            <div class="alert alert-<?php echo htmlspecialchars($flash['type']); ?>">
+                <span class="material-symbols-rounded">
+                    <?php echo $flash['type'] === 'success' ? 'check_circle' : 'info'; ?>
+                </span>
+                <?php echo htmlspecialchars($flash['message']); ?>
+            </div>
         <?php endif; ?>
 
         <!-- Stats Cards -->
@@ -264,16 +268,15 @@ function texto_rol($rol) {
                 <span class="material-symbols-rounded">filter_list</span>
                 <h3>Filtros</h3>
             </div>
-            
+
             <form method="GET" class="filters-form">
                 <div class="filter-group">
                     <span class="material-symbols-rounded">search</span>
-                    <input 
-                        type="text" 
-                        name="busqueda" 
+                    <input
+                        type="text"
+                        name="busqueda"
                         placeholder="Buscar por nombre o email..."
-                        value="<?php echo htmlspecialchars($busqueda); ?>"
-                    >
+                        value="<?php echo htmlspecialchars($busqueda); ?>">
                 </div>
 
                 <div class="filter-group">
@@ -313,10 +316,10 @@ function texto_rol($rol) {
                 </button>
 
                 <?php if ($filtro_rol || $filtro_estado || $filtro_curso || $busqueda): ?>
-                <a href="index.php" class="btn-clear">
-                    <span class="material-symbols-rounded">close</span>
-                    Limpiar
-                </a>
+                    <a href="index.php" class="btn-clear">
+                        <span class="material-symbols-rounded">close</span>
+                        Limpiar
+                    </a>
                 <?php endif; ?>
             </form>
         </div>
@@ -329,115 +332,114 @@ function texto_rol($rol) {
             </div>
 
             <?php if (count($usuarios) > 0): ?>
-            <div class="table-container">
-                <table class="users-table">
-                    <thead>
-                        <tr>
-                            <th>Usuario</th>
-                            <th>Contacto</th>
-                            <th>Rol</th>
-                            <th>Curso</th>
-                            <th>Estado</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($usuarios as $usuario): ?>
-                        <tr>
-                            <td>
-                                <div class="user-info">
-                                    <div class="user-avatar">
-                                        <?php if ($usuario['foto_perfil']): ?>
-                                            <img src="<?php echo htmlspecialchars($usuario['foto_perfil']); ?>" alt="Avatar">
-                                        <?php else: ?>
-                                            <span class="avatar-initials">
-                                                <?php echo strtoupper(substr($usuario['nombre'], 0, 2)); ?>
+                <div class="table-container">
+                    <table class="users-table">
+                        <thead>
+                            <tr>
+                                <th>Usuario</th>
+                                <th>Contacto</th>
+                                <th>Rol</th>
+                                <th>Curso</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($usuarios as $usuario): ?>
+                                <tr>
+                                    <td>
+                                        <div class="user-info">
+                                            <div class="user-avatar">
+                                                <?php if ($usuario['foto_perfil']): ?>
+                                                    <img src="<?php echo htmlspecialchars($usuario['foto_perfil']); ?>" alt="Avatar">
+                                                <?php else: ?>
+                                                    <span class="avatar-initials">
+                                                        <?php echo strtoupper(substr($usuario['nombre'], 0, 2)); ?>
+                                                    </span>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="user-details">
+                                                <span class="user-name"><?php echo htmlspecialchars($usuario['nombre']); ?></span>
+                                                <span class="user-id">ID: <?php echo $usuario['documento']; ?></span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="contact-info">
+                                            <div class="contact-item">
+                                                <span class="material-symbols-rounded">mail</span>
+                                                <?php echo htmlspecialchars($usuario['email']); ?>
+                                            </div>
+                                            <?php if ($usuario['telefono']): ?>
+                                                <div class="contact-item">
+                                                    <span class="material-symbols-rounded">phone</span>
+                                                    <?php echo htmlspecialchars($usuario['telefono']); ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge <?php echo badge_rol($usuario['rol']); ?>">
+                                            <span class="material-symbols-rounded">
+                                                <?php
+                                                echo $usuario['rol'] === 'admin' ? 'admin_panel_settings' : ($usuario['rol'] === 'profesor' ? 'school' : 'person');
+                                                ?>
                                             </span>
-                                        <?php endif; ?>
-                                    </div>
-                                    <div class="user-details">
-                                        <span class="user-name"><?php echo htmlspecialchars($usuario['nombre']); ?></span>
-                                        <span class="user-id">ID: <?php echo $usuario['documento']; ?></span>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="contact-info">
-                                    <div class="contact-item">
-                                        <span class="material-symbols-rounded">mail</span>
-                                        <?php echo htmlspecialchars($usuario['email']); ?>
-                                    </div>
-                                    <?php if ($usuario['telefono']): ?>
-                                    <div class="contact-item">
-                                        <span class="material-symbols-rounded">phone</span>
-                                        <?php echo htmlspecialchars($usuario['telefono']); ?>
-                                    </div>
-                                    <?php endif; ?>
-                                </div>
-                            </td>
-                            <td>
-                                <span class="badge <?php echo badge_rol($usuario['rol']); ?>">
-                                    <span class="material-symbols-rounded">
-                                        <?php 
-                                        echo $usuario['rol'] === 'admin' ? 'admin_panel_settings' : 
-                                             ($usuario['rol'] === 'profesor' ? 'school' : 'person'); 
-                                        ?>
-                                    </span>
-                                    <?php echo texto_rol($usuario['rol']); ?>
-                                </span>
-                            </td>
-                            <td>
-                                <span class="curso-badge">—</span>
-                            </td>
-                            <td>
-                                <span class="badge badge-<?php echo $usuario['estado']; ?>">
-                                    <?php echo ucfirst($usuario['estado']); ?>
-                                </span>
-                            </td>
-                            <td>
-                                <div class="actions-menu">
-                                    <button class="action-btn" onclick="toggleMenu(this)">
-                                        <span class="material-symbols-rounded">more_vert</span>
-                                    </button>
-                                    <div class="dropdown-menu">
-                                        <a href="editar.php?id=<?php echo $usuario['id']; ?>" class="dropdown-item">
-                                            <span class="material-symbols-rounded">edit</span>
-                                            Editar
-                                        </a>
-                                        <?php if ($usuario['estado'] === 'activo'): ?>
-                                        <a href="eliminar.php?id=<?php echo $usuario['id']; ?>&action=desactivar" 
-                                           class="dropdown-item" 
-                                           onclick="return confirm('¿Desactivar este usuario?')">
-                                            <span class="material-symbols-rounded">block</span>
-                                            Desactivar
-                                        </a>
-                                        <?php else: ?>
-                                        <a href="eliminar.php?id=<?php echo $usuario['id']; ?>&action=activar" 
-                                           class="dropdown-item">
-                                            <span class="material-symbols-rounded">check_circle</span>
-                                            Activar
-                                        </a>
-                                        <?php endif; ?>
-                                        <a href="eliminar.php?id=<?php echo $usuario['id']; ?>&action=eliminar" 
-                                           class="dropdown-item danger" 
-                                           onclick="return confirm('¿ELIMINAR permanentemente este usuario? Esta acción no se puede deshacer.')">
-                                            <span class="material-symbols-rounded">delete</span>
-                                            Eliminar
-                                        </a>
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
+                                            <?php echo texto_rol($usuario['rol']); ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="curso-badge">—</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-<?php echo $usuario['estado']; ?>">
+                                            <?php echo ucfirst($usuario['estado']); ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="actions-menu">
+                                            <button class="action-btn" onclick="toggleMenu(this)">
+                                                <span class="material-symbols-rounded">more_vert</span>
+                                            </button>
+                                            <div class="dropdown-menu">
+                                                <a href="editar.php?id=<?php echo $usuario['id']; ?>" class="dropdown-item">
+                                                    <span class="material-symbols-rounded">edit</span>
+                                                    Editar
+                                                </a>
+                                                <?php if ($usuario['estado'] === 'activo'): ?>
+                                                    <a href="eliminar.php?id=<?php echo $usuario['id']; ?>&action=desactivar"
+                                                        class="dropdown-item"
+                                                        onclick="return confirm('¿Desactivar este usuario?')">
+                                                        <span class="material-symbols-rounded">block</span>
+                                                        Desactivar
+                                                    </a>
+                                                <?php else: ?>
+                                                    <a href="eliminar.php?id=<?php echo $usuario['id']; ?>&action=activar"
+                                                        class="dropdown-item">
+                                                        <span class="material-symbols-rounded">check_circle</span>
+                                                        Activar
+                                                    </a>
+                                                <?php endif; ?>
+                                                <a href="eliminar.php?id=<?php echo $usuario['id']; ?>&action=eliminar"
+                                                    class="dropdown-item danger"
+                                                    onclick="return confirm('¿ELIMINAR permanentemente este usuario? Esta acción no se puede deshacer.')">
+                                                    <span class="material-symbols-rounded">delete</span>
+                                                    Eliminar
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
             <?php else: ?>
-            <div class="empty-state">
-                <span class="material-symbols-rounded">person_off</span>
-                <h3>No se encontraron usuarios</h3>
-                <p>Intenta ajustar los filtros o crear un nuevo usuario</p>
-            </div>
+                <div class="empty-state">
+                    <span class="material-symbols-rounded">person_off</span>
+                    <h3>No se encontraron usuarios</h3>
+                    <p>Intenta ajustar los filtros o crear un nuevo usuario</p>
+                </div>
             <?php endif; ?>
         </div>
     </main>
@@ -447,12 +449,13 @@ function texto_rol($rol) {
         function toggleMenu(button) {
             const menu = button.nextElementSibling;
             const allMenus = document.querySelectorAll('.dropdown-menu');
-            
+
             allMenus.forEach(m => {
                 if (m !== menu) m.classList.remove('show');
             });
-            
+
             menu.classList.toggle('show');
+            button.stopPropagation();
         }
 
         // Close menus when clicking outside
@@ -472,4 +475,5 @@ function texto_rol($rol) {
         });
     </script>
 </body>
+
 </html>
