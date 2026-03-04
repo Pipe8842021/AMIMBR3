@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', function() {
         hamburgerMenu.classList.add('active');
         mobileSidebar.classList.add('active');
         mobileOverlay.classList.add('active');
-        body.style.overflow = 'hidden'; // Prevenir scroll del body
+        body.style.overflow = 'hidden';
     }
 
     // Función para cerrar el menú
@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', function() {
         hamburgerMenu.classList.remove('active');
         mobileSidebar.classList.remove('active');
         mobileOverlay.classList.remove('active');
-        body.style.overflow = ''; // Restaurar scroll del body
+        body.style.overflow = '';
     }
 
     // Toggle del menú hamburguesa
@@ -56,7 +56,6 @@ document.addEventListener('DOMContentLoaded', function() {
     mobileNavItems.forEach(item => {
         item.addEventListener('click', function() {
             closeMenu();
-            // Smooth scroll a la sección
             const targetId = this.getAttribute('href');
             if (targetId.startsWith('#')) {
                 const targetSection = document.querySelector(targetId);
@@ -99,8 +98,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     behavior: 'smooth',
                     block: 'start'
                 });
-                
-                // Actualizar URL sin reload
                 history.pushState(null, null, targetId);
             }
         });
@@ -122,7 +119,8 @@ document.addEventListener('DOMContentLoaded', function() {
         lastScroll = currentScroll;
     });
 
-    // Animación de entrada para elementos al hacer scroll
+    // ── ANIMACIONES AL HACER SCROLL ───────────────────────────────
+
     const observerOptions = {
         threshold: 0.1,
         rootMargin: '0px 0px -50px 0px'
@@ -132,52 +130,109 @@ document.addEventListener('DOMContentLoaded', function() {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 entry.target.style.opacity = '1';
-                entry.target.style.transform = 'translateY(0)';
+                entry.target.style.transform = 'translateY(0) translateX(0) scale(1)';
             }
         });
     }, observerOptions);
 
-    // Observar elementos para animación
-    const animatedElements = document.querySelectorAll('.feature-card, .capability-box, .masonry-item');
-    animatedElements.forEach(el => {
+    // ── HERO ──────────────────────────────────────────────
+    const heroContent = document.querySelector('.hero-content');
+    if (heroContent) {
+        heroContent.style.opacity = '0';
+        heroContent.style.transform = 'translateY(40px)';
+        heroContent.style.transition = 'opacity 0.8s ease, transform 0.8s ease';
+        observer.observe(heroContent);
+    }
+
+    // ── SOBRE NOSOTROS ────────────────────────────────────
+    const sectionHeader = document.querySelector('.section-header');
+    if (sectionHeader) {
+        sectionHeader.style.opacity = '0';
+        sectionHeader.style.transform = 'translateY(-20px)';
+        sectionHeader.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(sectionHeader);
+    }
+
+    document.querySelectorAll('.feature-card').forEach((el, index) => {
         el.style.opacity = '0';
-        el.style.transform = 'translateY(20px)';
-        el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        el.style.transform = 'translateY(30px)';
+        el.style.transition = `opacity 0.6s ease ${index * 0.15}s, transform 0.6s ease ${index * 0.15}s`;
         observer.observe(el);
     });
 
-    // Manejo responsive del resize
-    let resizeTimer;
-    window.addEventListener('resize', function() {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(function() {
-            // Si la ventana se agranda más de 768px, cerrar el menú móvil
-            if (window.innerWidth > 768 && mobileSidebar.classList.contains('active')) {
-                closeMenu();
-            }
-        }, 250);
-    });
+    // ── DISCIPLINAS ───────────────────────────────────────
+    const capabilitiesHeader = document.querySelector('.capabilities h2');
+    const capabilitiesSubtitle = document.querySelector('.capabilities > p');
 
-    // Toggle del theme (opcional - para futura implementación)
-    const themeToggle = document.querySelector('.theme-toggle');
-    if (themeToggle) {
-        themeToggle.addEventListener('click', function() {
-            // Aquí puedes implementar el cambio de tema claro/oscuro
-            console.log('Theme toggle clicked');
-        });
+    if (capabilitiesHeader) {
+        capabilitiesHeader.style.opacity = '0';
+        capabilitiesHeader.style.transform = 'translateY(-20px)';
+        capabilitiesHeader.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(capabilitiesHeader);
+    }
+    if (capabilitiesSubtitle) {
+        capabilitiesSubtitle.style.opacity = '0';
+        capabilitiesSubtitle.style.transform = 'translateY(-10px)';
+        capabilitiesSubtitle.style.transition = 'opacity 0.6s ease 0.2s, transform 0.6s ease 0.2s';
+        observer.observe(capabilitiesSubtitle);
     }
 
-    // Prevenir zoom en inputs en iOS
-    const inputs = document.querySelectorAll('input, textarea, select');
-    inputs.forEach(input => {
-        input.addEventListener('focus', function() {
-            if (window.innerWidth < 768) {
-                // Prevenir zoom
-            }
-        });
+    document.querySelectorAll('.capability-box').forEach((el, index) => {
+        el.style.opacity = '0';
+        el.style.transform = 'scale(0.9)';
+        el.style.transition = `opacity 0.5s ease ${(index % 4) * 0.1}s, transform 0.5s ease ${(index % 4) * 0.1}s`;
+        observer.observe(el);
     });
 
-    // Lazy loading para imágenes de galería
+    // ── GALERÍA ───────────────────────────────────────────
+    const galleryHeader = document.querySelector('.gallery-header');
+    if (galleryHeader) {
+        galleryHeader.style.opacity = '0';
+        galleryHeader.style.transform = 'translateY(-20px)';
+        galleryHeader.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(galleryHeader);
+    }
+
+    document.querySelectorAll('.masonry-item').forEach((el, index) => {
+        el.style.opacity = '0';
+        el.style.transform = 'scale(0.85)';
+        el.style.transition = `opacity 0.5s ease ${(index % 5) * 0.08}s, transform 0.5s ease ${(index % 5) * 0.08}s`;
+        observer.observe(el);
+    });
+
+    // ── CONTACTO ──────────────────────────────────────────
+    const contactHeader = document.querySelector('.contact-header');
+    if (contactHeader) {
+        contactHeader.style.opacity = '0';
+        contactHeader.style.transform = 'translateY(-20px)';
+        contactHeader.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(contactHeader);
+    }
+
+    document.querySelectorAll('.card-cont').forEach((el, index) => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateX(-40px)';
+        el.style.transition = `opacity 0.6s ease ${index * 0.15}s, transform 0.6s ease ${index * 0.15}s`;
+        observer.observe(el);
+    });
+
+    const contactMap = document.querySelector('.contacts-maps');
+    if (contactMap) {
+        contactMap.style.opacity = '0';
+        contactMap.style.transform = 'translateX(40px)';
+        contactMap.style.transition = 'opacity 0.7s ease 0.3s, transform 0.7s ease 0.3s';
+        observer.observe(contactMap);
+    }
+
+    // ── FOOTER ────────────────────────────────────────────
+    document.querySelectorAll('.footer-section').forEach((el, index) => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(20px)';
+        el.style.transition = `opacity 0.5s ease ${index * 0.1}s, transform 0.5s ease ${index * 0.1}s`;
+        observer.observe(el);
+    });
+
+    // ── LAZY LOADING IMÁGENES ─────────────────────────────
     if ('IntersectionObserver' in window) {
         const imageObserver = new IntersectionObserver((entries, observer) => {
             entries.forEach(entry => {
@@ -196,24 +251,21 @@ document.addEventListener('DOMContentLoaded', function() {
         lazyImages.forEach(img => imageObserver.observe(img));
     }
 
-    // Añadir clase active a los enlaces de navegación según la sección visible
+    // ── NAVEGACIÓN ACTIVA AL HACER SCROLL ─────────────────
     const sections = document.querySelectorAll('section[id]');
-    
+
     function highlightNavigation() {
         const scrollY = window.pageYOffset;
-        
+
         sections.forEach(section => {
             const sectionHeight = section.offsetHeight;
             const sectionTop = section.offsetTop - 100;
             const sectionId = section.getAttribute('id');
-            
+
             if (scrollY > sectionTop && scrollY <= sectionTop + sectionHeight) {
-                // Remover active de todos los enlaces
                 document.querySelectorAll('.nav-links a, .mobile-nav-item').forEach(link => {
                     link.classList.remove('active');
                 });
-                
-                // Añadir active al enlace correspondiente
                 document.querySelectorAll(`a[href="#${sectionId}"]`).forEach(link => {
                     link.classList.add('active');
                 });
@@ -223,6 +275,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.addEventListener('scroll', highlightNavigation);
 
-    // Inicializar
+    // ── THEME TOGGLE ──────────────────────────────────────
+    const themeToggle = document.querySelector('.theme-toggle');
+    if (themeToggle) {
+        themeToggle.addEventListener('click', function() {
+            console.log('Theme toggle clicked');
+        });
+    }
+
+    // ── RESIZE ────────────────────────────────────────────
+    let resizeTimer;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() {
+            if (window.innerWidth > 768 && mobileSidebar.classList.contains('active')) {
+                closeMenu();
+            }
+        }, 250);
+    });
+
     console.log('Menu responsive initialized');
 });
