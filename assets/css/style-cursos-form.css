@@ -377,7 +377,7 @@ select {
 
 /* Cuando el sidebar está colapsado */
 .sidebar.collapsed ~ .main-content {
-    margin-left: 85px;
+    margin-left: 65px;
 }
 
 /* Responsive (móvil) */
