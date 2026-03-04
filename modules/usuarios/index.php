@@ -406,8 +406,8 @@ function texto_rol($rol) {
                                         </a>
                                         <?php if ($usuario['estado'] === 'activo'): ?>
                                         <a href="eliminar.php?id=<?php echo $usuario['id']; ?>&action=desactivar" 
-                                           class="dropdown-item" 
-                                           onclick="return confirm('¿Desactivar este usuario?')">
+                                           class="dropdown-item danger" 
+                                           onclick="return confirm('¿Desactivar este usuario? No podrá acceder al sistema hasta que sea activado nuevamente.')">
                                             <span class="material-symbols-rounded">block</span>
                                             Desactivar
                                         </a>
@@ -418,12 +418,6 @@ function texto_rol($rol) {
                                             Activar
                                         </a>
                                         <?php endif; ?>
-                                        <a href="eliminar.php?id=<?php echo $usuario['id']; ?>&action=eliminar" 
-                                           class="dropdown-item danger" 
-                                           onclick="return confirm('¿ELIMINAR permanentemente este usuario? Esta acción no se puede deshacer.')">
-                                            <span class="material-symbols-rounded">delete</span>
-                                            Eliminar
-                                        </a>
                                     </div>
                                 </div>
                             </td>
