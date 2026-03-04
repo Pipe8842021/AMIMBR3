@@ -1,168 +1,198 @@
 <?php
-require_once '../config/database.php';
+/**
+ * procesar_preinscripcion.php
+ * Procesa y guarda la preinscripción con todos los campos del formulario.
+ * Incluir desde pre-inscripcion.php cuando $_SERVER['REQUEST_METHOD'] === 'POST'
+ */
 
-header('Content-Type: application/json');
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/session.php';
 
-$response = [
-    'success' => false,
-    'message' => ''
-];
+function clean(string $valor): string {
+    return htmlspecialchars(strip_tags(trim($valor)), ENT_QUOTES, 'UTF-8');
+}
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    
-    // Validar y sanitizar datos
-    $nombre = sanitize_input($_POST['nombre'] ?? '');
-    $email = sanitize_input($_POST['email'] ?? '');
-    $telefono = sanitize_input($_POST['telefono'] ?? '');
-    $documento = sanitize_input($_POST['documento'] ?? '');
-    $curso = sanitize_input($_POST['curso'] ?? '');
-    $mensaje = sanitize_input($_POST['mensaje'] ?? '');
-    $terminos = isset($_POST['terminos']) ? 1 : 0;
-    
-    // Validaciones
-    $errores = [];
-    
-    if (empty($nombre) || strlen($nombre) < 3) {
-        $errores[] = 'El nombre debe tener al menos 3 caracteres';
+function nullIfEmpty(?string $valor): ?string {
+    $v = trim($valor ?? '');
+    return $v === '' ? null : $v;
+}
+
+// ── Campos obligatorios ───────────────────────────────────────
+$nombres_apellidos  = clean($_POST['nombres_apellidos']  ?? '');
+$tipo_documento     = clean($_POST['tipo_documento']     ?? '');
+$numero_documento   = clean($_POST['numero_documento']   ?? '');
+$email              = filter_var(trim($_POST['email'] ?? ''), FILTER_SANITIZE_EMAIL);
+$celular            = clean($_POST['celular']            ?? '');
+$programa           = clean($_POST['programa']           ?? '');
+
+// ── Programa / horario ────────────────────────────────────────
+$taller       = nullIfEmpty($_POST['taller']       ?? '');
+$fecha_inicio = nullIfEmpty($_POST['fecha_inicio'] ?? '');
+$dia_clase    = nullIfEmpty($_POST['dia_clase']    ?? '');
+$hora_clase   = nullIfEmpty($_POST['hora_clase']   ?? '');
+
+// ── Datos personales del estudiante ──────────────────────────
+$fecha_nacimiento  = nullIfEmpty($_POST['fecha_nacimiento']  ?? '');
+$edad              = isset($_POST['edad']) && $_POST['edad'] !== '' ? (int)$_POST['edad'] : null;
+$lugar_nacimiento  = nullIfEmpty($_POST['lugar_nacimiento']  ?? '');
+$direccion         = nullIfEmpty($_POST['direccion']         ?? '');
+$barrio            = nullIfEmpty($_POST['barrio']            ?? '');
+$municipio         = nullIfEmpty($_POST['municipio']         ?? '');
+$zona              = nullIfEmpty($_POST['zona']              ?? '');
+$eps               = nullIfEmpty($_POST['eps']               ?? '');
+$nivel_sisben      = nullIfEmpty($_POST['nivel_sisben']      ?? '');
+$estrato           = isset($_POST['estrato']) && $_POST['estrato'] !== '' ? (int)$_POST['estrato'] : null;
+$ocupacion         = nullIfEmpty($_POST['ocupacion']         ?? '');
+$institucion_educativa = nullIfEmpty($_POST['institucion_educativa'] ?? '');
+
+// ── Nivel educativo ───────────────────────────────────────────
+$estudio_primaria      = isset($_POST['estudio_primaria'])      ? 1 : 0;
+$estudio_secundaria    = isset($_POST['estudio_secundaria'])    ? 1 : 0;
+$estudio_tecnico       = isset($_POST['estudio_tecnico'])       ? 1 : 0;
+$estudio_tecnologico   = isset($_POST['estudio_tecnologico'])   ? 1 : 0;
+$estudio_universitario = isset($_POST['estudio_universitario']) ? 1 : 0;
+$estudio_otro          = nullIfEmpty($_POST['estudio_otro']     ?? '');
+
+// ── Acudiente ─────────────────────────────────────────────────
+$nombre_acudiente     = nullIfEmpty($_POST['nombre_acudiente']     ?? '');
+$parentesco_acudiente = nullIfEmpty($_POST['parentesco_acudiente'] ?? '');
+$telefono_acudiente   = nullIfEmpty($_POST['telefono_acudiente']   ?? '');
+$email_acudiente      = nullIfEmpty(filter_var($_POST['email_acudiente'] ?? '', FILTER_SANITIZE_EMAIL));
+$numero_recibo        = nullIfEmpty($_POST['numero_recibo']        ?? '');
+
+// ── Autorización de imagen ────────────────────────────────────
+$autoriza_imagen    = isset($_POST['autoriza_imagen'])   ? 1 : 0;
+$firma_acudiente_cc = nullIfEmpty($_POST['firma_acudiente_cc'] ?? '');
+$ti_estudiante      = nullIfEmpty($_POST['ti_estudiante']      ?? '');
+
+// ── Observaciones ─────────────────────────────────────────────
+$observaciones = nullIfEmpty($_POST['observaciones'] ?? '');
+
+$ip_address = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? null;
+
+// ── Validaciones del lado servidor ───────────────────────────
+$errores = [];
+
+if (empty($nombres_apellidos))                  $errores[] = 'El nombre es obligatorio.';
+if (empty($tipo_documento))                     $errores[] = 'El tipo de documento es obligatorio.';
+if (empty($numero_documento))                   $errores[] = 'El número de documento es obligatorio.';
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errores[] = 'El correo electrónico no es válido.';
+if (empty($celular))                            $errores[] = 'El celular es obligatorio.';
+if (empty($programa))                           $errores[] = 'El programa es obligatorio.';
+if (empty($_POST['terminos']))                  $errores[] = 'Debes aceptar los términos.';
+
+// Verificar duplicados
+if (empty($errores)) {
+    $check = $pdo->prepare("SELECT id FROM preinscripciones WHERE email = ? OR numero_documento = ? LIMIT 1");
+    $check->execute([$email, $numero_documento]);
+    if ($check->fetch()) {
+        $errores[] = 'Ya existe una preinscripción con ese correo o documento.';
     }
-    
-    if (!validate_email($email)) {
-        $errores[] = 'El email no es válido';
-    }
-    
-    if (empty($telefono) || !preg_match('/^[0-9]{7,15}$/', $telefono)) {
-        $errores[] = 'El teléfono no es válido';
-    }
-    
-    if (empty($documento) || !preg_match('/^[0-9]{6,15}$/', $documento)) {
-        $errores[] = 'El documento no es válido';
-    }
-    
-    if (empty($curso)) {
-        $errores[] = 'Debe seleccionar un curso';
-    }
-    
-    if (!$terminos) {
-        $errores[] = 'Debe aceptar los términos y condiciones';
-    }
-    
-    // Si hay errores, devolver
-    if (!empty($errores)) {
-        $response['message'] = implode('<br>', $errores);
-        echo json_encode($response);
+}
+
+if (empty($errores)) {
+    try {
+        $sql = "
+            INSERT INTO preinscripciones (
+                nombres_apellidos, tipo_documento, numero_documento,
+                email, celular, programa, taller,
+                fecha_inicio, dia_clase, hora_clase,
+                fecha_nacimiento, edad, lugar_nacimiento,
+                direccion, barrio, municipio, zona, eps,
+                nivel_sisben, estrato, ocupacion,
+                estudio_primaria, estudio_secundaria, estudio_tecnico,
+                estudio_tecnologico, estudio_universitario, estudio_otro,
+                institucion_educativa,
+                nombre_acudiente, parentesco_acudiente,
+                telefono_acudiente, email_acudiente, numero_recibo,
+                autoriza_imagen, firma_acudiente_cc, ti_estudiante,
+                observaciones, estado, ip_address
+            ) VALUES (
+                :nombres_apellidos, :tipo_documento, :numero_documento,
+                :email, :celular, :programa, :taller,
+                :fecha_inicio, :dia_clase, :hora_clase,
+                :fecha_nacimiento, :edad, :lugar_nacimiento,
+                :direccion, :barrio, :municipio, :zona, :eps,
+                :nivel_sisben, :estrato, :ocupacion,
+                :estudio_primaria, :estudio_secundaria, :estudio_tecnico,
+                :estudio_tecnologico, :estudio_universitario, :estudio_otro,
+                :institucion_educativa,
+                :nombre_acudiente, :parentesco_acudiente,
+                :telefono_acudiente, :email_acudiente, :numero_recibo,
+                :autoriza_imagen, :firma_acudiente_cc, :ti_estudiante,
+                :observaciones, 'pendiente', :ip_address
+            )
+        ";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([
+            ':nombres_apellidos'     => $nombres_apellidos,
+            ':tipo_documento'        => $tipo_documento,
+            ':numero_documento'      => $numero_documento,
+            ':email'                 => $email,
+            ':celular'               => $celular,
+            ':programa'              => $programa,
+            ':taller'                => $taller,
+            ':fecha_inicio'          => $fecha_inicio,
+            ':dia_clase'             => $dia_clase,
+            ':hora_clase'            => $hora_clase,
+            ':fecha_nacimiento'      => $fecha_nacimiento,
+            ':edad'                  => $edad,
+            ':lugar_nacimiento'      => $lugar_nacimiento,
+            ':direccion'             => $direccion,
+            ':barrio'                => $barrio,
+            ':municipio'             => $municipio,
+            ':zona'                  => $zona,
+            ':eps'                   => $eps,
+            ':nivel_sisben'          => $nivel_sisben,
+            ':estrato'               => $estrato,
+            ':ocupacion'             => $ocupacion,
+            ':estudio_primaria'      => $estudio_primaria,
+            ':estudio_secundaria'    => $estudio_secundaria,
+            ':estudio_tecnico'       => $estudio_tecnico,
+            ':estudio_tecnologico'   => $estudio_tecnologico,
+            ':estudio_universitario' => $estudio_universitario,
+            ':estudio_otro'          => $estudio_otro,
+            ':institucion_educativa' => $institucion_educativa,
+            ':nombre_acudiente'      => $nombre_acudiente,
+            ':parentesco_acudiente'  => $parentesco_acudiente,
+            ':telefono_acudiente'    => $telefono_acudiente,
+            ':email_acudiente'       => $email_acudiente,
+            ':numero_recibo'         => $numero_recibo,
+            ':autoriza_imagen'       => $autoriza_imagen,
+            ':firma_acudiente_cc'    => $firma_acudiente_cc,
+            ':ti_estudiante'         => $ti_estudiante,
+            ':observaciones'         => $observaciones,
+            ':ip_address'            => $ip_address,
+        ]);
+
+        // Log de actividad
+        $pdo->prepare("
+            INSERT INTO logs_actividad (usuario_id, accion, detalles, ip_address)
+            VALUES (NULL, 'preinscripcion_creada', :detalle, :ip)
+        ")->execute([
+            ':detalle' => 'ID: ' . $pdo->lastInsertId() . ' — ' . $nombres_apellidos . ' → ' . $programa,
+            ':ip'      => $ip_address,
+        ]);
+
+        // Notificación al admin
+        $pdo->prepare("
+            INSERT INTO notificaciones (usuario_id, tipo, titulo, mensaje, enlace, prioridad, emisor)
+            VALUES (1, 'preinscripcion', 'Nueva preinscripción recibida', :msg,
+                    '/modules/inscripciones/prematriculas/index.php', 'alta', 'Sistema')
+        ")->execute([
+            ':msg' => 'Nueva preinscripción de ' . $nombres_apellidos . ' para ' . $programa . '.',
+        ]);
+
+        header('Location: pre-inscripcion.php?success=1');
+        exit;
+
+    } catch (PDOException $e) {
+        error_log('[AMIMBRE] Error preinscripción: ' . $e->getMessage());
+        header('Location: pre-inscripcion.php?error=1');
         exit;
     }
-    
-    try {
-        // Verificar si ya existe una preinscripción con este email
-        $stmt = $pdo->prepare("SELECT id FROM preinscripciones WHERE email = ? AND estado = 'pendiente'");
-        $stmt->execute([$email]);
-        
-        if ($stmt->rowCount() > 0) {
-            $response['message'] = 'Ya existe una preinscripción pendiente con este email. Te contactaremos pronto.';
-            echo json_encode($response);
-            exit;
-        }
-        
-        // Insertar preinscripción
-        $stmt = $pdo->prepare("
-            INSERT INTO preinscripciones 
-            (nombre, email, telefono, documento, curso_interes, mensaje, estado, ip_address) 
-            VALUES (?, ?, ?, ?, ?, ?, 'pendiente', ?)
-        ");
-        
-        $stmt->execute([
-            $nombre,
-            $email,
-            $telefono,
-            $documento,
-            $curso,
-            $mensaje,
-            $_SERVER['REMOTE_ADDR']
-        ]);
-        
-        $preinscripcion_id = $pdo->lastInsertId();
-        
-        // Enviar email de confirmación (opcional)
-        enviar_email_confirmacion($email, $nombre, $curso);
-        
-        // Notificar administrador (opcional)
-        notificar_admin_preinscripcion($pdo, $nombre, $curso);
-        
-        $response['success'] = true;
-        $response['message'] = '¡Preinscripción exitosa! Te contactaremos pronto para continuar con el proceso.';
-        
-        // Log de actividad
-        log_activity($pdo, null, 'preinscripcion_creada', "ID: $preinscripcion_id - Email: $email");
-        
-    } catch (PDOException $e) {
-        error_log("Error en preinscripción: " . $e->getMessage());
-        $response['message'] = 'Error al procesar la preinscripción. Por favor, intenta nuevamente.';
-    }
-    
 } else {
-    $response['message'] = 'Método no permitido';
-}
-
-echo json_encode($response);
-
-/**
- * Función para enviar email de confirmación
- */
-function enviar_email_confirmacion($email, $nombre, $curso) {
-    // Aquí implementarías el envío de email
-    // Puedes usar PHPMailer o similar
-    
-    $asunto = "Confirmación de Preinscripción - Amimbré";
-    $mensaje = "
-        <html>
-        <body>
-            <h2>¡Hola $nombre!</h2>
-            <p>Gracias por tu interés en Amimbré.</p>
-            <p>Hemos recibido tu preinscripción para el curso: <strong>$curso</strong></p>
-            <p>Nos pondremos en contacto contigo en las próximas 48 horas para continuar con el proceso.</p>
-            <br>
-            <p>Saludos,<br>Equipo Amimbré</p>
-        </body>
-        </html>
-    ";
-    
-    $headers = "MIME-Version: 1.0" . "\r\n";
-    $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-    $headers .= "From: noreply@amimbre.com" . "\r\n";
-    
-    // mail($email, $asunto, $mensaje, $headers);
-    
-    return true;
-}
-
-/**
- * Función para notificar al administrador
- */
-function notificar_admin_preinscripcion($pdo, $nombre, $curso) {
-    // Obtener emails de administradores
-    $stmt = $pdo->query("SELECT email FROM usuarios WHERE rol = 'admin' AND estado = 'activo'");
-    $admins = $stmt->fetchAll(PDO::FETCH_COLUMN);
-    
-    foreach ($admins as $admin_email) {
-        $asunto = "Nueva Preinscripción - Amimbré";
-        $mensaje = "
-            <html>
-            <body>
-                <h3>Nueva Preinscripción Recibida</h3>
-                <p><strong>Estudiante:</strong> $nombre</p>
-                <p><strong>Curso de interés:</strong> $curso</p>
-                <p>Ingresa al sistema para ver los detalles completos.</p>
-            </body>
-            </html>
-        ";
-        
-        $headers = "MIME-Version: 1.0" . "\r\n";
-        $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-        $headers .= "From: sistema@amimbre.com" . "\r\n";
-        
-        // mail($admin_email, $asunto, $mensaje, $headers);
-    }
-    
-    return true;
+    header('Location: pre-inscripcion.php?error=1');
+    exit;
 }
