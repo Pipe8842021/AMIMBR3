@@ -385,6 +385,7 @@ function texto_rol($rol)
                                                 echo $usuario['rol'] === 'admin' ? 'admin_panel_settings' : ($usuario['rol'] === 'profesor' ? 'school' : 'person');
                                                 ?>
                                             </span>
+<<<<<<< HEAD
                                             <?php echo texto_rol($usuario['rol']); ?>
                                         </span>
                                     </td>
@@ -434,6 +435,81 @@ function texto_rol($rol)
                         </tbody>
                     </table>
                 </div>
+=======
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="user-details">
+                                        <span class="user-name"><?php echo htmlspecialchars($usuario['nombre']); ?></span>
+                                        <span class="user-id">ID: <?php echo $usuario['documento']; ?></span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="contact-info">
+                                    <div class="contact-item">
+                                        <span class="material-symbols-rounded">mail</span>
+                                        <?php echo htmlspecialchars($usuario['email']); ?>
+                                    </div>
+                                    <?php if ($usuario['telefono']): ?>
+                                    <div class="contact-item">
+                                        <span class="material-symbols-rounded">phone</span>
+                                        <?php echo htmlspecialchars($usuario['telefono']); ?>
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge <?php echo badge_rol($usuario['rol']); ?>">
+                                    <span class="material-symbols-rounded">
+                                        <?php 
+                                        echo $usuario['rol'] === 'admin' ? 'admin_panel_settings' : 
+                                             ($usuario['rol'] === 'profesor' ? 'school' : 'person'); 
+                                        ?>
+                                    </span>
+                                    <?php echo texto_rol($usuario['rol']); ?>
+                                </span>
+                            </td>
+                            <td>
+                                <span class="curso-badge">—</span>
+                            </td>
+                            <td>
+                                <span class="badge badge-<?php echo $usuario['estado']; ?>">
+                                    <?php echo ucfirst($usuario['estado']); ?>
+                                </span>
+                            </td>
+                            <td>
+                                <div class="actions-menu">
+                                    <button class="action-btn" onclick="toggleMenu(this)">
+                                        <span class="material-symbols-rounded">more_vert</span>
+                                    </button>
+                                    <div class="dropdown-menu">
+                                        <a href="editar.php?id=<?php echo $usuario['id']; ?>" class="dropdown-item">
+                                            <span class="material-symbols-rounded">edit</span>
+                                            Editar
+                                        </a>
+                                        <?php if ($usuario['estado'] === 'activo'): ?>
+                                        <a href="eliminar.php?id=<?php echo $usuario['id']; ?>&action=desactivar" 
+                                           class="dropdown-item danger" 
+                                           onclick="return confirm('¿Desactivar este usuario? No podrá acceder al sistema hasta que sea activado nuevamente.')">
+                                            <span class="material-symbols-rounded">block</span>
+                                            Desactivar
+                                        </a>
+                                        <?php else: ?>
+                                        <a href="eliminar.php?id=<?php echo $usuario['id']; ?>&action=activar" 
+                                           class="dropdown-item">
+                                            <span class="material-symbols-rounded">check_circle</span>
+                                            Activar
+                                        </a>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+>>>>>>> a80d41ac33913d36fdf5d8da9565bcc6331453af
             <?php else: ?>
                 <div class="empty-state">
                     <span class="material-symbols-rounded">person_off</span>

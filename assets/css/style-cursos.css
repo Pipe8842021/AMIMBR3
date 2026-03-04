@@ -681,12 +681,16 @@ body {
 
 /* Ajuste cuando el sidebar se colapsa */
 .sidebar.collapsed ~ .main-content {
-    margin-left: 85px;
+    margin-left: 65px;
+}
+
+.sidebar.collapsed ~ .main-content .page-header {
+    padding-top: 0;
 }
 
 /* Mobile */
 @media (max-width: 768px) {
     .sidebar.collapsed ~ .main-content {
-        margin-left: 0;
+        margin-left: 65px;
     }
 }

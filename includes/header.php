@@ -137,6 +137,7 @@
         text-decoration: none;
         border: 1px solid var(--dark-bg);
         transition: 0.4s ease;
+        position: relative; /* ← CAMBIO 1: necesario para posicionar el badge cuando el sidebar está colapsado */
     }
 
     .sidebar-nav .nav-item:is(:hover, .open)>.nav-link:not(.dropdown-title) {
@@ -245,6 +246,36 @@
         display: none;
     }
 
+    /* ── CAMBIO 2: Badge de notificaciones sin leer ── */
+    .notif-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 5px;
+        border-radius: 10px;
+        background: var(--primary-orange);
+        color: #fff;
+        font-size: 0.7rem;
+        font-weight: 700;
+        margin-left: auto;
+        flex-shrink: 0;
+        animation: pulse-notif 2s infinite;
+    }
+
+    .sidebar.collapsed .notif-badge {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        margin-left: 0;
+    }
+
+    @keyframes pulse-notif {
+        0%, 100% { transform: scale(1);   box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); }
+        50%       { transform: scale(1.1); box-shadow: 0 0 0 5px rgba(249, 115, 22, 0); }
+    }
+
     /* Responsive codes for small screens */
     @media (max-width: 768px) {
         .sidebar-menu-button {
@@ -277,6 +308,15 @@
         }
     }
 </style>
+
+<?php
+// ── CAMBIO 3: Conteo de notificaciones sin leer para el badge ──
+$badge_sin_leer = 0;
+if (isset($_SESSION['user_id']) && isset($pdo)) {
+    require_once __DIR__ . '/notificaciones_helper.php';
+    $badge_sin_leer = NotificacionesHelper::contarSinLeer($pdo, $_SESSION['user_id']);
+}
+?>
 
 <body>
     <!-- Mobile Sidebar Menu Button Codes -->
@@ -316,8 +356,8 @@
                     </a>
                     <ul class="dropdown-menu">
                         <li class="nav-item"><a class="nav-link dropdown-title">Inscripciones</a></li>
-                        <li class="nav-item"><a href="#" class="nav-link dropdown-link">Prematrículas</a></li>
-                        <li class="nav-item"><a href="#" class="nav-link dropdown-link">Matrículas</a></li>
+                        <li class="nav-item"><a href="/AMIMBR3/modules/prematriculas/index.php" class="nav-link dropdown-link">Prematrículas</a></li>
+                        <li class="nav-item"><a href="/AMIMBR3/modules/matriculas/index.php" class="nav-link dropdown-link">Matrículas</a></li>
                     </ul>
                 </li>
 
@@ -341,7 +381,6 @@
                     </ul>
                 </li>
 
-                <!-- Dropdown Codes -->
                 <li class="nav-item dropdown-container">
                     <a href="#" class="nav-link dropdown-toggle">
                         <span class="material-symbols-rounded">folder</span>
@@ -355,7 +394,6 @@
                     </ul>
                 </li>
 
-
                 <li class="nav-item">
                     <a href="/AMIMBR3/modules/grupos/index.php" class="nav-link">
                         <span class="material-symbols-rounded">group_add</span>
@@ -365,10 +403,17 @@
                         <li class="nav-item"><a class="nav-link dropdown-title">Grupos</a></li>
                     </ul>
                 </li>
+
+                <!-- ── CAMBIO 3: <li> de Notificaciones con badge ── -->
                 <li class="nav-item">
                     <a href="/AMIMBR3/modules/notificaciones/index.php" class="nav-link">
                         <span class="material-symbols-rounded">notifications</span>
                         <span class="nav-label">Notificaciones</span>
+                        <?php if ($badge_sin_leer > 0): ?>
+                            <span class="notif-badge">
+                                <?php echo $badge_sin_leer > 99 ? '99+' : $badge_sin_leer; ?>
+                            </span>
+                        <?php endif; ?>
                     </a>
                     <ul class="dropdown-menu">
                         <li class="nav-item"><a class="nav-link dropdown-title">Notificaciones</a></li>
@@ -443,6 +488,7 @@
             menu.classList.toggle('show');
         }
 
+<<<<<<< HEAD
         // Cerrar menús de la tabla al hacer clic fuera
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.actions-menu')) {
@@ -451,6 +497,27 @@
                 });
             }
         });
+=======
+                const dropdown = dropdownToggle.closest(".dropdown-container");
+                const menu = dropdown.querySelector(".dropdown-menu");
+                const isOpen = dropdown.classList.contains("open");
+
+                closeAllDropdowns();
+                toggleDropdown(dropdown, menu, !isOpen);
+            });
+        });
+
+        // Click event to sidebar toggle buttons
+        document.querySelectorAll(".sidebar-toggler, .sidebar-menu-button").forEach((button) => {
+            button.addEventListener("click", () => {
+                closeAllDropdowns();
+                document.querySelector(".sidebar").classList.toggle("collapsed");
+            });
+        });
+
+        // Default Collapse Sidebar for small screens
+        if (window.innerWidth <= 1024) document.querySelector(".sidebar").classList.add("collapsed");
+>>>>>>> a80d41ac33913d36fdf5d8da9565bcc6331453af
     </script>
 </body>
 

@@ -11,6 +11,9 @@ require_once '../../config/database.php';
 // Verificar autenticación
 require_once '../../includes/auth_check.php';
 
+// helper de notificaciones
+require_once '../../includes/notificaciones_helper.php';
+
 // Verificar que sea administrador
 require_role('admin');
 
@@ -190,6 +193,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } catch (PDOException $e) {
                 error_log("Error registrando log: " . $e->getMessage());
             }
+
+            // ── NUEVO: Notificación automática 
+            NotificacionesHelper::usuarioEditado(
+                $pdo,
+                $form_data['nombre'],
+                $user['nombre']
+            );
             
             // Redireccionar con mensaje de éxito
             if (function_exists('set_flash_message')) {
