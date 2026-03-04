@@ -125,16 +125,21 @@ body { min-height: 100vh; background: var(--hover-bg); color: var(--text-primary
     flex: 1;
     min-width: 160px;
     cursor: default;
+    background: var(--dark-bg) ;
+    border-color: var(--border-color) ;
+    a{
+        text-decoration: none;
+    }
 }
 
 .stat-pill .material-symbols-rounded { font-size: 2rem; }
 .pill-num  { display: block; font-size: 1.7rem; font-weight: 700; line-height: 1.1; }
 .pill-lbl  { display: block; font-size: 0.8rem; font-weight: 500; opacity: 0.8; }
 
-.stat-pill--warning { background: var(--subtle-yellow); border-color: rgba(233,233,62,0.35); color: #b8b800; }
-.stat-pill--success { background: var(--subtle-green);  border-color: rgba(78,195,54,0.35);  color: var(--primary-green); }
-.stat-pill--danger  { background: var(--subtle-orange); border-color: rgba(255,109,0,0.35);  color: var(--primary-orange); }
-.stat-pill--neutral { background: var(--subtle-blue);   border-color: rgba(20,121,176,0.35); color: var(--primary-blue); }
+.stat-pill--warning {color: #b8b800; }
+.stat-pill--success {color: var(--primary-green); }
+.stat-pill--danger  {color: var(--primary-orange); }
+.stat-pill--neutral {color: var(--primary-blue); }
 
 /* ── Toolbar búsqueda/filtro ─────────────────────────────────── */
 .toolbar {

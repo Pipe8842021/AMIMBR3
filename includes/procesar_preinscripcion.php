@@ -7,6 +7,7 @@
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/session.php';
+require_once __DIR__ . '/notificaciones_helper.php';
 
 function clean(string $valor): string {
     return htmlspecialchars(strip_tags(trim($valor)), ENT_QUOTES, 'UTF-8');
@@ -175,14 +176,8 @@ if (empty($errores)) {
             ':ip'      => $ip_address,
         ]);
 
-        // Notificación al admin
-        $pdo->prepare("
-            INSERT INTO notificaciones (usuario_id, tipo, titulo, mensaje, enlace, prioridad, emisor)
-            VALUES (1, 'preinscripcion', 'Nueva preinscripción recibida', :msg,
-                    '/modules/inscripciones/prematriculas/index.php', 'alta', 'Sistema')
-        ")->execute([
-            ':msg' => 'Nueva preinscripción de ' . $nombres_apellidos . ' para ' . $programa . '.',
-        ]);
+        // ── Notificación automática a todos los admins activos ───────
+        NotificacionesHelper::nuevaPreinscripcion($pdo, $nombres_apellidos, $programa);
 
         header('Location: pre-inscripcion.php?success=1');
         exit;
