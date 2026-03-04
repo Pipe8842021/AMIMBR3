@@ -356,8 +356,8 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                     </a>
                     <ul class="dropdown-menu">
                         <li class="nav-item"><a class="nav-link dropdown-title">Inscripciones</a></li>
-                        <li class="nav-item"><a href="/AMIMBR3/modules/prematriculas/index.php" class="nav-link dropdown-link">Prematrículas</a></li>
-                        <li class="nav-item"><a href="/AMIMBR3/modules/matriculas/index.php" class="nav-link dropdown-link">Matrículas</a></li>
+                        <li class="nav-item"><a href="/AMIMBR3/modules/inscripciones/prematriculas/index.php" class="nav-link dropdown-link">Prematrículas</a></li>
+                        <li class="nav-item"><a href="/AMIMBR3/modules/inscripciones/matriculas/index.php" class="nav-link dropdown-link">Matrículas</a></li>
                     </ul>
                 </li>
 

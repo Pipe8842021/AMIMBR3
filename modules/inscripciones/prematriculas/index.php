@@ -12,6 +12,7 @@
 require_once '../../../config/session.php';
 require_once '../../../config/database.php';
 require_once '../../../includes/auth_check.php';
+require_once '../../../includes/notificaciones_helper.php';
 require_role('admin');
 
 // ═══════════════════════════════════════════════════════════
@@ -91,15 +92,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 WHERE id = ?
             ")->execute([$nuevo_usuario_id, $id]);
 
-            // Notificación al admin actual
-            $pdo->prepare("
-                INSERT INTO notificaciones
-                    (usuario_id, tipo, titulo, mensaje, enlace, prioridad, emisor)
-                VALUES (?, 'matricula', 'Nueva matrícula creada', ?, '/modules/inscripciones/matriculas/index.php', 'alta', 'Sistema')
-            ")->execute([
-                $_SESSION['user_id'],
+           // ── Notificación automática ───
+            // 1. Notifica a todos los admins sobre la nueva matrícula
+            NotificacionesHelper::crearParaRoles(
+                $pdo,
+                ['admin'],
+                'sistema',
+                'Nueva matrícula creada',
                 "Se aprobó la preinscripción de {$pre['nombres_apellidos']} y se creó su matrícula. Pendiente asignar grupo.",
-            ]);
+                $user['nombre'] ?? 'Administrador',
+                'alta',
+                '/AMIMBR3/modules/inscripciones/matriculas/index.php'
+            );
+
+            // 2. Si el estudiante ya tiene usuario, notificarlo también
+            NotificacionesHelper::estadoPreinscripcionCambiado(
+                $pdo,
+                $nuevo_usuario_id,
+                'matriculado'
+            );
 
             // Log de actividad
             $pdo->prepare("
@@ -246,8 +257,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SERVER['REMOTE_ADDR'] ?? null
             ]);
 
+            // ── Notificaciones automáticas ───────────────────────────
+            // Notifica a todos los admins
+            NotificacionesHelper::crearParaRoles(
+                $pdo,
+                ['admin'],
+                'sistema',
+                'Estudiante creado desde admin',
+                "El admin creó directamente al estudiante {$nombres} con matrícula en {$programa}.",
+                $user['nombre'] ?? 'Administrador',
+                'normal',
+                '/AMIMBR3/modules/inscripciones/matriculas/index.php'
+            );
+            // ────────────────────────────────────────────────────────
+
             $pdo->commit();
-            $mensaje      = "✅ Estudiante y matrícula creados. Contraseña temporal: <strong>{$num_doc}</strong>. Recuerda asignarle un grupo.";
+            $mensaje      = "Estudiante y matrícula creados. Contraseña temporal: <strong>{$num_doc}</strong>. Recuerda asignarle un grupo.";
             $tipo_mensaje = 'success';
 
         } catch (Exception $e) {
@@ -931,4 +956,4 @@ setTimeout(() => {
 </script>
 
 </body>
-</html>s
+</html>
