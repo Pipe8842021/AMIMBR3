@@ -286,21 +286,6 @@ if (count($tendencia_labels) < 12) {
                 </div>
             </div>
 
-            <div class="stat-card orange">
-                <div class="stat-header">
-                    <span class="stat-title">Ingresos Totales</span>
-                    <div class="stat-icon">
-                        <span class="material-symbols-rounded">attach_money</span>
-                    </div>
-                </div>
-                <div class="stat-value">$<?php echo number_format($ingresos_totales, 0); ?></div>
-                <div class="stat-change <?php echo $cambio_ingresos >= 0 ? 'positive' : 'negative'; ?>">
-                    <span class="material-symbols-rounded">
-                        <?php echo $cambio_ingresos >= 0 ? 'arrow_upward' : 'arrow_downward'; ?>
-                    </span>
-                    <?php echo abs($cambio_ingresos); ?>% vs mes anterior
-                </div>
-            </div>
 
             <div class="stat-card yellow">
                 <div class="stat-header">
@@ -322,10 +307,6 @@ if (count($tendencia_labels) < 12) {
                 <button class="tab-btn active" data-tab="inscripciones">
                     <span class="material-symbols-rounded">description</span>
                     Inscripciones
-                </button>
-                <button class="tab-btn" data-tab="finanzas">
-                    <span class="material-symbols-rounded">payments</span>
-                    Finanzas
                 </button>
                 <button class="tab-btn" data-tab="academico">
                     <span class="material-symbols-rounded">school</span>
