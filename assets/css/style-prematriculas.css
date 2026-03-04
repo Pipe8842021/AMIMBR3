@@ -127,16 +127,16 @@ body { min-height: 100vh; background: var(--hover-bg); color: var(--text-primary
     cursor: default;
     background: var(--dark-bg) ;
     border-color: var(--border-color) ;
-    a{
-        text-decoration: none;
-    }
+}
+a{
+    text-decoration: none;
 }
 
 .stat-pill .material-symbols-rounded { font-size: 2rem; }
 .pill-num  { display: block; font-size: 1.7rem; font-weight: 700; line-height: 1.1; }
 .pill-lbl  { display: block; font-size: 0.8rem; font-weight: 500; opacity: 0.8; }
 
-.stat-pill--warning {color: #b8b800; }
+.stat-pill--warning {color: var(--primary-yellow); }
 .stat-pill--success {color: var(--primary-green); }
 .stat-pill--danger  {color: var(--primary-orange); }
 .stat-pill--neutral {color: var(--primary-blue); }
