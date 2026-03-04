@@ -39,38 +39,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errores[] = "El precio debe ser mayor o igual a 0";
     }
     
-    // Procesar imagen
+    // Procesar imagen desde el cropper (base64)
     $imagen = null;
-    if (isset($_FILES['imagen']) && $_FILES['imagen']['error'] === UPLOAD_ERR_OK) {
-        $allowed = ['jpg', 'jpeg', 'png', 'webp'];
-        $filename = $_FILES['imagen']['name'];
-        $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-        
-        if (in_array($ext, $allowed)) {
-            // Verificar tamaño máximo (5MB)
-            if ($_FILES['imagen']['size'] > 5 * 1024 * 1024) {
-                $errores[] = "La imagen no puede superar 5MB";
-            } else {
-                $new_filename = uniqid('curso_') . '.' . $ext;
-                $upload_dir = __DIR__ . '/../../assets/img/cursos/';
-                
-                // Crear directorio si no existe
-                if (!is_dir($upload_dir)) {
-                    mkdir($upload_dir, 0755, true);
-                }
-                
-                $upload_path = $upload_dir . $new_filename;
-                
-                if (move_uploaded_file($_FILES['imagen']['tmp_name'], $upload_path)) {
-                    // Guardar SOLO el nombre del archivo en BD
-                    // index.php construirá la ruta completa con $rutaImagenes
-                    $imagen = $new_filename;
-                } else {
-                    $errores[] = "Error al subir la imagen. Verifique permisos del directorio.";
-                }
-            }
+    $imagen_cropped = $_POST['imagen_cropped'] ?? '';
+    $imagen_ext     = strtolower(trim($_POST['imagen_ext'] ?? 'jpg'));
+
+    if (!empty($imagen_cropped) && strpos($imagen_cropped, 'data:image/') === 0) {
+        $allowed_ext = ['jpg', 'jpeg', 'png', 'webp'];
+        if (!in_array($imagen_ext, $allowed_ext)) $imagen_ext = 'jpg';
+
+        // Extraer datos binarios del base64
+        $base64_data = preg_replace('/^data:image\/\w+;base64,/', '', $imagen_cropped);
+        $img_data    = base64_decode($base64_data);
+
+        // Verificar tamaño (5MB)
+        if (strlen($img_data) > 5 * 1024 * 1024) {
+            $errores[] = "La imagen no puede superar 5MB";
         } else {
-            $errores[] = "Formato de imagen no permitido. Use JPG, PNG o WEBP";
+            $new_filename = uniqid('curso_') . '.' . $imagen_ext;
+            $upload_dir   = __DIR__ . '/../../assets/img/cursos/';
+
+            if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+
+            if (file_put_contents($upload_dir . $new_filename, $img_data) !== false) {
+                $imagen = $new_filename;
+            } else {
+                $errores[] = "Error al guardar la imagen. Verifique permisos del directorio.";
+            }
         }
     }
     
@@ -109,6 +104,154 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="../../assets/css/colores.css">
     <link rel="stylesheet" href="../../assets/css/style-cursos-form.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
+    <style>
+        /* ── Cropper Modal ───────────────────────────────────── */
+        .cropper-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(6px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        .cropper-modal-overlay.active { display: flex; }
+
+        .cropper-modal-box {
+            background: var(--dark-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            width: min(880px, 94vw);
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.6);
+        }
+
+        .cropper-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 24px;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+        .cropper-modal-header h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+        }
+        .cropper-modal-header h3 span { color: var(--primary-blue); }
+        .cropper-close-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            border-radius: 8px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            transition: all 0.2s;
+        }
+        .cropper-close-btn:hover { background: #ef4444; color: white; border-color: #ef4444; }
+
+        .cropper-canvas-wrap {
+            flex: 1;
+            overflow: hidden;
+            background: #000;
+            min-height: 0;
+            /* El contenedor del cropper tiene altura fija para que no se desborde */
+            height: 430px;
+        }
+        .cropper-canvas-wrap img {
+            display: block;
+            max-width: 100%;
+        }
+
+        .cropper-modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+        .cropper-hint {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .cropper-actions { display: flex; gap: 10px; }
+
+        .btn-crop-cancel {
+            padding: 10px 22px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-crop-cancel:hover { background: var(--hover-bg); }
+
+        .btn-crop-confirm {
+            padding: 10px 22px;
+            background: var(--gradient-primary-blue);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            transition: all 0.2s;
+            box-shadow: var(--shadow-md);
+        }
+        .btn-crop-confirm:hover { transform: translateY(-1px); box-shadow: var(--shadow-lg); }
+
+        /* ── Preview de imagen ya recortada ─────────────────── */
+        .image-preview-cropped {
+            margin-top: 15px;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            aspect-ratio: 2 / 1;
+            background: var(--card-bg);
+            display: none;
+        }
+        .image-preview-cropped.visible { display: block; }
+        .image-preview-cropped img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* Label upload actualizado */
+        .file-upload-label {
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .file-upload-label.has-file {
+            border-color: var(--primary-blue);
+            color: var(--primary-blue);
+        }
+    </style>
 </head>
 <body>
     <?php require_once '../../includes/header.php'; ?>
@@ -266,18 +409,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <div class="file-upload">
                                 <input 
                                     type="file" 
-                                    id="imagen" 
-                                    name="imagen" 
+                                    id="imagen_raw" 
+                                    name="_imagen_raw_unused"
                                     accept="image/jpeg,image/png,image/webp"
-                                    onchange="previewImage(event)"
+                                    style="position:absolute;opacity:0;width:0;height:0;"
                                 >
-                                <label for="imagen" class="file-upload-label">
-                                    <span class="material-symbols-rounded">upload</span>
-                                    <span>Seleccionar imagen</span>
+                                <!-- Campo hidden que recibirá el base64 recortado -->
+                                <input type="hidden" name="imagen_cropped" id="imagen_cropped">
+                                <input type="hidden" name="imagen_ext" id="imagen_ext">
+
+                                <label for="imagen_raw" class="file-upload-label" id="upload-label">
+                                    <span class="material-symbols-rounded">crop</span>
+                                    <span id="upload-label-text">Seleccionar y recortar imagen</span>
                                 </label>
-                                <small>JPG, PNG o WEBP. Máx. 5MB</small>
+                                <small>JPG, PNG o WEBP · Máx. 5MB · Se recortará en proporción 2:1</small>
                             </div>
-                            <div id="preview" class="image-preview"></div>
+                            <!-- Preview de imagen recortada -->
+                            <div class="image-preview-cropped" id="preview-cropped">
+                                <img id="preview-cropped-img" src="" alt="Imagen recortada">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -293,29 +443,128 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </form>
     </main>
 
-    <script>
-        function previewImage(event) {
-            const file = event.target.files[0];
-            const preview = document.getElementById('preview');
-            
-            if (file) {
-                // Validar tamaño antes de mostrar preview (5MB)
-                if (file.size > 5 * 1024 * 1024) {
-                    alert('La imagen no puede superar 5MB');
-                    event.target.value = '';
-                    preview.innerHTML = '';
-                    return;
-                }
+    <!-- ── Modal Cropper ──────────────────────────────────────── -->
+    <div class="cropper-modal-overlay" id="cropperOverlay">
+        <div class="cropper-modal-box">
+            <div class="cropper-modal-header">
+                <h3>
+                    <span class="material-symbols-rounded">crop</span>
+                    Recortar imagen del curso
+                </h3>
+                <button class="cropper-close-btn" id="btnCropClose" type="button">
+                    <span class="material-symbols-rounded">close</span>
+                </button>
+            </div>
+            <div class="cropper-canvas-wrap">
+                <img id="cropImage" src="" alt="Imagen a recortar">
+            </div>
+            <div class="cropper-modal-footer">
+                <span class="cropper-hint">
+                    <span class="material-symbols-rounded" style="font-size:1rem;color:var(--primary-blue)">info</span>
+                    Ajusta el recuadro · Proporción fija 2:1
+                </span>
+                <div class="cropper-actions">
+                    <button type="button" class="btn-crop-cancel" id="btnCropCancel">Cancelar</button>
+                    <button type="button" class="btn-crop-confirm" id="btnCropConfirm">
+                        <span class="material-symbols-rounded">check</span>
+                        Aplicar recorte
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    preview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
-                }
-                reader.readAsDataURL(file);
-            } else {
-                preview.innerHTML = '';
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+    <script>
+    (function () {
+        const ASPECT = 2 / 1; // mismo ratio que el hero en ver.php
+
+        const inputRaw      = document.getElementById('imagen_raw');
+        const inputCropped  = document.getElementById('imagen_cropped');
+        const inputExt      = document.getElementById('imagen_ext');
+        const uploadLabel   = document.getElementById('upload-label');
+        const uploadText    = document.getElementById('upload-label-text');
+        const previewBox    = document.getElementById('preview-cropped');
+        const previewImg    = document.getElementById('preview-cropped-img');
+
+        // ── Modal ──────────────────────────────────────────────
+        const overlay  = document.getElementById('cropperOverlay');
+        const cropImg  = document.getElementById('cropImage');
+        let cropper    = null;
+        let currentExt = 'jpg';
+
+        inputRaw.addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (file.size > 5 * 1024 * 1024) {
+                alert('La imagen no puede superar 5MB');
+                this.value = '';
+                return;
             }
+
+            currentExt = file.name.split('.').pop().toLowerCase();
+            const url  = URL.createObjectURL(file);
+
+            // Destruir cropper anterior si existe
+            if (cropper) { cropper.destroy(); cropper = null; }
+
+            cropImg.src = url;
+            overlay.classList.add('active');
+
+            // Esperar a que la imagen cargue para iniciar cropper
+            cropImg.onload = function () {
+                cropper = new Cropper(cropImg, {
+                    aspectRatio: ASPECT,
+                    viewMode: 2,
+                    dragMode: 'move',
+                    autoCropArea: 1,
+                    restore: false,
+                    guides: true,
+                    center: true,
+                    highlight: true,
+                    cropBoxMovable: true,
+                    cropBoxResizable: true,
+                    toggleDragModeOnDblclick: false,
+                    background: true,
+                });
+            };
+            // reset input para permitir re-seleccionar el mismo archivo
+            this.value = '';
+        });
+
+        // ── Confirmar recorte ──────────────────────────────────
+        document.getElementById('btnCropConfirm').addEventListener('click', function () {
+            if (!cropper) return;
+
+            const canvas = cropper.getCroppedCanvas({ width: 1200, height: 600 });
+            const mime   = currentExt === 'png' ? 'image/png' : 'image/jpeg';
+            const b64    = canvas.toDataURL(mime, 0.92);
+
+            inputCropped.value = b64;
+            inputExt.value     = currentExt;
+
+            previewImg.src = b64;
+            previewBox.classList.add('visible');
+
+            uploadLabel.classList.add('has-file');
+            uploadText.textContent = 'Imagen lista — clic para cambiar';
+
+            closeCropper();
+        });
+
+        // ── Cancelar / cerrar ──────────────────────────────────
+        document.getElementById('btnCropCancel').addEventListener('click', closeCropper);
+        document.getElementById('btnCropClose').addEventListener('click', closeCropper);
+        overlay.addEventListener('click', function (e) {
+            if (e.target === overlay) closeCropper();
+        });
+
+        function closeCropper() {
+            overlay.classList.remove('active');
+            if (cropper) { cropper.destroy(); cropper = null; }
         }
+    })();
     </script>
 </body>
 </html>

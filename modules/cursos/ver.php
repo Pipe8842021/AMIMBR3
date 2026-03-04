@@ -60,6 +60,38 @@ try {
     exit;
 }
 
+// Función de imagen robusta (idéntica a index.php)
+function get_imagen_curso(string $nombre, ?string $imagenBD): string {
+    $rutaBase   = '../../assets/img/cursos/';
+    $porDefecto = $rutaBase . 'musica-default.jpg';
+
+    if (!empty($imagenBD)) {
+        if (strpos($imagenBD, '/') !== false) return htmlspecialchars($imagenBD);
+        return htmlspecialchars($rutaBase . $imagenBD);
+    }
+
+    $map = [
+        'Piano'                       => 'piano.jpg',
+        'Piano Clásico'               => 'piano.jpg',
+        'Guitarra'                    => 'guitarra.jpg',
+        'Guitarra Acústica'           => 'guitarra.jpg',
+        'Canto y Técnica Vocal'       => 'canto.jpg',
+        'Técnica Vocal y Canto'       => 'canto.jpg',
+        'Violín'                      => 'violin.jpg',
+        'Violín Clásico'              => 'violin.jpg',
+        'Ensambles Musicales'         => 'ensambles.jpg',
+        'Ensamble musical'            => 'ensambles.jpg',
+        'Iniciación Musical Infantil' => 'iniciacion_infantil.jpg',
+        'Instrumentos de Viento'      => 'viento.jpg',
+        'Preparación Universitaria'   => 'preparacion_universitaria.jpg',
+        'Teoría y Lenguaje Musical'   => 'teoria_lenguaje.jpg',
+    ];
+
+    return isset($map[$nombre])
+        ? htmlspecialchars($rutaBase . $map[$nombre])
+        : htmlspecialchars($porDefecto);
+}
+
 // Función para badge de nivel
 function get_nivel_badge($nivel) {
     $badges = [
@@ -99,22 +131,12 @@ function get_nivel_badge($nivel) {
         <!-- Curso Details -->
         <div class="curso-detalle">
             <div class="curso-hero">
-                <?php 
-                $imagen_default = match($curso['nombre']) {
-                    'Piano Clásico', 'Piano' => 'piano.jpg',
-                    'Guitarra Acústica', 'Guitarra' => 'guitarra.jpg',
-                    'Canto y Técnica Vocal', 'Técnica Vocal y Canto' => 'canto.jpg',
-                    'Violín', 'Violín Clásico' => 'violin.jpg',
-                    default => 'musica-default.jpg'
-                };
-                
-                $imagen_curso = !empty($curso['imagen']) ? $curso['imagen'] : $imagen_default;
-                ?>
+                <?php $imagen_src = get_imagen_curso($curso['nombre'], $curso['imagen']); ?>
                 <div class="hero-imagen">
                     <img 
-                        src="../../assets/img/cursos/<?php echo htmlspecialchars($imagen_curso); ?>" 
+                        src="<?php echo $imagen_src; ?>" 
                         alt="<?php echo htmlspecialchars($curso['nombre']); ?>"
-                        onerror="this.src='../../assets/img/cursos/musica-default.jpg'"
+                        onerror="this.onerror=null; this.src='../../assets/img/cursos/musica-default.jpg';"
                     >
                 </div>
                 
@@ -202,7 +224,7 @@ function get_nivel_badge($nivel) {
                         <span class="material-symbols-rounded">group_work</span>
                         Grupos del Curso
                     </h3>
-                    <a href="../grupos/crear.php?curso_id=<?php echo $curso['id']; ?>" class="btn-nuevo-grupo">
+                    <a href="../grupos/admin.php" class="btn-nuevo-grupo">
                         <span class="material-symbols-rounded">add</span>
                         Nuevo Grupo
                     </a>
