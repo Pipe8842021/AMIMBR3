@@ -137,7 +137,8 @@
         text-decoration: none;
         border: 1px solid var(--dark-bg);
         transition: 0.4s ease;
-        position: relative; /* ← CAMBIO 1: necesario para posicionar el badge cuando el sidebar está colapsado */
+        position: relative;
+        /* ← CAMBIO 1: necesario para posicionar el badge cuando el sidebar está colapsado */
     }
 
     .sidebar-nav .nav-item:is(:hover, .open)>.nav-link:not(.dropdown-title) {
@@ -272,8 +273,17 @@
     }
 
     @keyframes pulse-notif {
-        0%, 100% { transform: scale(1);   box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); }
-        50%       { transform: scale(1.1); box-shadow: 0 0 0 5px rgba(249, 115, 22, 0); }
+
+        0%,
+        100% {
+            transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4);
+        }
+
+        50% {
+            transform: scale(1.1);
+            box-shadow: 0 0 0 5px rgba(249, 115, 22, 0);
+        }
     }
 
     /* Responsive codes for small screens */
@@ -488,7 +498,6 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
             menu.classList.toggle('show');
         }
 
-<<<<<<< HEAD
         // Cerrar menús de la tabla al hacer clic fuera
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.actions-menu')) {
@@ -497,27 +506,6 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                 });
             }
         });
-=======
-                const dropdown = dropdownToggle.closest(".dropdown-container");
-                const menu = dropdown.querySelector(".dropdown-menu");
-                const isOpen = dropdown.classList.contains("open");
-
-                closeAllDropdowns();
-                toggleDropdown(dropdown, menu, !isOpen);
-            });
-        });
-
-        // Click event to sidebar toggle buttons
-        document.querySelectorAll(".sidebar-toggler, .sidebar-menu-button").forEach((button) => {
-            button.addEventListener("click", () => {
-                closeAllDropdowns();
-                document.querySelector(".sidebar").classList.toggle("collapsed");
-            });
-        });
-
-        // Default Collapse Sidebar for small screens
-        if (window.innerWidth <= 1024) document.querySelector(".sidebar").classList.add("collapsed");
->>>>>>> a80d41ac33913d36fdf5d8da9565bcc6331453af
     </script>
 </body>
 
