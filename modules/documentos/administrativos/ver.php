@@ -158,6 +158,14 @@ $icono = icono_archivo($documento['tipo_archivo']);
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
     <link rel="stylesheet" href="../../../assets/css/colores.css">
     <link rel="stylesheet" href="../../../assets/css/style-documentos-administrativos.css">
+    <script>
+        (function() {
+            const theme = localStorage.getItem('amimbre-theme');
+            if (theme === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
     <style>
         .details-container {
             max-width: 1200px;

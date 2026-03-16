@@ -386,6 +386,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="shortcut icon" href="../../../assets/img/3.png">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
     <link rel="stylesheet" href="../../../assets/css/style-documentos-institucionales.css">
+    <script>
+        (function() {
+            const theme = localStorage.getItem('amimbre-theme');
+            if (theme === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
     <style>
         .form-container {
             max-width: 900px;

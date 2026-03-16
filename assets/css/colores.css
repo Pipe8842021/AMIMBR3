@@ -1,29 +1,51 @@
-/*Variables de colores de toda la web*/
+/* Variables de colores de toda la web */
 :root {
-        --primary-blue: #1479b0;
-        --primary-green: #4ec336;
-        --primary-orange: #ff6d00;
-        --primary-yellow: #e9e93e;
-        --primary-red: #ba2626;
-        --subtle-blue: #1479b03a;
-        --subtle-green: #4ec33633;
-        --subtle-orange: #ff6f003d;
-        --subtle-yellow: #e9e93e38;
-        --subtle-red: #ba262646;
-        --dark-bg: #040c13;
-        --card-bg: #15181b;
-        --text-primary: #f8fafc;
-        --text-secondary: #94a3b8;
-        --border-color: #334155;
-        --border-cl: #e5e5e5;
-        --muted: #737373;
-        --hover-bg: #181d23;
-        --gradient-primary-blue: linear-gradient(135deg, #1479b0, #025988);
-        --gradient-primary-green: linear-gradient(135deg, #4ec336, #198d02);
-        --gradient-primary-orange: linear-gradient(135deg, #ff6d00, #b14f03);
-        --gradient-primary-yellow: linear-gradient(135deg, #e9e93e, #a0a000);
-        --gradient-primary-red: linear-gradient(135deg,#d82f2f , #9a2222);
-        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-    }
+    --primary-blue: #1479b0;
+    --primary-green: #4ec336;
+    --primary-orange: #ff6d00;
+    --primary-yellow: #e9e93e;
+    --primary-red: #ba2626;
+    --subtle-blue: #1479b03a;
+    --subtle-green: #4ec33633;
+    --subtle-orange: #ff6f003d;
+    --subtle-yellow: #e9e93e38;
+    --subtle-red: #ba262646;
+
+    /* DARK (default) */
+    --dark-bg: #040c13;
+    --card-bg: #15181b;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --border-color: #334155;
+    --border-cl: #e5e5e5;
+    --muted: #737373;
+    --hover-bg: #181d23;
+
+    --gradient-primary-blue: linear-gradient(135deg, #1479b0, #025988);
+    --gradient-primary-green: linear-gradient(135deg, #4ec336, #198d02);
+    --gradient-primary-orange: linear-gradient(135deg, #ff6d00, #b14f03);
+    --gradient-primary-yellow: linear-gradient(135deg, #e9e93e, #a0a000);
+    --gradient-primary-red: linear-gradient(135deg, #d82f2f, #9a2222);
+
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+/* ========================
+   TEMA CLARO
+   ======================== */
+[data-theme="light"] {
+    --dark-bg: #f0f4f8;
+    --card-bg: #ffffff;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --border-color: #cbd5e1;
+    --border-cl: #94a3b8;
+    --muted: #94a3b8;
+    --hover-bg: #e2e8f0;
+
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.08);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.12), 0 2px 4px -2px rgb(0 0 0 / 0.08);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.12), 0 4px 6px -4px rgb(0 0 0 / 0.08);
+}

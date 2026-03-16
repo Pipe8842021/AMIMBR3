@@ -296,3 +296,30 @@ document.addEventListener('DOMContentLoaded', function() {
 
     console.log('Menu responsive initialized');
 });
+
+// ============================================================
+// THEME TOGGLE — Claro / Oscuro
+// ============================================================
+(function () {
+    const toggle = document.querySelector('.theme-toggle');
+    const html   = document.documentElement;
+    const STORAGE_KEY = 'amimbre-theme';
+
+    // Aplicar tema guardado al cargar
+    const savedTheme = localStorage.getItem(STORAGE_KEY);
+    if (savedTheme === 'light') {
+        html.setAttribute('data-theme', 'light');
+    }
+
+    toggle?.addEventListener('click', () => {
+        const isLight = html.getAttribute('data-theme') === 'light';
+
+        if (isLight) {
+            html.removeAttribute('data-theme');          // → dark (default)
+            localStorage.setItem(STORAGE_KEY, 'dark');
+        } else {
+            html.setAttribute('data-theme', 'light');    // → light
+            localStorage.setItem(STORAGE_KEY, 'light');
+        }
+    });
+})();

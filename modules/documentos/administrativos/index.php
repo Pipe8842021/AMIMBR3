@@ -210,6 +210,14 @@ function formatear_fecha($fecha) {
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="../../../assets/css/colores.css">
     <link rel="stylesheet" href="../../../assets/css/style-documentos-administrativos.css">
+    <script>
+        (function() {
+            const theme = localStorage.getItem('amimbre-theme');
+            if (theme === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
 </head>
 <body>
     <!-- Include Header/Sidebar -->
