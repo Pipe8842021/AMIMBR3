@@ -67,6 +67,14 @@ if ($user_rol === 'admin') {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="../../assets/css/colores.css">
+    <script>
+        (function() {
+            const theme = localStorage.getItem('amimbre-theme');
+            if (theme === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
     <style>
         * {
             margin: 0;
@@ -227,7 +235,7 @@ if ($user_rol === 'admin') {
     </style>
 </head>
 
-<body class="<?php echo isset($_COOKIE['theme']) && $_COOKIE['theme'] === 'dark' ? 'dark-theme' : ''; ?>">
+<body>
 
     <?php include_once '../../includes/header.php'; ?>
 
@@ -277,7 +285,7 @@ if ($user_rol === 'admin') {
                 <div class="form-grid">
                     <div class="form-group">
                         <label>Tema del Sistema</label>
-                        <button onclick="toggleDarkMode()" class="btn-action" style="background: var(--hover-bg); color: white; border: 1px solid var(--border-color); width: 100%;">
+                        <button id="theme-btn" onclick="toggleTheme()" class="btn-action" style="background: var(--hover-bg); color: var(--text-primary); border: 1px solid var(--border-color); width: 100%;">
                             <i class="fas fa-moon"></i> Alternar Modo Oscuro
                         </button>
                     </div>
@@ -337,25 +345,47 @@ if ($user_rol === 'admin') {
 
     <script>
         function openTab(evt, tabName) {
-            let i, tabcontent, tablinks;
-            tabcontent = document.getElementsByClassName("tab-content");
-            for (i = 0; i < tabcontent.length; i++) tabcontent[i].classList.remove("active");
-            tablinks = document.getElementsByClassName("tab-link");
-            for (i = 0; i < tablinks.length; i++) tablinks[i].classList.remove("active");
-            document.getElementById(tabName).classList.add("active");
-            evt.currentTarget.classList.add("active");
-        }
+    let i, tabcontent, tablinks;
+    tabcontent = document.getElementsByClassName("tab-content");
+    for (i = 0; i < tabcontent.length; i++) tabcontent[i].classList.remove("active");
+    tablinks = document.getElementsByClassName("tab-link");
+    for (i = 0; i < tablinks.length; i++) tablinks[i].classList.remove("active");
+    document.getElementById(tabName).classList.add("active");
+    evt.currentTarget.classList.add("active");
+}
 
-        function toggleDarkMode() {
-            document.body.classList.toggle('dark-theme');
-            const isDark = document.body.classList.contains('dark-theme');
-            // Guardar preferencia en cookie para que sea persistente al recargar
-            document.cookie = "theme=" + (isDark ? "dark" : "light") + ";path=/";
-        }
+// SISTEMA DE TEMA UNIFICADO
+function toggleTheme() {
+    const html = document.documentElement;
+    const isLight = html.getAttribute('data-theme') === 'light';
 
-        function changeFontSize(size) {
-            document.documentElement.style.fontSize = size;
-        }
+    if (isLight) {
+        html.removeAttribute('data-theme');
+        localStorage.setItem('amimbre-theme', 'dark');
+    } else {
+        html.setAttribute('data-theme', 'light');
+        localStorage.setItem('amimbre-theme', 'light');
+    }
+
+    updateThemeButton();
+}
+
+function updateThemeButton() {
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    const btn = document.getElementById('theme-btn');
+    if (!btn) return;
+
+    btn.innerHTML = isLight
+        ? '<i class="fas fa-moon"></i> Cambiar a Modo Oscuro'
+        : '<i class="fas fa-sun"></i> Cambiar a Modo Claro';
+}
+
+// Actualizar botón al cargar según el tema actual
+document.addEventListener('DOMContentLoaded', updateThemeButton);
+
+function changeFontSize(size) {
+    document.documentElement.style.fontSize = size;
+}   
     </script>
 </body>
 
