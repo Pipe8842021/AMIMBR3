@@ -114,7 +114,6 @@
         padding-bottom: 20px;
         height: calc(100vh - 227px);
         scrollbar-color: transparent transparent;
-
     }
 
     .sidebar .sidebar-nav .primary-nav:hover {
@@ -247,7 +246,7 @@
         display: none;
     }
 
-    /* ── CAMBIO 2: Badge de notificaciones sin leer ── */
+    /* Badge de notificaciones sin leer */
     .notif-badge {
         display: inline-flex;
         align-items: center;
@@ -320,7 +319,32 @@
 </style>
 
 <?php
-// ── CAMBIO 3: Conteo de notificaciones sin leer para el badge ──
+// ──────────────────────────────────────────────────────────────
+//  CONTROL DE ROLES
+//  Usa has_any_role() definida en config/session.php, que lee
+//  $_SESSION['user_rol'] con los valores exactos del enum en BD:
+//    'admin'      → acceso total
+//    'profesor'   → acceso parcial
+//    'estudiante' → acceso básico
+//
+//  Tabla de permisos:
+//  ┌─────────────────┬───────┬──────────┬────────────┐
+//  │ Ítem            │ Admin │ Profesor │ Estudiante │
+//  ├─────────────────┼───────┼──────────┼────────────┤
+//  │ Dashboard       │  ✓   │    ✓     │     ✓      │
+//  │ Inscripciones   │  ✓   │    ✗     │     ✗      │
+//  │ Usuarios        │  ✓   │    ✓     │     ✗      │
+//  │ Cursos          │  ✓   │    ✓     │     ✓      │
+//  │ Documentación   │  ✓   │    ✓     │     ✓      │
+//  │ Grupos          │  ✓   │    ✓     │     ✗      │
+//  │ Notificaciones  │  ✓   │    ✓     │     ✓      │
+//  │ Reportes        │  ✓   │    ✗     │     ✗      │
+//  │ Horario         │  ✓   │    ✓     │     ✓      │
+//  │ Configuración   │  ✓   │    ✓     │     ✓      │
+//  └─────────────────┴───────┴──────────┴────────────┘
+// ──────────────────────────────────────────────────────────────
+
+// Badge de notificaciones sin leer
 $badge_sin_leer = 0;
 if (isset($_SESSION['user_id']) && isset($pdo)) {
     require_once __DIR__ . '/notificaciones_helper.php';
@@ -329,13 +353,13 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
 ?>
 
 <body>
-    <!-- Mobile Sidebar Menu Button Codes -->
+    <!-- Mobile Sidebar Menu Button -->
     <button class="sidebar-menu-button">
         <span class="material-symbols-rounded">menu</span>
     </button>
 
     <aside class="sidebar">
-        <!-- Sidebar Header Codes -->
+        <!-- Sidebar Header -->
         <header class="sidebar-header">
             <div class="header-logo">
                 <img src="/AMIMBR3/assets/img/3.png" alt="Amimbré">
@@ -346,8 +370,10 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
         </header>
 
         <nav class="sidebar-nav">
-            <!-- Primary Top Nav Codes -->
+            <!-- Primary Nav -->
             <ul class="nav-list primary-nav">
+
+                <?php if (has_any_role(['admin', 'profesor', 'estudiante'])): ?>
                 <li class="nav-item">
                     <a href="/AMIMBR3/modules/dashboard/" class="nav-link">
                         <span class="material-symbols-rounded">dashboard</span>
@@ -357,7 +383,9 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                         <li class="nav-item"><a class="nav-link dropdown-title">Dashboard</a></li>
                     </ul>
                 </li>
+                <?php endif; ?>
 
+                <?php if (has_any_role(['admin'])): ?>
                 <li class="nav-item dropdown-container">
                     <a href="#" class="nav-link dropdown-toggle">
                         <span class="material-symbols-rounded">description</span>
@@ -370,7 +398,9 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                         <li class="nav-item"><a href="/AMIMBR3/modules/inscripciones/matriculas/index.php" class="nav-link dropdown-link">Matrículas</a></li>
                     </ul>
                 </li>
+                <?php endif; ?>
 
+                <?php if (has_any_role(['admin', 'profesor'])): ?>
                 <li class="nav-item">
                     <a href="/AMIMBR3/modules/usuarios/index.php" class="nav-link">
                         <span class="material-symbols-rounded">group</span>
@@ -380,7 +410,9 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                         <li class="nav-item"><a class="nav-link dropdown-title">Usuarios</a></li>
                     </ul>
                 </li>
+                <?php endif; ?>
 
+                <?php if (has_any_role(['admin', 'profesor', 'estudiante'])): ?>
                 <li class="nav-item">
                     <a href="/AMIMBR3/modules/cursos/index.php" class="nav-link">
                         <span class="material-symbols-rounded">menu_book</span>
@@ -390,7 +422,9 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                         <li class="nav-item"><a class="nav-link dropdown-title">Cursos</a></li>
                     </ul>
                 </li>
+                <?php endif; ?>
 
+                <?php if (has_any_role(['admin', 'profesor', 'estudiante'])): ?>
                 <li class="nav-item dropdown-container">
                     <a href="#" class="nav-link dropdown-toggle">
                         <span class="material-symbols-rounded">folder</span>
@@ -403,7 +437,9 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                         <li class="nav-item"><a href="/AMIMBR3/modules/documentos/institucionales/index.php" class="nav-link dropdown-link">Institucional</a></li>
                     </ul>
                 </li>
+                <?php endif; ?>
 
+                <?php if (has_any_role(['admin', 'profesor'])): ?>
                 <li class="nav-item">
                     <a href="/AMIMBR3/modules/grupos/index.php" class="nav-link">
                         <span class="material-symbols-rounded">group_add</span>
@@ -413,8 +449,9 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                         <li class="nav-item"><a class="nav-link dropdown-title">Grupos</a></li>
                     </ul>
                 </li>
+                <?php endif; ?>
 
-                <!-- ── CAMBIO 3: <li> de Notificaciones con badge ── -->
+                <?php if (has_any_role(['admin', 'profesor', 'estudiante'])): ?>
                 <li class="nav-item">
                     <a href="/AMIMBR3/modules/notificaciones/index.php" class="nav-link">
                         <span class="material-symbols-rounded">notifications</span>
@@ -429,7 +466,9 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                         <li class="nav-item"><a class="nav-link dropdown-title">Notificaciones</a></li>
                     </ul>
                 </li>
+                <?php endif; ?>
 
+                <?php if (has_any_role(['admin'])): ?>
                 <li class="nav-item">
                     <a href="/AMIMBR3/modules/reportes/index.php" class="nav-link">
                         <span class="material-symbols-rounded">assessment</span>
@@ -439,7 +478,9 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                         <li class="nav-item"><a class="nav-link dropdown-title">Reportes</a></li>
                     </ul>
                 </li>
+                <?php endif; ?>
 
+                <?php if (has_any_role(['admin', 'profesor', 'estudiante'])): ?>
                 <li class="nav-item">
                     <a href="/AMIMBR3/modules/horarios/index.php" class="nav-link">
                         <span class="material-symbols-rounded">calendar_today</span>
@@ -449,7 +490,9 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                         <li class="nav-item"><a class="nav-link dropdown-title">Horario</a></li>
                     </ul>
                 </li>
+                <?php endif; ?>
 
+                <?php if (has_any_role(['admin', 'profesor', 'estudiante'])): ?>
                 <li class="nav-item">
                     <a href="/AMIMBR3/modules/configuracion/configuraciones.php" class="nav-link">
                         <span class="material-symbols-rounded">settings</span>
@@ -459,9 +502,11 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                         <li class="nav-item"><a class="nav-link dropdown-title">Configuración</a></li>
                     </ul>
                 </li>
+                <?php endif; ?>
+
             </ul>
 
-            <!-- Secondary Bottom Nav Codes -->
+            <!-- Secondary Bottom Nav (visible para todos los roles) -->
             <ul class="nav-list secondary-nav">
                 <li class="nav-item">
                     <a href="/AMIMBR3/modules/ayuda/ayuda_index.php" class="nav-link">

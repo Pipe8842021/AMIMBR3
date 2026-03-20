@@ -370,8 +370,8 @@ body { min-height: 100vh; background: var(--hover-bg); color: var(--text-primary
 .btn-view  { background: var(--subtle-blue);  color: var(--primary-blue);  border-color: transparent; }
 .btn-view:hover  { background: var(--primary-blue); color: #fff; }
 
-.btn-danger { background: #fff5f5; color: #c53030; border-color: #fed7d7; }
-.btn-danger:hover { background: #e53e3e; color: #fff; border-color: #e53e3e; }
+.btn-danger { background: var(--subtle-red); color: var(--primary-red); border-color: var(--primary-red); }
+.btn-danger:hover { background: var(--primary-red); color: var(--text-primary); border-color: var(--primary-red); }
 
 /* ── Badges ── */
 .badge {
@@ -475,7 +475,7 @@ body { min-height: 100vh; background: var(--hover-bg); color: var(--text-primary
     margin: 0 auto 18px;
     font-size: 30px;
 }
-.modal-icon-danger { background: #fff5f5; color: #e53e3e; }
+.modal-icon-danger { background: var(--subtle-red); color: var(--primary-red); }
 .modal-title { font-size: 1.2rem; font-weight: 700; color: var(--text-primary); margin-bottom: 10px; }
 .modal-desc  { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6; margin-bottom: 28px; }
 .modal-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }

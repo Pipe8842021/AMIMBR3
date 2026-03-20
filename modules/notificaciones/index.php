@@ -1,15 +1,6 @@
 <?php
 /**
- * ============================================================
- * MÓDULO DE NOTIFICACIONES — index.php  (versión mejorada)
- * Ruta: modules/notificaciones/index.php
- * ============================================================
- * Cambios respecto a la versión original:
- *  - Usa NotificacionesHelper para las estadísticas (1 consulta en vez de 4)
- *  - Filtra notificaciones según el ROL del usuario actual
- *  - Contadores reales desde la BD
- *  - Badge de sin-leer en el header/sidebar (via helper)
- * ============================================================
+ * MÓDULO DE NOTIFICACIONES
  */
 
 require_once '../../config/session.php';
@@ -17,7 +8,7 @@ require_once '../../config/database.php';
 require_once '../../includes/auth_check.php';
 require_once '../../includes/notificaciones_helper.php'; // <-- NUEVO
 
-// ─── Acciones AJAX ────────────────────────────────────────────
+// ─ Acciones AJAX 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
     header('Content-Type: application/json');
     $accion   = $_POST['accion'];
@@ -69,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
                 }
                 break;
 
-            // ── NUEVO: devuelve el conteo sin leer para refrescar el badge ──
+            // devuelve el conteo sin leer para refrescar el badge ──
             case 'contar_sin_leer':
                 $response = [
                     'success'   => true,
@@ -86,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
     exit;
 }
 
-// ─── Datos del usuario actual ──────────────────────────────────
+// ─── Datos del usuario actual 
 try {
     $stmt = $pdo->prepare("
         SELECT id, nombre, email, rol, estado, foto_perfil
@@ -106,11 +97,11 @@ try {
     die("Error del sistema. Por favor, intenta más tarde.");
 }
 
-// ─── Filtros ───────────────────────────────────────────────────
+// ─ Filtros 
 $filtro_tipo   = isset($_GET['tipo'])   ? $_GET['tipo']   : 'todas';
 $filtro_estado = isset($_GET['estado']) ? $_GET['estado'] : 'todas';
 
-// ─── Construir consulta con filtros y ROL ─────────────────────
+// ── Construir consulta con filtros y ROL 
 $sql = "
     SELECT
         n.id, n.tipo, n.titulo, n.mensaje, n.enlace,
@@ -145,14 +136,14 @@ try {
     $notificaciones = [];
 }
 
-// ─── Estadísticas (1 sola consulta usando el helper) ──────────
+// ─── Estadísticas (1 sola consulta usando el helper) ──
 $stats = NotificacionesHelper::obtenerEstadisticas($pdo, $_SESSION['user_id']);
 $total_notificaciones = $stats['total'];
 $sin_leer             = $stats['sin_leer'];
 $preinscripciones     = $stats['preinscripciones'];
 $eventos              = $stats['eventos'];
 
-// ─── Helpers de presentación ──────────────────────────────────
+// ─── Helpers de presentación 
 function tiempo_transcurrido(string $fecha): string {
     $diff = (new DateTime())->diff(new DateTime($fecha));
     if ($diff->days > 0) return "Hace {$diff->days} día" . ($diff->days > 1 ? "s" : "");
@@ -181,6 +172,14 @@ function icono_tipo(string $tipo): array {
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="../../assets/css/colores.css">
     <link rel="stylesheet" href="../../assets/css/style-notificaciones.css">
+    <script>
+        (function() {
+            const theme = localStorage.getItem('amimbre-theme');
+            if (theme === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
 </head>
 <body>
 
@@ -192,7 +191,7 @@ if (file_exists('../../includes/header.php')) {
 
 <main class="main-content">
 
-    <!-- ── Header ────────────────────────────────────────────── -->
+    <!--  Header  -->
     <div class="notifications-header">
         <div class="header-content">
             <div class="header-left">
@@ -227,7 +226,7 @@ if (file_exists('../../includes/header.php')) {
         </div>
     </div>
 
-    <!-- ── Stats ─────────────────────────────────────────────── -->
+    <!-- ── Stats  -->
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-icon total">
@@ -267,7 +266,7 @@ if (file_exists('../../includes/header.php')) {
         </div>
     </div>
 
-    <!-- ── Buscador y filtros ─────────────────────────────────── -->
+    <!-- Buscador y filtros  -->
     <div class="filters-container">
         <div class="search-box">
             <span class="material-symbols-rounded">search</span>
@@ -282,7 +281,7 @@ if (file_exists('../../includes/header.php')) {
         </div>
     </div>
 
-    <!-- ── Panel de filtros ───────────────────────────────────── -->
+    <!-- ── Panel de filtros  -->
     <div class="filter-panel" id="filterPanel" style="display:none;">
         <div class="filter-section">
             <label>Tipo de notificación:</label>
@@ -316,7 +315,7 @@ if (file_exists('../../includes/header.php')) {
         </div>
     </div>
 
-    <!-- ── Lista de notificaciones ───────────────────────────── -->
+    <!-- ── Lista de notificaciones -->
     <div class="notifications-container" id="notificationsContainer">
         <?php if (count($notificaciones) > 0): ?>
             <?php foreach ($notificaciones as $notif):
@@ -402,7 +401,7 @@ if (file_exists('../../includes/header.php')) {
     </div>
 </main>
 
-<!-- ── CSS adicional (dot sin leer + badge leída) ─────────────── -->
+<!-- ── CSS adicional (dot sin leer + badge leída) -->
 <style>
 .dot-unread {
     display: inline-block;
@@ -431,13 +430,13 @@ if (file_exists('../../includes/header.php')) {
 </style>
 
 <script>
-// ── Toggle filtros ─────────────────────────────────────────────
+// ── Toggle filtros 
 document.getElementById('btnFiltros').addEventListener('click', function () {
     const p = document.getElementById('filterPanel');
     p.style.display = p.style.display === 'none' ? 'block' : 'none';
 });
 
-// ── Función AJAX genérica ──────────────────────────────────────
+// ── Función AJAX genérica 
 function enviarAccion(accion, datos = {}) {
     const fd = new FormData();
     fd.append('accion', accion);
@@ -446,14 +445,14 @@ function enviarAccion(accion, datos = {}) {
         .then(r => r.json());
 }
 
-// ── Marcar una notificación como leída ────────────────────────
+// ── Marcar una notificación como leída
 function marcarLeida(id) {
     enviarAccion('marcar_leida', { id })
         .then(data => { if (data.success) location.reload(); })
         .catch(() => alert('Error de conexión'));
 }
 
-// ── Marcar todas como leídas ──────────────────────────────────
+// ── Marcar todas como leídas 
 const btnTodas = document.getElementById('marcarTodasLeidas');
 if (btnTodas) {
     btnTodas.addEventListener('click', function () {
@@ -464,7 +463,7 @@ if (btnTodas) {
     });
 }
 
-// ── Eliminar notificación ─────────────────────────────────────
+// ── Eliminar notificación 
 function eliminarNotificacion(id) {
     if (!confirm('¿Eliminar esta notificación?')) return;
     enviarAccion('eliminar', { id })
@@ -472,7 +471,7 @@ function eliminarNotificacion(id) {
         .catch(() => alert('Error de conexión'));
 }
 
-// ── Búsqueda en tiempo real (filtra por data-titulo / data-mensaje) ──
+// ── Búsqueda en tiempo real (filtra por data-titulo / data-mensaje) 
 document.getElementById('searchNotifications').addEventListener('input', function () {
     const term = this.value.toLowerCase().trim();
     document.querySelectorAll('.notification-card').forEach(card => {

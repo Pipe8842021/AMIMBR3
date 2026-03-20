@@ -140,6 +140,14 @@ if (is_logged_in()) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iniciar Sesión - Amimbré</title>
     <link rel="shortcut icon" href="../assets/img/3.png">
+    <script>
+        (function() {
+            const theme = localStorage.getItem('amimbre-theme');
+            if (theme === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link rel="stylesheet" href="../assets/css/style-login.css">
     <link rel="stylesheet" href="../assets/css/colores.css">
