@@ -7,7 +7,12 @@
 require_once '../../config/session.php';
 require_once '../../config/database.php';
 require_once '../../includes/auth_check.php';
-require_role('admin');
+require_any_role(['admin', 'profesor', 'estudiante']);
+
+$rol        = $_SESSION['rol'] ?? '';
+$user_id    = (int)($_SESSION['user_id'] ?? 0);
+$es_admin   = ($rol === 'admin');
+$es_estudiante = ($rol === 'estudiante');
 
 // Obtener ID del curso
 $curso_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -39,19 +44,38 @@ try {
     }
     
     // Obtener grupos del curso
-    $stmt = $pdo->prepare("
-        SELECT 
-            g.*,
-            u.nombre as profesor_nombre,
-            COUNT(DISTINCT m.estudiante_id) as estudiantes_inscritos
-        FROM grupos g
-        LEFT JOIN usuarios u ON g.profesor_id = u.id
-        LEFT JOIN matriculas m ON g.id = m.grupo_id AND m.estado = 'activa'
-        WHERE g.curso_id = ?
-        GROUP BY g.id
-        ORDER BY g.estado DESC, g.nombre
-    ");
-    $stmt->execute([$curso_id]);
+    // Para estudiante: solo el grupo donde está matriculado
+    if ($es_estudiante) {
+        $stmt = $pdo->prepare("
+            SELECT 
+                g.*,
+                u.nombre as profesor_nombre,
+                COUNT(DISTINCT m2.estudiante_id) as estudiantes_inscritos
+            FROM grupos g
+            INNER JOIN matriculas m ON g.id = m.grupo_id 
+                AND m.estudiante_id = ? AND m.estado = 'activa'
+            LEFT JOIN usuarios u ON g.profesor_id = u.id
+            LEFT JOIN matriculas m2 ON g.id = m2.grupo_id AND m2.estado = 'activa'
+            WHERE g.curso_id = ?
+            GROUP BY g.id
+            ORDER BY g.nombre
+        ");
+        $stmt->execute([$user_id, $curso_id]);
+    } else {
+        $stmt = $pdo->prepare("
+            SELECT 
+                g.*,
+                u.nombre as profesor_nombre,
+                COUNT(DISTINCT m.estudiante_id) as estudiantes_inscritos
+            FROM grupos g
+            LEFT JOIN usuarios u ON g.profesor_id = u.id
+            LEFT JOIN matriculas m ON g.id = m.grupo_id AND m.estado = 'activa'
+            WHERE g.curso_id = ?
+            GROUP BY g.id
+            ORDER BY g.estado DESC, g.nombre
+        ");
+        $stmt->execute([$curso_id]);
+    }
     $grupos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
 } catch (PDOException $e) {
@@ -113,14 +137,6 @@ function get_nivel_badge($nivel) {
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="../../assets/css/colores.css">
     <link rel="stylesheet" href="../../assets/css/style-cursos-ver.css">
-    <script>
-        (function() {
-            const theme = localStorage.getItem('amimbre-theme');
-            if (theme === 'light') {
-                document.documentElement.setAttribute('data-theme', 'light');
-            }
-        })();
-    </script>
 </head>
 <body>
     <?php require_once '../../includes/header.php'; ?>
@@ -167,6 +183,7 @@ function get_nivel_badge($nivel) {
                         <?php echo nl2br(htmlspecialchars($curso['descripcion'] ?? 'Sin descripción disponible')); ?>
                     </p>
                     
+                    <?php if ($es_admin): ?>
                     <div class="acciones-rapidas">
                         <a href="editar.php?id=<?php echo $curso['id']; ?>" class="btn-editar">
                             <span class="material-symbols-rounded">edit</span>
@@ -179,6 +196,7 @@ function get_nivel_badge($nivel) {
                             Eliminar
                         </button>
                     </div>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -230,12 +248,14 @@ function get_nivel_badge($nivel) {
                 <div class="grupos-header">
                     <h3>
                         <span class="material-symbols-rounded">group_work</span>
-                        Grupos del Curso
+                        <?php echo $es_estudiante ? 'Mi Grupo' : 'Grupos del Curso'; ?>
                     </h3>
+                    <?php if ($es_admin): ?>
                     <a href="../grupos/admin.php" class="btn-nuevo-grupo">
                         <span class="material-symbols-rounded">add</span>
                         Nuevo Grupo
                     </a>
+                    <?php endif; ?>
                 </div>
 
                 <?php if (count($grupos) > 0): ?>
@@ -252,7 +272,7 @@ function get_nivel_badge($nivel) {
                         <div class="grupo-info">
                             <div class="info-item">
                                 <span class="material-symbols-rounded">person</span>
-                                <span><?php echo $grupo['profesor_nombre'] ?? 'Sin profesor'; ?></span>
+                                <span><?php echo htmlspecialchars($grupo['profesor_nombre'] ?? 'Sin profesor asignado'); ?></span>
                             </div>
                             <div class="info-item">
                                 <span class="material-symbols-rounded">groups</span>
@@ -260,26 +280,31 @@ function get_nivel_badge($nivel) {
                             </div>
                         </div>
 
+                        <?php if (!$es_estudiante): ?>
                         <div class="grupo-acciones">
-                            <a href="../grupos/ver.php?id=<?php echo $grupo['id']; ?>" class="btn-ver">Ver Detalles</a>
+                            <a href="../grupos/index.php?id=<?php echo $grupo['id']; ?>" class="btn-ver">Ver Detalles</a>
                         </div>
+                        <?php endif; ?>
                     </div>
                     <?php endforeach; ?>
                 </div>
                 <?php else: ?>
                 <div class="empty-state">
-                    <span class="material-symbols-rounded">group_off</span>
-                    <p>No hay grupos creados para este curso</p>
+                    <span class="material-symbols-rounded"><?php echo $es_estudiante ? 'school' : 'group_off'; ?></span>
+                    <p><?php echo $es_estudiante ? 'No tienes un grupo asignado en este curso' : 'No hay grupos creados para este curso'; ?></p>
+                    <?php if ($es_admin): ?>
                     <a href="../grupos/crear.php?curso_id=<?php echo $curso['id']; ?>" class="btn-crear-grupo">
                         <span class="material-symbols-rounded">add</span>
                         Crear Primer Grupo
                     </a>
+                    <?php endif; ?>
                 </div>
                 <?php endif; ?>
             </div>
         </div>
     </main>
 
+    <?php if ($es_admin): ?>
     <!-- Modal de confirmación -->
     <div id="modalEliminar" class="modal">
         <div class="modal-content">
@@ -300,30 +325,25 @@ function get_nivel_badge($nivel) {
 
     <script>
         let cursoIdEliminar = null;
-
         function confirmarEliminacion(id, nombre) {
             cursoIdEliminar = id;
             document.getElementById('nombreCurso').textContent = nombre;
             document.getElementById('modalEliminar').style.display = 'flex';
         }
-
         function cerrarModal() {
             document.getElementById('modalEliminar').style.display = 'none';
             cursoIdEliminar = null;
         }
-
         function eliminarCurso() {
             if (cursoIdEliminar) {
                 window.location.href = `eliminar.php?id=${cursoIdEliminar}`;
             }
         }
-
         window.onclick = function(event) {
             const modal = document.getElementById('modalEliminar');
-            if (event.target === modal) {
-                cerrarModal();
-            }
+            if (event.target === modal) cerrarModal();
         }
     </script>
+    <?php endif; ?>
 </body>
-</html>
+</html><a href="mailto:"></a>
