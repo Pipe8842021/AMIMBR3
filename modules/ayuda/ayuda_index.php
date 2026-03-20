@@ -54,33 +54,85 @@ $videos_tutoriales = [
     ]
 ];
 
-// Preguntas frecuentes
+// Preguntas frecuentes con categoría
 $preguntas_frecuentes = [
+    // General
     [
-        'id' => 1,
+        'id' => 1, 'categoria' => 'general',
+        'pregunta' => '¿Cómo recupero mi sesión si se cierra inesperadamente?',
+        'respuesta' => 'Si tu sesión expira, el sistema te redirigirá automáticamente al login. Ingresa tus credenciales nuevamente. Si olvidaste tu contraseña, usa la opción <strong>"¿Olvidaste tu contraseña?"</strong> en la pantalla de inicio.'
+    ],
+    [
+        'id' => 2, 'categoria' => 'general',
+        'pregunta' => '¿El sistema funciona en dispositivos móviles?',
+        'respuesta' => 'Sí, Amimbré es completamente responsivo y funciona en smartphones y tablets. Para una experiencia óptima recomendamos usar navegadores actualizados como Chrome, Firefox o Safari.'
+    ],
+    // Mi Cuenta
+    [
+        'id' => 3, 'categoria' => 'mi-cuenta',
         'pregunta' => '¿Cómo puedo cambiar mi contraseña?',
         'respuesta' => 'Para cambiar tu contraseña, ve a <strong>Configuración > Mi Perfil > Seguridad</strong> y haz clic en "Cambiar contraseña". Deberás ingresar tu contraseña actual y luego la nueva contraseña dos veces para confirmar.'
     ],
     [
-        'id' => 2,
+        'id' => 4, 'categoria' => 'mi-cuenta',
         'pregunta' => '¿Cómo actualizo mi información personal?',
         'respuesta' => 'Dirígete a <strong>Configuración > Mi Perfil</strong>, donde podrás editar tu nombre, correo electrónico, foto de perfil y otra información relevante. No olvides hacer clic en "Guardar cambios" al terminar.'
     ],
+    // Usuarios
     [
-        'id' => 3,
+        'id' => 5, 'categoria' => 'usuarios',
         'pregunta' => '¿Cómo creo un nuevo usuario en el sistema?',
         'respuesta' => 'Ve a <strong>Usuarios > Crear Usuario</strong>. Completa el formulario con los datos requeridos (nombre, correo, rol, etc.) y haz clic en "Registrar Usuario". El usuario recibirá un correo con sus credenciales de acceso.'
     ],
     [
-        'id' => 4,
+        'id' => 6, 'categoria' => 'usuarios',
+        'pregunta' => '¿Cómo cambio el rol de un usuario?',
+        'respuesta' => 'Ve a <strong>Usuarios</strong>, busca el usuario y haz clic en "Editar". Desde el campo "Rol" podrás asignarle administrador, profesor o estudiante. Guarda los cambios para que tomen efecto.'
+    ],
+    // Cursos
+    [
+        'id' => 7, 'categoria' => 'cursos',
+        'pregunta' => '¿Cómo creo un nuevo curso?',
+        'respuesta' => 'Ve a <strong>Cursos > Nuevo Curso</strong>. Completa el nombre, descripción, nivel, duración, cupo máximo y precio mensual. Puedes subir una imagen representativa. Al guardar, el curso quedará disponible para asignar grupos.'
+    ],
+    [
+        'id' => 8, 'categoria' => 'cursos',
         'pregunta' => '¿Cómo asigno un profesor a un curso?',
         'respuesta' => 'En <strong>Cursos > Gestionar Cursos</strong>, selecciona el curso deseado y haz clic en "Editar". En la sección "Asignación de Profesores" podrás seleccionar al profesor del listado disponible.'
     ],
+    // Horarios
     [
-        'id' => 5,
+        'id' => 9, 'categoria' => 'horarios',
+        'pregunta' => '¿Cómo configuro el horario de un grupo?',
+        'respuesta' => 'En <strong>Horarios</strong> puedes asignar días y horas a cada grupo. Selecciona el grupo, elige los días de la semana y el rango horario. El sistema detectará conflictos de horario automáticamente.'
+    ],
+    [
+        'id' => 10, 'categoria' => 'horarios',
+        'pregunta' => '¿Puedo ver todos los horarios en una sola vista?',
+        'respuesta' => 'Sí. En <strong>Horarios > Vista General</strong> encontrarás un calendario con todos los grupos activos organizados por día y hora, con filtros por profesor o curso.'
+    ],
+    // Inscripciones
+    [
+        'id' => 11, 'categoria' => 'inscripciones',
         'pregunta' => '¿Cómo gestiono las prematrículas pendientes?',
         'respuesta' => 'Accede a <strong>Inscripciones > Prematrículas</strong> donde verás todas las solicitudes pendientes. Puedes revisar los documentos adjuntos y aprobar o rechazar cada prematrícula con un comentario.'
-    ]
+    ],
+    [
+        'id' => 12, 'categoria' => 'inscripciones',
+        'pregunta' => '¿Cómo matriculo manualmente a un estudiante?',
+        'respuesta' => 'Ve a <strong>Inscripciones > Nueva Matrícula</strong>. Selecciona el estudiante, el curso y el grupo disponible. Confirma el cupo y el sistema registrará la matrícula de forma inmediata.'
+    ],
+    // Reportes
+    [
+        'id' => 13, 'categoria' => 'reportes',
+        'pregunta' => '¿Qué tipos de reportes puedo generar?',
+        'respuesta' => 'El sistema permite generar reportes de <strong>estudiantes matriculados</strong>, <strong>ingresos por curso</strong>, <strong>asistencia</strong> y <strong>ocupación de grupos</strong>. Todos exportables en PDF o Excel.'
+    ],
+    [
+        'id' => 14, 'categoria' => 'reportes',
+        'pregunta' => '¿Cómo exporto un reporte a PDF?',
+        'respuesta' => 'En <strong>Reportes</strong>, configura los filtros del reporte que necesitas y haz clic en el botón <strong>"Exportar PDF"</strong> en la parte superior derecha. El archivo se descargará automáticamente.'
+    ],
 ];
 
 // Categorías de ayuda
@@ -231,9 +283,11 @@ $categorias = [
                 </div>
             </div>
 
-            <div class="faq-container">
+            <div class="faq-container" id="faq-container">
                 <?php foreach ($preguntas_frecuentes as $faq): ?>
-                <div class="faq-item" data-faq-id="<?php echo $faq['id']; ?>">
+                <div class="faq-item"
+                     data-faq-id="<?php echo $faq['id']; ?>"
+                     data-category="<?php echo $faq['categoria']; ?>">
                     <button class="faq-question">
                         <span class="faq-icon">
                             <span class="material-symbols-rounded">help_outline</span>
@@ -246,6 +300,11 @@ $categorias = [
                     </div>
                 </div>
                 <?php endforeach; ?>
+
+                <div class="faq-empty" id="faq-empty" style="display:none;">
+                    <span class="material-symbols-rounded" style="font-size:3rem;color:var(--text-secondary);opacity:0.4;">search_off</span>
+                    <p style="color:var(--text-secondary);margin-top:12px;font-size:0.95rem;">No hay preguntas para esta categoría.</p>
+                </div>
             </div>
         </section>
 
@@ -268,7 +327,7 @@ $categorias = [
                     </div>
                     <h3 class="guide-title">Gestión de Usuarios</h3>
                     <p class="guide-description">Guía completa para administrar usuarios, roles y permisos</p>
-                    <button class="btn-guide">
+                    <button class="btn-guide" data-guide="usuarios">
                         Ver guía
                         <span class="material-symbols-rounded">arrow_forward</span>
                     </button>
@@ -280,7 +339,7 @@ $categorias = [
                     </div>
                     <h3 class="guide-title">Configuración de Cursos</h3>
                     <p class="guide-description">Aprende a crear y gestionar cursos, grupos y horarios</p>
-                    <button class="btn-guide">
+                    <button class="btn-guide" data-guide="cursos">
                         Ver guía
                         <span class="material-symbols-rounded">arrow_forward</span>
                     </button>
@@ -292,7 +351,7 @@ $categorias = [
                     </div>
                     <h3 class="guide-title">Proceso de Inscripciones</h3>
                     <p class="guide-description">Gestión de prematrículas y matrículas paso a paso</p>
-                    <button class="btn-guide">
+                    <button class="btn-guide" data-guide="inscripciones">
                         Ver guía
                         <span class="material-symbols-rounded">arrow_forward</span>
                     </button>
@@ -304,7 +363,7 @@ $categorias = [
                     </div>
                     <h3 class="guide-title">Generación de Reportes</h3>
                     <p class="guide-description">Cómo generar y exportar reportes del sistema</p>
-                    <button class="btn-guide">
+                    <button class="btn-guide" data-guide="reportes">
                         Ver guía
                         <span class="material-symbols-rounded">arrow_forward</span>
                     </button>
@@ -332,6 +391,270 @@ $categorias = [
         </div>
     </main>
 
-    <script src="../../assets/js/ayuda.js"></script>
+    <!-- Modal Guías Visuales -->
+    <div class="guia-modal-overlay" id="guiaModalOverlay">
+        <div class="guia-modal-box">
+            <div class="guia-modal-header">
+                <div class="guia-modal-title-wrap">
+                    <span class="guia-modal-icon" id="guiaModalIcon">
+                        <span class="material-symbols-rounded" id="guiaModalIconSymbol">menu_book</span>
+                    </span>
+                    <div>
+                        <h2 id="guiaModalTitle">Guía</h2>
+                        <p id="guiaModalSubtitle" class="guia-modal-subtitle"></p>
+                    </div>
+                </div>
+                <button class="guia-modal-close" id="guiaModalClose">
+                    <span class="material-symbols-rounded">close</span>
+                </button>
+            </div>
+            <div class="guia-modal-body" id="guiaModalBody"></div>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+
+        const chips        = document.querySelectorAll('.category-chip');
+        const faqItems     = document.querySelectorAll('.faq-item[data-category]');
+        const faqEmpty     = document.getElementById('faq-empty');
+        const faqSubtitle  = document.querySelector('#preguntas-section .section-subtitle');
+        const navTabs      = document.querySelectorAll('.nav-tab');
+        const sections     = {
+            videos    : document.getElementById('videos-section'),
+            preguntas : document.getElementById('preguntas-section'),
+            guias     : document.getElementById('guias-section'),
+        };
+
+        // ── Estado inicial: solo videos visible ────────────────────
+        sections.videos.style.display    = '';
+        sections.preguntas.style.display = 'none';
+        sections.guias.style.display     = 'none';
+
+        // ── Filtrar FAQ por categoría ──────────────────────────────
+        function filterFAQ(cat) {
+            let visibles = 0;
+            faqItems.forEach(item => {
+                const match = cat === 'todos' || item.dataset.category === cat;
+                item.style.display = match ? '' : 'none';
+                if (!match && item.classList.contains('active')) {
+                    item.classList.remove('active');
+                    item.querySelector('.faq-answer').style.maxHeight = '0';
+                }
+                if (match) visibles++;
+            });
+            if (faqEmpty) faqEmpty.style.display = visibles === 0 ? 'flex' : 'none';
+            if (faqSubtitle) {
+                faqSubtitle.textContent = visibles === 1
+                    ? '1 pregunta encontrada'
+                    : `${visibles} preguntas encontradas`;
+            }
+        }
+
+        // ── Chips de categoría ─────────────────────────────────────
+        chips.forEach(chip => {
+            chip.addEventListener('click', function () {
+                chips.forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                const cat = this.dataset.category;
+
+                if (cat === 'todos') {
+                    // "Todas": mostrar solo videos (tal como está)
+                    Object.keys(sections).forEach(k =>
+                        sections[k].style.display = k === 'videos' ? '' : 'none'
+                    );
+                    navTabs.forEach(t => t.classList.remove('active'));
+                    document.querySelector('[data-section="videos"]').classList.add('active');
+                } else {
+                    // Filtro específico: ir a preguntas filtradas
+                    Object.keys(sections).forEach(k =>
+                        sections[k].style.display = k === 'preguntas' ? '' : 'none'
+                    );
+                    navTabs.forEach(t => t.classList.remove('active'));
+                    document.querySelector('[data-section="preguntas"]').classList.add('active');
+                    filterFAQ(cat);
+                }
+            });
+        });
+
+        // ── Tabs de navegación ─────────────────────────────────────
+        navTabs.forEach(tab => {
+            tab.addEventListener('click', function () {
+                navTabs.forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                const target = this.dataset.section;
+                Object.keys(sections).forEach(k =>
+                    sections[k].style.display = k === target ? '' : 'none'
+                );
+                if (target === 'preguntas') {
+                    const activeChip = document.querySelector('.category-chip.active');
+                    filterFAQ(activeChip ? activeChip.dataset.category : 'todos');
+                }
+                if (target !== 'preguntas') {
+                    chips.forEach(c => c.classList.remove('active'));
+                    document.querySelector('[data-category="todos"]').classList.add('active');
+                }
+            });
+        });
+
+        // ── Acordeón FAQ ───────────────────────────────────────────
+        document.querySelectorAll('.faq-question').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const item   = this.closest('.faq-item');
+                const answer = item.querySelector('.faq-answer');
+                const isOpen = item.classList.contains('active');
+                document.querySelectorAll('.faq-item.active').forEach(open => {
+                    open.classList.remove('active');
+                    open.querySelector('.faq-answer').style.maxHeight = '0';
+                });
+                if (!isOpen) {
+                    item.classList.add('active');
+                    answer.style.maxHeight = answer.scrollHeight + 'px';
+                }
+            });
+        });
+
+        // ── Búsqueda en tiempo real ────────────────────────────────
+        const searchInput = document.getElementById('searchInput');
+        searchInput && searchInput.addEventListener('input', function () {
+            const q = this.value.trim().toLowerCase();
+            if (!q) {
+                const activeChip = document.querySelector('.category-chip.active');
+                if (!activeChip || activeChip.dataset.category === 'todos') {
+                    Object.keys(sections).forEach(k =>
+                        sections[k].style.display = k === 'videos' ? '' : 'none'
+                    );
+                    navTabs.forEach(t => t.classList.remove('active'));
+                    document.querySelector('[data-section="videos"]').classList.add('active');
+                } else {
+                    filterFAQ(activeChip.dataset.category);
+                }
+                return;
+            }
+            Object.keys(sections).forEach(k =>
+                sections[k].style.display = k === 'preguntas' ? '' : 'none'
+            );
+            navTabs.forEach(t => t.classList.remove('active'));
+            document.querySelector('[data-section="preguntas"]').classList.add('active');
+            let visibles = 0;
+            faqItems.forEach(item => {
+                const texto = (item.querySelector('.faq-text').textContent +
+                               item.querySelector('.faq-answer p').textContent).toLowerCase();
+                const match = texto.includes(q);
+                item.style.display = match ? '' : 'none';
+                if (match) visibles++;
+            });
+            if (faqEmpty) faqEmpty.style.display = visibles === 0 ? 'flex' : 'none';
+            if (faqSubtitle) {
+                faqSubtitle.textContent = visibles === 1
+                    ? '1 pregunta encontrada'
+                    : `${visibles} preguntas encontradas`;
+            }
+        });
+
+        // ── Modal Guías Visuales ───────────────────────────────────
+        const guiasData = {
+            usuarios: {
+                titulo: 'Gestión de Usuarios', subtitulo: 'Crea, edita y administra todos los usuarios del sistema',
+                icono: 'group', color: 'green',
+                pasos: [
+                    { num:1, icono:'menu',      titulo:'Accede al módulo',    desc:'Ve a <strong>Usuarios</strong> en el menú lateral izquierdo.' },
+                    { num:2, icono:'person_add', titulo:'Crear usuario',       desc:'Haz clic en <strong>"Crear Usuario"</strong> e ingresa nombre, correo y contraseña temporal.' },
+                    { num:3, icono:'badge',      titulo:'Asignar rol',         desc:'Selecciona: <strong>Administrador, Profesor o Estudiante</strong>.' },
+                    { num:4, icono:'toggle_on',  titulo:'Estado del usuario',  desc:'Define si el usuario quedará <strong>Activo o Inactivo</strong>.' },
+                    { num:5, icono:'save',       titulo:'Guardar y notificar', desc:'El usuario recibirá sus <strong>credenciales por correo</strong> automáticamente.' },
+                    { num:6, icono:'edit',       titulo:'Editar o desactivar', desc:'Desde el listado puedes <strong>editar, cambiar rol o desactivar</strong> en cualquier momento.' },
+                ]
+            },
+            cursos: {
+                titulo: 'Configuración de Cursos', subtitulo: 'Crea cursos, asigna profesores y gestiona grupos',
+                icono: 'school', color: 'blue',
+                pasos: [
+                    { num:1, icono:'add_circle',  titulo:'Nuevo curso',         desc:'Ve a <strong>Cursos &gt; Nuevo Curso</strong> y completa nombre, descripción y nivel.' },
+                    { num:2, icono:'payments',    titulo:'Detalles económicos',  desc:'Define <strong>duración, cupo máximo y precio mensual</strong>.' },
+                    { num:3, icono:'image',       titulo:'Imagen del curso',     desc:'Sube una imagen; el sistema la recortará en <strong>proporción 2:1</strong>.' },
+                    { num:4, icono:'group_work',  titulo:'Crear grupos',         desc:'Dentro del curso crea <strong>grupos</strong> con su propio cupo.' },
+                    { num:5, icono:'person',      titulo:'Asignar profesor',     desc:'Selecciona el <strong>profesor disponible</strong> para cada grupo.' },
+                    { num:6, icono:'schedule',    titulo:'Definir horario',      desc:'Ve a <strong>Horarios</strong> y asigna días y horas. El sistema detecta <strong>conflictos automáticamente</strong>.' },
+                ]
+            },
+            inscripciones: {
+                titulo: 'Proceso de Inscripciones', subtitulo: 'Gestiona prematrículas y matrículas paso a paso',
+                icono: 'description', color: 'orange',
+                pasos: [
+                    { num:1, icono:'inbox',        titulo:'Revisar solicitudes',  desc:'Accede a <strong>Inscripciones &gt; Prematrículas</strong> para ver solicitudes pendientes.' },
+                    { num:2, icono:'folder_open',  titulo:'Verificar documentos', desc:'Revisa los <strong>documentos adjuntos</strong> de cada solicitud.' },
+                    { num:3, icono:'check_circle', titulo:'Aprobar o rechazar',   desc:'<strong>Aprueba</strong> si cumple los requisitos o <strong>rechaza</strong> con un comentario.' },
+                    { num:4, icono:'group_add',    titulo:'Asignar grupo',        desc:'Al aprobar, selecciona el <strong>curso, grupo y cupo disponible</strong>.' },
+                    { num:5, icono:'assignment_turned_in', titulo:'Formalizar matrícula', desc:'El estudiante queda <strong>registrado activo</strong> en el sistema.' },
+                    { num:6, icono:'edit_note',    titulo:'Matrícula manual',     desc:'También puedes ir a <strong>Inscripciones &gt; Nueva Matrícula</strong> sin prematrícula.' },
+                ]
+            },
+            reportes: {
+                titulo: 'Generación de Reportes', subtitulo: 'Genera y exporta reportes en PDF o Excel',
+                icono: 'assessment', color: 'yellow',
+                pasos: [
+                    { num:1, icono:'bar_chart',      titulo:'Acceder a Reportes',    desc:'Ve al módulo <strong>Reportes</strong> desde el menú lateral.' },
+                    { num:2, icono:'list_alt',        titulo:'Elegir tipo de reporte',desc:'Selecciona: <strong>Matrículas, Ingresos, Asistencia u Ocupación</strong>.' },
+                    { num:3, icono:'filter_alt',      titulo:'Aplicar filtros',       desc:'Filtra por <strong>fechas, curso o grupo</strong> para acotar los datos.' },
+                    { num:4, icono:'preview',         titulo:'Vista previa',          desc:'Revisa el <strong>resumen en pantalla</strong> antes de exportar.' },
+                    { num:5, icono:'picture_as_pdf',  titulo:'Exportar PDF',          desc:'Haz clic en <strong>"Exportar PDF"</strong> para descargar en formato imprimible.' },
+                    { num:6, icono:'table_chart',     titulo:'Exportar Excel',        desc:'Usa <strong>"Exportar Excel"</strong> para obtener datos editables.' },
+                ]
+            }
+        };
+
+        const colorMap = {
+            green : { bg:'var(--subtle-green)',  fg:'var(--primary-green)' },
+            blue  : { bg:'var(--subtle-blue)',   fg:'var(--primary-blue)' },
+            orange: { bg:'var(--subtle-orange)', fg:'var(--primary-orange)' },
+            yellow: { bg:'var(--subtle-yellow)', fg:'var(--primary-yellow)' },
+        };
+
+        const overlay      = document.getElementById('guiaModalOverlay');
+        const modalBody    = document.getElementById('guiaModalBody');
+        const modalTitle   = document.getElementById('guiaModalTitle');
+        const modalSub     = document.getElementById('guiaModalSubtitle');
+        const modalIcon    = document.getElementById('guiaModalIcon');
+        const modalIconSym = document.getElementById('guiaModalIconSymbol');
+        const closeBtn     = document.getElementById('guiaModalClose');
+
+        function openGuia(key) {
+            const g = guiasData[key]; if (!g) return;
+            const c = colorMap[g.color] || colorMap.blue;
+            modalTitle.textContent      = g.titulo;
+            modalSub.textContent        = g.subtitulo;
+            modalIconSym.textContent    = g.icono;
+            modalIcon.style.background  = c.bg;
+            modalIcon.style.color       = c.fg;
+            modalBody.innerHTML = g.pasos.map(p => `
+                <div class="guia-paso">
+                    <div class="guia-paso-num" style="background:${c.bg};color:${c.fg};">${p.num}</div>
+                    <div class="guia-paso-content">
+                        <div class="guia-paso-header">
+                            <span class="material-symbols-rounded guia-paso-icono" style="color:${c.fg};">${p.icono}</span>
+                            <strong class="guia-paso-titulo">${p.titulo}</strong>
+                        </div>
+                        <p class="guia-paso-desc">${p.desc}</p>
+                    </div>
+                </div>`).join('');
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeGuia() {
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        document.querySelectorAll('.btn-guide[data-guide]').forEach(btn =>
+            btn.addEventListener('click', () => openGuia(btn.dataset.guide))
+        );
+        closeBtn.addEventListener('click', closeGuia);
+        overlay.addEventListener('click', e => { if (e.target === overlay) closeGuia(); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeGuia(); });
+
+    })();
+    </script>
 </body>
 </html>
