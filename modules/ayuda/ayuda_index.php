@@ -11,8 +11,6 @@ require_once '../../config/database.php';
 // Verificar autenticación
 require_once '../../includes/auth_check.php';
 
-// Verificar que sea administrador
-require_role('admin');
 
 // Obtener datos del usuario actual
 try {
@@ -34,118 +32,172 @@ try {
     die("Error del sistema. Por favor, intenta más tarde.");
 }
 
-// Videos tutoriales destacados
-$videos_tutoriales = [
-    [
-        'id' => 1,
-        'titulo' => 'Gestión completa de usuarios',
-        'descripcion' => 'Aprende a crear, editar y gestionar usuarios del sistema, asignar roles y permisos.',
-        'duracion' => '12:30',
-        'thumbnail' => '../../assets/img/tutoriales/gestion-usuarios.jpg',
-        'categoria' => 'Usuarios'
-    ],
-    [
-        'id' => 2,
-        'titulo' => 'Configuración de cursos y asignaciones',
-        'descripcion' => 'Tutorial completo para crear cursos, asignar profesores y gestionar inscripciones.',
-        'duracion' => '15:48',
-        'thumbnail' => '../../assets/img/tutoriales/configuracion-cursos.jpg',
-        'categoria' => 'Cursos'
-    ]
+// Detectar rol
+$rol          = $user['rol'] ?? '';
+$es_admin     = ($rol === 'admin');
+$es_profesor  = ($rol === 'profesor');
+$es_estudiante= ($rol === 'estudiante');
+
+// ── Videos según rol ──────────────────────────────────────────
+$todos_los_videos = [
+    // Admin
+    ['id'=>1,'roles'=>['admin'],
+     'titulo'=>'Gestión completa de usuarios',
+     'descripcion'=>'Aprende a crear, editar y gestionar usuarios del sistema, asignar roles y permisos.',
+     'duracion'=>'12:30','categoria'=>'Usuarios'],
+    ['id'=>2,'roles'=>['admin'],
+     'titulo'=>'Configuración de cursos y asignaciones',
+     'descripcion'=>'Tutorial completo para crear cursos, asignar profesores y gestionar inscripciones.',
+     'duracion'=>'15:48','categoria'=>'Cursos'],
+    // Profesor
+    ['id'=>3,'roles'=>['profesor'],
+     'titulo'=>'Cómo gestionar tu lista de estudiantes',
+     'descripcion'=>'Consulta los estudiantes inscritos en tus grupos y revisa su información.',
+     'duracion'=>'5:20','categoria'=>'Grupos'],
+    ['id'=>4,'roles'=>['profesor'],
+     'titulo'=>'Cómo consultar y gestionar tus horarios',
+     'descripcion'=>'Revisa los días y horas de tus clases y cómo reportar cambios.',
+     'duracion'=>'4:50','categoria'=>'Horarios'],
+    // Estudiante
+    ['id'=>5,'roles'=>['estudiante'],
+     'titulo'=>'Cómo consultar tu horario de clases',
+     'descripcion'=>'Aprende a revisar tus clases, grupos y días de la semana en el módulo de Horario.',
+     'duracion'=>'4:15','categoria'=>'Horario'],
+    ['id'=>6,'roles'=>['estudiante'],
+     'titulo'=>'Cómo ver tus cursos matriculados',
+     'descripcion'=>'Consulta los detalles de cada curso en el que estás inscrito, tu grupo y tu profesor.',
+     'duracion'=>'3:40','categoria'=>'Cursos'],
+];
+$videos_tutoriales = array_values(array_filter(
+    $todos_los_videos,
+    fn($v) => in_array($rol, $v['roles'])
+));
+
+// ── Todas las preguntas con roles permitidos ──────────────────
+$todas_las_preguntas = [
+    // General — todos
+    ['id'=>1,'categoria'=>'general','roles'=>['admin','profesor','estudiante'],
+     'pregunta'=>'¿Cómo recupero mi sesión si se cierra inesperadamente?',
+     'respuesta'=>'Si tu sesión expira, el sistema te redirigirá al login. Ingresa tus credenciales nuevamente. Si olvidaste tu contraseña, usa <strong>"¿Olvidaste tu contraseña?"</strong> en la pantalla de inicio.'],
+    ['id'=>2,'categoria'=>'general','roles'=>['admin','profesor','estudiante'],
+     'pregunta'=>'¿El sistema funciona en dispositivos móviles?',
+     'respuesta'=>'Sí, Amimbré es completamente responsivo y funciona en smartphones y tablets. Recomendamos usar Chrome, Firefox o Safari actualizados.'],
+
+    // Mi Cuenta — todos
+    ['id'=>3,'categoria'=>'mi-cuenta','roles'=>['admin','profesor','estudiante'],
+     'pregunta'=>'¿Cómo puedo cambiar mi contraseña?',
+     'respuesta'=>'Ve a <strong>Configuración &gt; Mi Perfil &gt; Seguridad</strong> y haz clic en "Cambiar contraseña". Ingresa tu contraseña actual y la nueva dos veces para confirmar.'],
+    ['id'=>4,'categoria'=>'mi-cuenta','roles'=>['admin','profesor','estudiante'],
+     'pregunta'=>'¿Cómo actualizo mi información personal?',
+     'respuesta'=>'Dirígete a <strong>Configuración &gt; Mi Perfil</strong>, edita tu nombre, correo y foto de perfil. No olvides hacer clic en "Guardar cambios" al terminar.'],
+
+    // Usuarios — solo admin
+    ['id'=>5,'categoria'=>'usuarios','roles'=>['admin'],
+     'pregunta'=>'¿Cómo creo un nuevo usuario en el sistema?',
+     'respuesta'=>'Ve a <strong>Usuarios &gt; Crear Usuario</strong>. Completa nombre, correo y rol, luego haz clic en "Registrar Usuario". El usuario recibirá sus credenciales por correo.'],
+    ['id'=>6,'categoria'=>'usuarios','roles'=>['admin'],
+     'pregunta'=>'¿Cómo cambio el rol de un usuario?',
+     'respuesta'=>'Ve a <strong>Usuarios</strong>, busca el usuario y haz clic en "Editar". Desde el campo "Rol" asígnale administrador, profesor o estudiante y guarda los cambios.'],
+    ['id'=>7,'categoria'=>'usuarios','roles'=>['admin'],
+     'pregunta'=>'¿Cómo desactivo un usuario sin eliminarlo?',
+     'respuesta'=>'En <strong>Usuarios</strong>, edita el usuario y cambia el campo "Estado" a <strong>Inactivo</strong>. Sus datos se conservarán pero no podrá iniciar sesión.'],
+
+    // Cursos — admin y profesor (distintas preguntas)
+    ['id'=>8,'categoria'=>'cursos','roles'=>['admin'],
+     'pregunta'=>'¿Cómo creo un nuevo curso?',
+     'respuesta'=>'Ve a <strong>Cursos &gt; Nuevo Curso</strong>. Completa nombre, descripción, nivel, duración, cupo y precio. Al guardar quedará disponible para asignar grupos.'],
+    ['id'=>9,'categoria'=>'cursos','roles'=>['admin'],
+     'pregunta'=>'¿Cómo asigno un profesor a un curso?',
+     'respuesta'=>'En <strong>Cursos &gt; Gestionar Cursos</strong>, selecciona el curso y haz clic en "Editar". En "Asignación de Profesores" selecciona al profesor del listado disponible.'],
+    ['id'=>10,'categoria'=>'cursos','roles'=>['profesor'],
+     'pregunta'=>'¿Dónde veo los cursos que tengo asignados?',
+     'respuesta'=>'En el menú lateral ve a <strong>Cursos</strong>. Verás únicamente los cursos en los que tienes grupos activos asignados.'],
+    ['id'=>11,'categoria'=>'cursos','roles'=>['profesor'],
+     'pregunta'=>'¿Puedo ver los detalles de un curso que imparto?',
+     'respuesta'=>'Sí. Desde <strong>Cursos</strong> haz clic en "Ver Detalles" para consultar descripción, duración, precio y los grupos asociados al curso.'],
+    ['id'=>12,'categoria'=>'cursos','roles'=>['estudiante'],
+     'pregunta'=>'¿Dónde veo los cursos en los que estoy matriculado?',
+     'respuesta'=>'En el menú lateral ve a <strong>Cursos</strong>. Ahí encontrarás todos los cursos activos en los que tienes matrícula vigente.'],
+    ['id'=>13,'categoria'=>'cursos','roles'=>['estudiante'],
+     'pregunta'=>'¿Cómo veo los detalles de mi curso?',
+     'respuesta'=>'Desde <strong>Cursos</strong> haz clic en "Ver Detalles". Verás descripción, duración, precio, tu grupo y tu profesor asignado.'],
+
+    // Horarios — admin y profesor
+    ['id'=>14,'categoria'=>'horarios','roles'=>['admin'],
+     'pregunta'=>'¿Cómo configuro el horario de un grupo?',
+     'respuesta'=>'En <strong>Horarios</strong> selecciona el grupo, elige días y rango horario. El sistema detectará conflictos automáticamente.'],
+    ['id'=>15,'categoria'=>'horarios','roles'=>['admin'],
+     'pregunta'=>'¿Puedo ver todos los horarios en una sola vista?',
+     'respuesta'=>'Sí. En <strong>Horarios &gt; Vista General</strong> verás un calendario con todos los grupos activos, con filtros por profesor o curso.'],
+    ['id'=>16,'categoria'=>'horarios','roles'=>['profesor'],
+     'pregunta'=>'¿Cómo consulto el horario de mis clases?',
+     'respuesta'=>'Ve a <strong>Horarios</strong> en el menú lateral. Verás los días y horas de cada grupo que tienes asignado.'],
+    ['id'=>17,'categoria'=>'horarios','roles'=>['profesor'],
+     'pregunta'=>'¿Qué hago si hay un conflicto de horario en mi grupo?',
+     'respuesta'=>'Contacta a la administración. El sistema detecta conflictos automáticamente e impedirá guardar horarios superpuestos.'],
+    ['id'=>18,'categoria'=>'horarios','roles'=>['estudiante'],
+     'pregunta'=>'¿Cómo consulto mi horario de clases?',
+     'respuesta'=>'Ve al módulo <strong>Horario</strong> en el menú lateral. Verás los días y horas de tus clases con el grupo y el profesor asignado.'],
+    ['id'=>19,'categoria'=>'horarios','roles'=>['estudiante'],
+     'pregunta'=>'¿Qué hago si mi horario tiene un error?',
+     'respuesta'=>'Contacta a la administración de la escuela usando el botón <strong>"Contactar soporte"</strong> al final de esta página.'],
+
+    // Inscripciones — solo admin
+    ['id'=>20,'categoria'=>'inscripciones','roles'=>['admin'],
+     'pregunta'=>'¿Cómo gestiono las prematrículas pendientes?',
+     'respuesta'=>'Accede a <strong>Inscripciones &gt; Prematrículas</strong>. Revisa los documentos adjuntos y aprueba o rechaza cada solicitud con un comentario.'],
+    ['id'=>21,'categoria'=>'inscripciones','roles'=>['admin'],
+     'pregunta'=>'¿Cómo matriculo manualmente a un estudiante?',
+     'respuesta'=>'Ve a <strong>Inscripciones &gt; Nueva Matrícula</strong>. Selecciona el estudiante, curso y grupo disponible. El sistema registrará la matrícula de inmediato.'],
+
+    // Mi Grupo — solo estudiante
+    ['id'=>22,'categoria'=>'mi-grupo','roles'=>['estudiante'],
+     'pregunta'=>'¿Cómo sé en qué grupo estoy?',
+     'respuesta'=>'Desde <strong>Cursos &gt; Ver Detalles</strong> verás la sección "Mi Grupo" con el nombre del grupo, el profesor y el horario asignado.'],
+    ['id'=>23,'categoria'=>'mi-grupo','roles'=>['estudiante'],
+     'pregunta'=>'¿Puedo cambiar de grupo?',
+     'respuesta'=>'Los cambios de grupo los gestiona la administración. Comunícate con la escuela indicando el motivo y evaluarán la disponibilidad de cupos.'],
+
+    // Mis Grupos — solo profesor
+    ['id'=>24,'categoria'=>'mis-grupos','roles'=>['profesor'],
+     'pregunta'=>'¿Cómo veo los estudiantes de mi grupo?',
+     'respuesta'=>'Ve a <strong>Grupos</strong> y selecciona el grupo. Verás el listado completo de estudiantes matriculados con su información de contacto.'],
+    ['id'=>25,'categoria'=>'mis-grupos','roles'=>['profesor'],
+     'pregunta'=>'¿Qué información puedo ver de mis grupos?',
+     'respuesta'=>'Puedes ver el nombre del grupo, curso, horario, cupo, fecha de inicio y el listado de estudiantes inscritos activos.'],
+
+    // Reportes — solo admin
+    ['id'=>26,'categoria'=>'reportes','roles'=>['admin'],
+     'pregunta'=>'¿Qué tipos de reportes puedo generar?',
+     'respuesta'=>'Puedes generar reportes de <strong>estudiantes matriculados</strong>, <strong>ingresos por curso</strong>, <strong>asistencia</strong> y <strong>ocupación de grupos</strong>. Exportables en PDF o Excel.'],
+    ['id'=>27,'categoria'=>'reportes','roles'=>['admin'],
+     'pregunta'=>'¿Cómo exporto un reporte a PDF?',
+     'respuesta'=>'En <strong>Reportes</strong>, configura los filtros y haz clic en <strong>"Exportar PDF"</strong> en la parte superior derecha. El archivo se descargará automáticamente.'],
 ];
 
-// Preguntas frecuentes con categoría
-$preguntas_frecuentes = [
-    // General
-    [
-        'id' => 1, 'categoria' => 'general',
-        'pregunta' => '¿Cómo recupero mi sesión si se cierra inesperadamente?',
-        'respuesta' => 'Si tu sesión expira, el sistema te redirigirá automáticamente al login. Ingresa tus credenciales nuevamente. Si olvidaste tu contraseña, usa la opción <strong>"¿Olvidaste tu contraseña?"</strong> en la pantalla de inicio.'
-    ],
-    [
-        'id' => 2, 'categoria' => 'general',
-        'pregunta' => '¿El sistema funciona en dispositivos móviles?',
-        'respuesta' => 'Sí, Amimbré es completamente responsivo y funciona en smartphones y tablets. Para una experiencia óptima recomendamos usar navegadores actualizados como Chrome, Firefox o Safari.'
-    ],
-    // Mi Cuenta
-    [
-        'id' => 3, 'categoria' => 'mi-cuenta',
-        'pregunta' => '¿Cómo puedo cambiar mi contraseña?',
-        'respuesta' => 'Para cambiar tu contraseña, ve a <strong>Configuración > Mi Perfil > Seguridad</strong> y haz clic en "Cambiar contraseña". Deberás ingresar tu contraseña actual y luego la nueva contraseña dos veces para confirmar.'
-    ],
-    [
-        'id' => 4, 'categoria' => 'mi-cuenta',
-        'pregunta' => '¿Cómo actualizo mi información personal?',
-        'respuesta' => 'Dirígete a <strong>Configuración > Mi Perfil</strong>, donde podrás editar tu nombre, correo electrónico, foto de perfil y otra información relevante. No olvides hacer clic en "Guardar cambios" al terminar.'
-    ],
-    // Usuarios
-    [
-        'id' => 5, 'categoria' => 'usuarios',
-        'pregunta' => '¿Cómo creo un nuevo usuario en el sistema?',
-        'respuesta' => 'Ve a <strong>Usuarios > Crear Usuario</strong>. Completa el formulario con los datos requeridos (nombre, correo, rol, etc.) y haz clic en "Registrar Usuario". El usuario recibirá un correo con sus credenciales de acceso.'
-    ],
-    [
-        'id' => 6, 'categoria' => 'usuarios',
-        'pregunta' => '¿Cómo cambio el rol de un usuario?',
-        'respuesta' => 'Ve a <strong>Usuarios</strong>, busca el usuario y haz clic en "Editar". Desde el campo "Rol" podrás asignarle administrador, profesor o estudiante. Guarda los cambios para que tomen efecto.'
-    ],
-    // Cursos
-    [
-        'id' => 7, 'categoria' => 'cursos',
-        'pregunta' => '¿Cómo creo un nuevo curso?',
-        'respuesta' => 'Ve a <strong>Cursos > Nuevo Curso</strong>. Completa el nombre, descripción, nivel, duración, cupo máximo y precio mensual. Puedes subir una imagen representativa. Al guardar, el curso quedará disponible para asignar grupos.'
-    ],
-    [
-        'id' => 8, 'categoria' => 'cursos',
-        'pregunta' => '¿Cómo asigno un profesor a un curso?',
-        'respuesta' => 'En <strong>Cursos > Gestionar Cursos</strong>, selecciona el curso deseado y haz clic en "Editar". En la sección "Asignación de Profesores" podrás seleccionar al profesor del listado disponible.'
-    ],
-    // Horarios
-    [
-        'id' => 9, 'categoria' => 'horarios',
-        'pregunta' => '¿Cómo configuro el horario de un grupo?',
-        'respuesta' => 'En <strong>Horarios</strong> puedes asignar días y horas a cada grupo. Selecciona el grupo, elige los días de la semana y el rango horario. El sistema detectará conflictos de horario automáticamente.'
-    ],
-    [
-        'id' => 10, 'categoria' => 'horarios',
-        'pregunta' => '¿Puedo ver todos los horarios en una sola vista?',
-        'respuesta' => 'Sí. En <strong>Horarios > Vista General</strong> encontrarás un calendario con todos los grupos activos organizados por día y hora, con filtros por profesor o curso.'
-    ],
-    // Inscripciones
-    [
-        'id' => 11, 'categoria' => 'inscripciones',
-        'pregunta' => '¿Cómo gestiono las prematrículas pendientes?',
-        'respuesta' => 'Accede a <strong>Inscripciones > Prematrículas</strong> donde verás todas las solicitudes pendientes. Puedes revisar los documentos adjuntos y aprobar o rechazar cada prematrícula con un comentario.'
-    ],
-    [
-        'id' => 12, 'categoria' => 'inscripciones',
-        'pregunta' => '¿Cómo matriculo manualmente a un estudiante?',
-        'respuesta' => 'Ve a <strong>Inscripciones > Nueva Matrícula</strong>. Selecciona el estudiante, el curso y el grupo disponible. Confirma el cupo y el sistema registrará la matrícula de forma inmediata.'
-    ],
-    // Reportes
-    [
-        'id' => 13, 'categoria' => 'reportes',
-        'pregunta' => '¿Qué tipos de reportes puedo generar?',
-        'respuesta' => 'El sistema permite generar reportes de <strong>estudiantes matriculados</strong>, <strong>ingresos por curso</strong>, <strong>asistencia</strong> y <strong>ocupación de grupos</strong>. Todos exportables en PDF o Excel.'
-    ],
-    [
-        'id' => 14, 'categoria' => 'reportes',
-        'pregunta' => '¿Cómo exporto un reporte a PDF?',
-        'respuesta' => 'En <strong>Reportes</strong>, configura los filtros del reporte que necesitas y haz clic en el botón <strong>"Exportar PDF"</strong> en la parte superior derecha. El archivo se descargará automáticamente.'
-    ],
-];
+// Filtrar preguntas según el rol actual
+$preguntas_frecuentes = array_values(array_filter(
+    $todas_las_preguntas,
+    fn($p) => in_array($rol, $p['roles'])
+));
 
-// Categorías de ayuda
-$categorias = [
-    ['id' => 'todos', 'nombre' => 'Todas', 'icono' => 'apps'],
-    ['id' => 'general', 'nombre' => 'General', 'icono' => 'info'],
-    ['id' => 'mi-cuenta', 'nombre' => 'Mi Cuenta', 'icono' => 'account_circle'],
-    ['id' => 'usuarios', 'nombre' => 'Usuarios', 'icono' => 'group'],
-    ['id' => 'cursos', 'nombre' => 'Cursos', 'icono' => 'school'],
-    ['id' => 'horarios', 'nombre' => 'Horarios', 'icono' => 'schedule'],
-    ['id' => 'inscripciones', 'nombre' => 'Inscripciones', 'icono' => 'description'],
-    ['id' => 'reportes', 'nombre' => 'Reportes', 'icono' => 'assessment']
+// ── Categorías según rol ──────────────────────────────────────
+$todas_las_categorias = [
+    ['id'=>'todos',       'nombre'=>'Todas',       'icono'=>'apps',           'roles'=>['admin','profesor','estudiante']],
+    ['id'=>'general',     'nombre'=>'General',     'icono'=>'info',           'roles'=>['admin','profesor','estudiante']],
+    ['id'=>'mi-cuenta',   'nombre'=>'Mi Cuenta',   'icono'=>'account_circle', 'roles'=>['admin','profesor','estudiante']],
+    ['id'=>'usuarios',    'nombre'=>'Usuarios',    'icono'=>'group',          'roles'=>['admin']],
+    ['id'=>'cursos',      'nombre'=>'Cursos',      'icono'=>'school',         'roles'=>['admin','profesor','estudiante']],
+    ['id'=>'horarios',    'nombre'=>'Horarios',    'icono'=>'schedule',       'roles'=>['admin','profesor','estudiante']],
+    ['id'=>'inscripciones','nombre'=>'Inscripciones','icono'=>'description',  'roles'=>['admin']],
+    ['id'=>'reportes',    'nombre'=>'Reportes',    'icono'=>'assessment',     'roles'=>['admin']],
+    ['id'=>'mis-grupos',  'nombre'=>'Mis Grupos',  'icono'=>'group_work',     'roles'=>['profesor']],
+    ['id'=>'mi-grupo',    'nombre'=>'Mi Grupo',    'icono'=>'group',          'roles'=>['estudiante']],
 ];
+$categorias = array_values(array_filter(
+    $todas_las_categorias,
+    fn($c) => in_array($rol, $c['roles'])
+));
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -175,17 +227,25 @@ $categorias = [
         <div class="help-header">
             <div class="help-header-content">
                 <h1>Centro de Ayuda</h1>
-                <p>Recursos y guías personalizados para Administrador</p>
+                <p>
+                    <?php
+                    if ($es_admin)      echo 'Recursos y guías para Administradores';
+                    elseif ($es_profesor) echo 'Recursos y guías para Profesores';
+                    else                 echo 'Recursos y guías para Estudiantes';
+                    ?>
+                </p>
             </div>
             <div class="help-header-actions">
                 <button class="btn-secondary" onclick="window.location.href='../dashboard/'">
                     <span class="material-symbols-rounded">arrow_back</span>
                     Volver al Dashboard
                 </button>
+                <?php if ($es_admin): ?>
                 <button class="btn-primary" onclick="window.location.href='contenido_administrador.php'">
                     <span class="material-symbols-rounded">book</span>
                     Contenido para Administrador
                 </button>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -321,53 +381,36 @@ $categorias = [
             </div>
 
             <div class="guides-grid">
+                <?php
+                $todas_las_guias = [
+                    // Admin
+                    ['key'=>'usuarios',     'roles'=>['admin'],              'clase'=>'usuarios',     'icono'=>'group',       'titulo'=>'Gestión de Usuarios',      'descripcion'=>'Guía completa para administrar usuarios, roles y permisos'],
+                    ['key'=>'cursos',       'roles'=>['admin'],              'clase'=>'cursos',       'icono'=>'school',      'titulo'=>'Configuración de Cursos',  'descripcion'=>'Aprende a crear y gestionar cursos, grupos y horarios'],
+                    ['key'=>'inscripciones','roles'=>['admin'],              'clase'=>'inscripciones','icono'=>'description', 'titulo'=>'Proceso de Inscripciones', 'descripcion'=>'Gestión de prematrículas y matrículas paso a paso'],
+                    ['key'=>'reportes',     'roles'=>['admin'],              'clase'=>'reportes',     'icono'=>'assessment',  'titulo'=>'Generación de Reportes',   'descripcion'=>'Cómo generar y exportar reportes del sistema'],
+                    // Profesor
+                    ['key'=>'mis-grupos-guia','roles'=>['profesor'],         'clase'=>'cursos',       'icono'=>'group_work',  'titulo'=>'Gestionar mis grupos',     'descripcion'=>'Cómo consultar estudiantes y detalles de tus grupos asignados'],
+                    ['key'=>'horario-prof', 'roles'=>['profesor'],           'clase'=>'inscripciones','icono'=>'schedule',    'titulo'=>'Consultar mis horarios',   'descripcion'=>'Cómo revisar los horarios de tus clases asignadas'],
+                    // Estudiante
+                    ['key'=>'ver-cursos',   'roles'=>['estudiante'],         'clase'=>'cursos',       'icono'=>'school',      'titulo'=>'Ver mis cursos',           'descripcion'=>'Cómo acceder y revisar los cursos en los que estás matriculado'],
+                    ['key'=>'ver-horario',  'roles'=>['estudiante'],         'clase'=>'inscripciones','icono'=>'schedule',    'titulo'=>'Consultar mi horario',     'descripcion'=>'Cómo revisar los días y horas de tus clases'],
+                    ['key'=>'mi-perfil',    'roles'=>['admin','profesor','estudiante'],'clase'=>'usuarios','icono'=>'account_circle','titulo'=>'Gestionar mi perfil','descripcion'=>'Cómo actualizar tu información personal y contraseña'],
+                ];
+                foreach ($todas_las_guias as $g):
+                    if (!in_array($rol, $g['roles'])) continue;
+                ?>
                 <div class="guide-card">
-                    <div class="guide-icon usuarios">
-                        <span class="material-symbols-rounded">group</span>
+                    <div class="guide-icon <?php echo $g['clase']; ?>">
+                        <span class="material-symbols-rounded"><?php echo $g['icono']; ?></span>
                     </div>
-                    <h3 class="guide-title">Gestión de Usuarios</h3>
-                    <p class="guide-description">Guía completa para administrar usuarios, roles y permisos</p>
-                    <button class="btn-guide" data-guide="usuarios">
+                    <h3 class="guide-title"><?php echo $g['titulo']; ?></h3>
+                    <p class="guide-description"><?php echo $g['descripcion']; ?></p>
+                    <button class="btn-guide" data-guide="<?php echo $g['key']; ?>">
                         Ver guía
                         <span class="material-symbols-rounded">arrow_forward</span>
                     </button>
                 </div>
-
-                <div class="guide-card">
-                    <div class="guide-icon cursos">
-                        <span class="material-symbols-rounded">school</span>
-                    </div>
-                    <h3 class="guide-title">Configuración de Cursos</h3>
-                    <p class="guide-description">Aprende a crear y gestionar cursos, grupos y horarios</p>
-                    <button class="btn-guide" data-guide="cursos">
-                        Ver guía
-                        <span class="material-symbols-rounded">arrow_forward</span>
-                    </button>
-                </div>
-
-                <div class="guide-card">
-                    <div class="guide-icon inscripciones">
-                        <span class="material-symbols-rounded">description</span>
-                    </div>
-                    <h3 class="guide-title">Proceso de Inscripciones</h3>
-                    <p class="guide-description">Gestión de prematrículas y matrículas paso a paso</p>
-                    <button class="btn-guide" data-guide="inscripciones">
-                        Ver guía
-                        <span class="material-symbols-rounded">arrow_forward</span>
-                    </button>
-                </div>
-
-                <div class="guide-card">
-                    <div class="guide-icon reportes">
-                        <span class="material-symbols-rounded">assessment</span>
-                    </div>
-                    <h3 class="guide-title">Generación de Reportes</h3>
-                    <p class="guide-description">Cómo generar y exportar reportes del sistema</p>
-                    <button class="btn-guide" data-guide="reportes">
-                        Ver guía
-                        <span class="material-symbols-rounded">arrow_forward</span>
-                    </button>
-                </div>
+                <?php endforeach; ?>
             </div>
         </section>
 
@@ -554,6 +597,7 @@ $categorias = [
 
         // ── Modal Guías Visuales ───────────────────────────────────
         const guiasData = {
+            // ── Admin ──────────────────────────────────────────────
             usuarios: {
                 titulo: 'Gestión de Usuarios', subtitulo: 'Crea, edita y administra todos los usuarios del sistema',
                 icono: 'group', color: 'green',
@@ -601,7 +645,60 @@ $categorias = [
                     { num:5, icono:'picture_as_pdf',  titulo:'Exportar PDF',          desc:'Haz clic en <strong>"Exportar PDF"</strong> para descargar en formato imprimible.' },
                     { num:6, icono:'table_chart',     titulo:'Exportar Excel',        desc:'Usa <strong>"Exportar Excel"</strong> para obtener datos editables.' },
                 ]
-            }
+            },
+            // ── Profesor ───────────────────────────────────────────
+            'mis-grupos-guia': {
+                titulo: 'Gestionar mis grupos', subtitulo: 'Consulta estudiantes y detalles de tus grupos asignados',
+                icono: 'group_work', color: 'blue',
+                pasos: [
+                    { num:1, icono:'menu',        titulo:'Ve a Grupos',           desc:'Haz clic en <strong>Grupos</strong> en el menú lateral.' },
+                    { num:2, icono:'list',         titulo:'Ver mis grupos',        desc:'Verás únicamente los grupos en los que estás asignado como profesor.' },
+                    { num:3, icono:'visibility',   titulo:'Ver Detalles',          desc:'Haz clic en un grupo para ver el <strong>listado completo de estudiantes</strong>.' },
+                    { num:4, icono:'schedule',     titulo:'Revisar horario',       desc:'En los detalles del grupo encontrarás el <strong>horario y fecha de inicio</strong>.' },
+                ]
+            },
+            'horario-prof': {
+                titulo: 'Consultar mis horarios', subtitulo: 'Revisa los horarios de tus clases asignadas',
+                icono: 'schedule', color: 'green',
+                pasos: [
+                    { num:1, icono:'menu',          titulo:'Accede a Horarios',    desc:'Ve al módulo <strong>Horario</strong> en el menú lateral.' },
+                    { num:2, icono:'calendar_month','titulo':'Vista de tus clases', desc:'Verás un calendario con tus clases organizadas por <strong>día y hora</strong>.' },
+                    { num:3, icono:'info',           titulo:'Detalle de clase',     desc:'Cada bloque muestra el <strong>grupo, curso y aula</strong> asignada.' },
+                    { num:4, icono:'warning',        titulo:'Conflictos',           desc:'Si hay un problema de horario, contacta a la <strong>administración</strong>.' },
+                ]
+            },
+            // ── Estudiante ─────────────────────────────────────────
+            'ver-cursos': {
+                titulo: 'Ver mis cursos', subtitulo: 'Cómo acceder y revisar los cursos matriculados',
+                icono: 'school', color: 'blue',
+                pasos: [
+                    { num:1, icono:'menu',        titulo:'Abre el menú',          desc:'Haz clic en <strong>Cursos</strong> en el menú lateral izquierdo.' },
+                    { num:2, icono:'grid_view',    titulo:'Ve tus cursos',         desc:'Verás las tarjetas de todos los cursos con <strong>matrícula activa</strong>.' },
+                    { num:3, icono:'visibility',   titulo:'Ver Detalles',          desc:'Haz clic en <strong>"Ver Detalles"</strong> para ver descripción, duración y precio.' },
+                    { num:4, icono:'group_work',   titulo:'Tu grupo',              desc:'En "Mi Grupo" verás tu <strong>grupo asignado y el profesor</strong>.' },
+                ]
+            },
+            'ver-horario': {
+                titulo: 'Consultar mi horario', subtitulo: 'Cómo revisar los días y horas de tus clases',
+                icono: 'schedule', color: 'green',
+                pasos: [
+                    { num:1, icono:'menu',          titulo:'Accede a Horario',     desc:'Ve a <strong>Horario</strong> en el menú lateral.' },
+                    { num:2, icono:'calendar_month','titulo':'Vista semanal',      desc:'Verás un <strong>calendario con tus clases</strong> por día y hora.' },
+                    { num:3, icono:'info',           titulo:'Detalle de clase',    desc:'Cada bloque muestra el <strong>curso, grupo y profesor</strong>.' },
+                    { num:4, icono:'notifications',  titulo:'Avisos de cambios',   desc:'Recibirás notificaciones si hay <strong>cambios de horario</strong>.' },
+                ]
+            },
+            // ── Todos los roles ────────────────────────────────────
+            'mi-perfil': {
+                titulo: 'Gestionar mi perfil', subtitulo: 'Actualiza tu información personal y contraseña',
+                icono: 'account_circle', color: 'orange',
+                pasos: [
+                    { num:1, icono:'settings',   titulo:'Ir a Configuración',    desc:'Haz clic en <strong>Configuración</strong> en el menú lateral.' },
+                    { num:2, icono:'badge',       titulo:'Mi Perfil',             desc:'Selecciona <strong>"Mi Perfil"</strong> para editar nombre, correo y foto.' },
+                    { num:3, icono:'lock',        titulo:'Cambiar contraseña',    desc:'En la pestaña <strong>"Seguridad"</strong> actualiza tu contraseña.' },
+                    { num:4, icono:'save',        titulo:'Guardar cambios',       desc:'Haz clic en <strong>"Guardar cambios"</strong> al terminar.' },
+                ]
+            },
         };
 
         const colorMap = {
