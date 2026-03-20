@@ -533,9 +533,11 @@ body {
 /* Actions Menu */
 .actions-menu {
     position: relative;
-    z-index: 1;
 }
-
+tr:has(.dropdown-menu.show) {
+    position: relative;
+    z-index: 100;
+}
 .action-btn {
     width: 35px;
     height: 35px;
@@ -581,6 +583,7 @@ body {
     visibility: visible;
     transform: translateY(0);
     pointer-events: auto;
+    z-index: 999;
 }
 
 .dropdown-item {
