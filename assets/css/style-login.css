@@ -60,7 +60,7 @@ body {
     right: 3rem;
     text-align: center;
     z-index: 10;
-    color: var(--card-bg);
+    color: #f8fafc;
 }
 
 .bottom-text h2 {
@@ -219,7 +219,7 @@ body {
     width: 100%;
     height: 3rem;
     background: var(--gradient-primary-blue);
-    color: var(--text-primary);
+    color: #f8fafc;
     border: none;
     border-radius: 0.5rem;
     font-size: 1rem;
