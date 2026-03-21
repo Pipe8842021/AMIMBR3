@@ -383,7 +383,7 @@ try {
     <!-- ══ Page Header ══════════════════════════════════════ -->
     <div class="page-header">
         <div>
-            <h1 class="page-title">Preinscripciones</h1>
+            <h1 class="page-title">Prematriculas</h1>
             <p class="page-subtitle">Gestiona las solicitudes de preinscripción recibidas</p>
         </div>
         <button class="btn-primary" onclick="abrirModal('modalCrear')">

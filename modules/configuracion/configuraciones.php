@@ -75,7 +75,7 @@ if ($user_rol === 'admin') {
             }
         })();
     </script>
-    <style>
+    <style> 
         * {
             margin: 0;
             padding: 0;
