@@ -26,74 +26,7 @@ try {
     <title>Estudiante - Mi Horario</title>
     <link rel="stylesheet" href="../../assets/css/colores.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: "Poppins", sans-serif;
-        }
-
-        body {
-            background: var(--hover-bg);
-            color: var(--text-primary);
-        }
-
-        .main-content {
-            margin-left: 270px;
-            padding: 30px;
-        }
-
-        .dashboard-header {
-            margin-bottom: 30px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 20px;
-        }
-
-        .events-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 20px;
-        }
-
-        .event-card {
-            background: var(--dark-bg);
-            border-radius: 16px;
-            padding: 25px;
-            border: 1px solid var(--border-color);
-            transition: 0.3s;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .event-card:hover {
-            border-color: var(--primary-blue);
-            transform: translateY(-3px);
-            box-shadow: var(--shadow-lg);
-        }
-
-        .blue-badge {
-            background: var(--primary-blue);
-            color: white;
-            padding: 5px 12px;
-            border-radius: 8px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            display: inline-block;
-            margin-bottom: 15px;
-        }
-
-        .prof-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-top: 20px;
-            padding-top: 15px;
-            border-top: 1px solid var(--border-color);
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
-    </style>
+    <link rel="stylesheet" href="../../assets/css/style-gruposEstudiante.css">
 </head>
 
 <body>

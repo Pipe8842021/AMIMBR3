@@ -137,6 +137,7 @@
         border: 1px solid var(--dark-bg);
         transition: 0.4s ease;
         position: relative;
+        /* ← CAMBIO 1: necesario para posicionar el badge cuando el sidebar está colapsado */
     }
 
     .sidebar-nav .nav-item:is(:hover, .open)>.nav-link:not(.dropdown-title) {
@@ -271,8 +272,17 @@
     }
 
     @keyframes pulse-notif {
-        0%, 100% { transform: scale(1);   box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); }
-        50%       { transform: scale(1.1); box-shadow: 0 0 0 5px rgba(249, 115, 22, 0); }
+
+        0%,
+        100% {
+            transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4);
+        }
+
+        50% {
+            transform: scale(1.1);
+            box-shadow: 0 0 0 5px rgba(249, 115, 22, 0);
+        }
     }
 
     /* Responsive codes for small screens */
@@ -521,41 +531,26 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
     </aside>
 
     <script>
-        // Toggle visibility of a dropdown menu
-        const toggleDropdown = (dropdown, menu, isOpen) => {
-            dropdown.classList.toggle("open", isOpen);
-            menu.style.height = isOpen ? `${menu.scrollHeight}px` : 0;
-        };
+        // ESTE SCRIPT SE QUEDA: Es solo para los tres puntitos de la tabla
+        function toggleMenu(button) {
+            const menu = button.nextElementSibling;
+            const allMenus = document.querySelectorAll('.dropdown-menu'); // Menus de la tabla
 
-        // Close all open dropdowns
-        const closeAllDropdowns = () => {
-            document.querySelectorAll(".dropdown-container.open").forEach((openDropdown) => {
-                toggleDropdown(openDropdown, openDropdown.querySelector(".dropdown-menu"), false);
+            allMenus.forEach(m => {
+                if (m !== menu && !m.classList.contains('sidebar-nav')) m.classList.remove('show');
             });
-        };
 
-        // Click event to all dropdown toggles
-        document.querySelectorAll(".dropdown-toggle").forEach((dropdownToggle) => {
-            dropdownToggle.addEventListener("click", (e) => {
-                e.preventDefault();
-                const dropdown = dropdownToggle.closest(".dropdown-container");
-                const menu = dropdown.querySelector(".dropdown-menu");
-                const isOpen = dropdown.classList.contains("open");
-                closeAllDropdowns();
-                toggleDropdown(dropdown, menu, !isOpen);
-            });
+            menu.classList.toggle('show');
+        }
+
+        // Cerrar menús de la tabla al hacer clic fuera
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.actions-menu')) {
+                document.querySelectorAll('.users-table .dropdown-menu').forEach(m => {
+                    m.classList.remove('show');
+                });
+            }
         });
-
-        // Click event to sidebar toggle buttons
-        document.querySelectorAll(".sidebar-toggler, .sidebar-menu-button").forEach((button) => {
-            button.addEventListener("click", () => {
-                closeAllDropdowns();
-                document.querySelector(".sidebar").classList.toggle("collapsed");
-            });
-        });
-
-        // Default Collapse Sidebar for small screens
-        if (window.innerWidth <= 1024) document.querySelector(".sidebar").classList.add("collapsed");
     </script>
 </body>
 
