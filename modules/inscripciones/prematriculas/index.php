@@ -1,12 +1,9 @@
 <?php
 /**
  * Módulo de Prematrículas / Preinscripciones
- * Gestión: listar, aprobar, rechazar, crear desde admin y ver detalles
  *
- * Tabla usuarios relevante:
- *   id, nombre, email, password, documento (UNI), telefono,
- *   direccion, fecha_nacimiento, rol, estado, foto_perfil,
- *   remember_token, fecha_registro, ultima_conexion
+ * Estados reales del ENUM en BD:
+ *   'pendiente' | 'contactado' | 'matriculado' | 'rechazado'
  */
 
 require_once '../../../config/session.php';
@@ -14,6 +11,15 @@ require_once '../../../config/database.php';
 require_once '../../../includes/auth_check.php';
 require_once '../../../includes/notificaciones_helper.php';
 require_role('admin');
+
+// Datos del admin en sesión (necesario para notificaciones)
+try {
+    $stmtU = $pdo->prepare("SELECT id, nombre FROM usuarios WHERE id = ?");
+    $stmtU->execute([$_SESSION['user_id']]);
+    $user = $stmtU->fetch(PDO::FETCH_ASSOC) ?: ['id' => $_SESSION['user_id'], 'nombre' => 'Administrador'];
+} catch (PDOException $e) {
+    $user = ['id' => $_SESSION['user_id'], 'nombre' => 'Administrador'];
+}
 
 // ═══════════════════════════════════════════════════════════
 //  PROCESAMIENTO DE ACCIONES POST
@@ -25,56 +31,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $accion = $_POST['accion'] ?? '';
 
     // ──────────────────────────────────────────────────────
-    // APROBAR — crea usuario, contraseña = numero_documento
+    // APROBAR — crea usuario + matrícula, estado → 'matriculado'
     // ──────────────────────────────────────────────────────
     if ($accion === 'aprobar') {
         $id = (int)($_POST['id'] ?? 0);
         try {
             $pdo->beginTransaction();
 
-            // Obtener preinscripción
-            $stmt = $pdo->prepare("SELECT * FROM preinscripciones WHERE id = ? AND estado = 'pendiente'");
+            $stmt = $pdo->prepare("SELECT * FROM preinscripciones WHERE id = ? AND (estado IN ('pendiente','contactado') OR estado = '' OR estado IS NULL)");
             $stmt->execute([$id]);
             $pre = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$pre) throw new Exception("Preinscripción no encontrada o ya fue procesada.");
 
-            // Verificar duplicados usando columnas reales de usuarios
+            // Verificar duplicados
             $chk = $pdo->prepare("SELECT id FROM usuarios WHERE email = ? OR documento = ?");
             $chk->execute([$pre['email'], $pre['numero_documento']]);
-            if ($chk->fetch()) throw new Exception("Ya existe un usuario registrado con ese correo o documento.");
+            if ($chk->fetch()) throw new Exception("Ya existe un usuario con ese correo o documento.");
 
-            // Contraseña por defecto = número de documento
+            // Crear usuario — contraseña = número de documento
             $pass_hash = password_hash($pre['numero_documento'], PASSWORD_BCRYPT);
-
-            // Insertar usuario con columnas reales de la tabla
-            $ins = $pdo->prepare("
+            $pdo->prepare("
                 INSERT INTO usuarios
                     (nombre, email, password, documento, telefono,
                      direccion, fecha_nacimiento, rol, estado, fecha_registro)
                 VALUES (?, ?, ?, ?, ?, ?, ?, 'estudiante', 'activo', NOW())
-            ");
-            $ins->execute([
+            ")->execute([
                 $pre['nombres_apellidos'],
                 $pre['email'],
                 $pass_hash,
                 $pre['numero_documento'],
-                $pre['celular']           ?? null,
-                $pre['direccion']         ?? null,
-                $pre['fecha_nacimiento']  ?? null,
+                $pre['celular']          ?? null,
+                $pre['direccion']        ?? null,
+                $pre['fecha_nacimiento'] ?? null,
             ]);
             $nuevo_usuario_id = $pdo->lastInsertId();
 
-            // ── Crear matrícula ───────────────────────────────
-            // grupo_id = NULL (se asigna luego desde el módulo de matrículas)
-            // fecha_matricula = hoy, fecha_inicio = fecha deseada de la preinscripción o hoy
-            $fecha_inicio_mat = !empty($pre['fecha_inicio'])
-                ? $pre['fecha_inicio']
-                : date('Y-m-d');
-
+            // Crear matrícula (sin grupo, se asigna luego)
+            $fecha_inicio_mat = !empty($pre['fecha_inicio']) ? $pre['fecha_inicio'] : date('Y-m-d');
             $pdo->prepare("
                 INSERT INTO matriculas
-                    (estudiante_id, grupo_id, fecha_matricula, fecha_inicio, estado, observaciones, preinscripcion_id)
+                    (estudiante_id, grupo_id, fecha_matricula, fecha_inicio,
+                     estado, observaciones, preinscripcion_id)
                 VALUES (?, NULL, CURDATE(), ?, 'activa', ?, ?)
             ")->execute([
                 $nuevo_usuario_id,
@@ -83,43 +81,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $id,
             ]);
 
-            // Marcar preinscripción como aprobada y vincular usuario
+            // Actualizar preinscripción → 'matriculado' (estado real del ENUM)
             $pdo->prepare("
                 UPDATE preinscripciones
-                SET estado             = 'aprobada',
-                    fecha_aprobacion   = NOW(),
-                    usuario_creado_id  = ?
+                SET estado            = 'matriculado',
+                    fecha_aprobacion  = NOW(),
+                    usuario_creado_id = ?
                 WHERE id = ?
             ")->execute([$nuevo_usuario_id, $id]);
 
-           // ── Notificación automática ───
-            // 1. Notifica a todos los admins sobre la nueva matrícula
+            // Notificaciones
             NotificacionesHelper::crearParaRoles(
-                $pdo,
-                ['admin'],
-                'sistema',
+                $pdo, ['admin'], 'sistema',
                 'Nueva matrícula creada',
                 "Se aprobó la preinscripción de {$pre['nombres_apellidos']} y se creó su matrícula. Pendiente asignar grupo.",
-                $user['nombre'] ?? 'Administrador',
-                'alta',
+                $user['nombre'], 'alta',
                 '/AMIMBR3/modules/inscripciones/matriculas/index.php'
             );
+            NotificacionesHelper::estadoPreinscripcionCambiado($pdo, $nuevo_usuario_id, 'matriculado');
 
-            // 2. Si el estudiante ya tiene usuario, notificarlo también
-            NotificacionesHelper::estadoPreinscripcionCambiado(
-                $pdo,
-                $nuevo_usuario_id,
-                'matriculado'
-            );
-
-            // Log de actividad
+            // Log
             $pdo->prepare("
                 INSERT INTO logs_actividad (usuario_id, accion, detalles, ip_address)
                 VALUES (?, 'preinscripcion_aprobada', ?, ?)
             ")->execute([
                 $_SESSION['user_id'],
                 "Aprobada preinscripción #{$id} — {$pre['nombres_apellidos']} — Matrícula creada",
-                $_SERVER['REMOTE_ADDR'] ?? null
+                $_SERVER['REMOTE_ADDR'] ?? null,
             ]);
 
             $pdo->commit();
@@ -133,7 +121,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
     // ──────────────────────────────────────────────────────
-    // RECHAZAR
+    // MARCAR COMO CONTACTADO
+    // ──────────────────────────────────────────────────────
+    } elseif ($accion === 'contactar') {
+        $id = (int)($_POST['id'] ?? 0);
+        try {
+            $rows = $pdo->prepare("
+                UPDATE preinscripciones
+                SET estado = 'contactado'
+                WHERE id = ? AND (estado IN ('pendiente') OR estado = '' OR estado IS NULL)
+            ");
+            $rows->execute([$id]);
+
+            if ($rows->rowCount() === 0) throw new Exception("La preinscripción no está en estado pendiente.");
+
+            $pdo->prepare("
+                INSERT INTO logs_actividad (usuario_id, accion, detalles, ip_address)
+                VALUES (?, 'preinscripcion_contactada', ?, ?)
+            ")->execute([
+                $_SESSION['user_id'],
+                "Marcada como contactado preinscripción #{$id}",
+                $_SERVER['REMOTE_ADDR'] ?? null,
+            ]);
+
+            $mensaje      = "Preinscripción marcada como contactada.";
+            $tipo_mensaje = 'info';
+        } catch (Exception $e) {
+            $mensaje      = "Error: " . htmlspecialchars($e->getMessage());
+            $tipo_mensaje = 'error';
+        }
+
+    // ──────────────────────────────────────────────────────
+    // RECHAZAR — estado → 'rechazado'
     // ──────────────────────────────────────────────────────
     } elseif ($accion === 'rechazar') {
         $id     = (int)($_POST['id'] ?? 0);
@@ -141,10 +160,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $pdo->prepare("
                 UPDATE preinscripciones
-                SET estado           = 'rechazada',
+                SET estado           = 'rechazado',
                     motivo_rechazo   = ?,
                     fecha_aprobacion = NOW()
-                WHERE id = ? AND estado = 'pendiente'
+                WHERE id = ? AND (estado IN ('pendiente','contactado') OR estado = '' OR estado IS NULL)
             ")->execute([$motivo, $id]);
 
             $pdo->prepare("
@@ -153,7 +172,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ")->execute([
                 $_SESSION['user_id'],
                 "Rechazada preinscripción #{$id}. Motivo: {$motivo}",
-                $_SERVER['REMOTE_ADDR'] ?? null
+                $_SERVER['REMOTE_ADDR'] ?? null,
             ]);
 
             $mensaje      = "Preinscripción rechazada correctamente.";
@@ -164,88 +183,101 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
     // ──────────────────────────────────────────────────────
-    // CREAR DESDE ADMIN — aprobación inmediata
+    // CREAR DESDE ADMIN — aprobación inmediata → 'matriculado'
     // ──────────────────────────────────────────────────────
     } elseif ($accion === 'crear_admin') {
         try {
             $pdo->beginTransaction();
 
-            $nombres   = htmlspecialchars(strip_tags(trim($_POST['nombres_apellidos'] ?? '')));
-            $tipo_doc  = $_POST['tipo_documento']   ?? 'CC';
-            $num_doc   = trim($_POST['numero_documento'] ?? '');
-            $email     = filter_var(trim($_POST['email'] ?? ''), FILTER_SANITIZE_EMAIL);
-            $celular   = trim($_POST['celular']     ?? '');
-            $programa  = trim($_POST['programa']    ?? '');
-            $municipio = trim($_POST['municipio']   ?? '');
-            $fecha_nac = $_POST['fecha_nacimiento'] ?? null;
-            $direccion = trim($_POST['direccion']   ?? '');
-            $nom_acud  = trim($_POST['nombre_acudiente']   ?? '');
-            $tel_acud  = trim($_POST['telefono_acudiente'] ?? '');
+            // ── Recoger todos los campos ──────────────────────────────
+            $nombres      = htmlspecialchars(strip_tags(trim($_POST['nombres_apellidos']   ?? '')));
+            $tipo_doc     = $_POST['tipo_documento']                                        ?? 'TI';
+            $num_doc      = trim($_POST['numero_documento']                                 ?? '');
+            $email        = filter_var(trim($_POST['email'] ?? ''), FILTER_SANITIZE_EMAIL);
+            $celular      = trim($_POST['celular']                                          ?? '');
+            $fecha_nac    = $_POST['fecha_nacimiento']                                      ?: null;
+            $edad         = !empty($_POST['edad'])    ? (int)$_POST['edad']                 : null;
+            $lugar_nac    = trim($_POST['lugar_nacimiento']                                 ?? '');
+            $direccion    = trim($_POST['direccion']                                        ?? '');
+            $barrio       = trim($_POST['barrio']                                           ?? '');
+            $municipio    = trim($_POST['municipio']                                        ?? '');
+            $zona         = trim($_POST['zona']                                             ?? '');
+            $eps          = trim($_POST['eps']                                              ?? '');
+            $est_primaria = isset($_POST['estudio_primaria'])     ? 1 : 0;
+            $est_secund   = isset($_POST['estudio_secundaria'])   ? 1 : 0;
+            $est_tecnico  = isset($_POST['estudio_tecnico'])      ? 1 : 0;
+            $est_tecno    = isset($_POST['estudio_tecnologico'])  ? 1 : 0;
+            $est_univ     = isset($_POST['estudio_universitario'])? 1 : 0;
+            $est_otro     = trim($_POST['estudio_otro']                                     ?? '');
+            $institucion  = trim($_POST['institucion_educativa']                            ?? '');
+            $ocupacion    = trim($_POST['ocupacion']                                        ?? '');
+            $sisben       = trim($_POST['nivel_sisben']                                     ?? '');
+            $estrato      = !empty($_POST['estrato'])  ? (int)$_POST['estrato']             : null;
+            $nom_acud     = trim($_POST['nombre_acudiente']                                 ?? '');
+            $par_acud     = trim($_POST['parentesco_acudiente']                             ?? '');
+            $tel_acud     = trim($_POST['telefono_acudiente']                               ?? '');
+            $email_acud   = trim($_POST['email_acudiente']                                  ?? '');
+            $num_recibo   = trim($_POST['numero_recibo']                                    ?? '');
+            $programa     = trim($_POST['programa']                                         ?? '');
+            $taller       = trim($_POST['taller']                                           ?? '');
+            $fecha_inicio = $_POST['fecha_inicio']                                          ?: null;
+            $dia_clase    = trim($_POST['dia_clase']                                        ?? '');
+            $hora_clase   = !empty($_POST['hora_clase']) ? $_POST['hora_clase']             : null;
+            $aut_imagen   = isset($_POST['autoriza_imagen'])      ? 1 : 0;
+            $cc_acud      = trim($_POST['firma_acudiente_cc']                               ?? '');
+            $ti_est       = trim($_POST['ti_estudiante']                                    ?? '');
+            $observaciones= trim($_POST['observaciones']                                    ?? '');
 
             if (empty($nombres) || empty($num_doc) || empty($email) || empty($programa)) {
-                throw new Exception("Faltan campos obligatorios (nombre, documento, email, programa).");
+                throw new Exception("Faltan campos obligatorios: nombre, documento, email y programa.");
             }
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 throw new Exception("El correo electrónico no es válido.");
             }
+            if (strlen($num_doc) < 5) {
+                throw new Exception("El número de documento debe tener al menos 5 caracteres.");
+            }
 
-            // Verificar duplicados con columnas reales
-            $chk = $pdo->prepare("SELECT id FROM usuarios WHERE email = ? OR documento = ?");
-            $chk->execute([$email, $num_doc]);
-            if ($chk->fetch()) throw new Exception("Ya existe un usuario con ese correo o documento.");
+            // Verificar duplicados en preinscripciones
+            $chkP = $pdo->prepare("SELECT id FROM preinscripciones WHERE email = ? OR numero_documento = ?");
+            $chkP->execute([$email, $num_doc]);
+            if ($chkP->fetch()) throw new Exception("Ya existe una preinscripción con ese correo o documento.");
 
-            // Insertar preinscripción ya aprobada
-            $insPI = $pdo->prepare("
-                INSERT INTO preinscripciones
-                    (nombres_apellidos, tipo_documento, numero_documento, email, celular,
-                     programa, municipio, direccion, fecha_nacimiento,
-                     nombre_acudiente, telefono_acudiente,
-                     estado, ip_address)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'aprobada', ?)
-            ");
-            $insPI->execute([
+            // Insertar preinscripción completa — estado 'pendiente' para que pase por el flujo normal
+            $pdo->prepare("
+                INSERT INTO preinscripciones (
+                    nombres_apellidos, tipo_documento, numero_documento, email, celular,
+                    fecha_nacimiento, edad, lugar_nacimiento, direccion, barrio,
+                    municipio, zona, eps,
+                    estudio_primaria, estudio_secundaria, estudio_tecnico,
+                    estudio_tecnologico, estudio_universitario, estudio_otro,
+                    institucion_educativa, ocupacion, nivel_sisben, estrato,
+                    nombre_acudiente, parentesco_acudiente, telefono_acudiente,
+                    email_acudiente, numero_recibo,
+                    programa, taller, fecha_inicio, dia_clase, hora_clase,
+                    autoriza_imagen, firma_acudiente_cc, ti_estudiante,
+                    observaciones, estado, ip_address
+                ) VALUES (
+                    ?,?,?,?,?,  ?,?,?,?,?,  ?,?,?,
+                    ?,?,?,      ?,?,?,
+                    ?,?,?,?,    ?,?,?,
+                    ?,?,        ?,?,?,?,?,
+                    ?,?,?,      ?,'pendiente',?
+                )
+            ")->execute([
                 $nombres, $tipo_doc, $num_doc, $email, $celular ?: null,
-                $programa, $municipio ?: null, $direccion ?: null,
-                ($fecha_nac ?: null),
-                $nom_acud ?: null, $tel_acud ?: null,
-                $_SERVER['REMOTE_ADDR'] ?? null
+                $fecha_nac, $edad, $lugar_nac ?: null, $direccion ?: null, $barrio ?: null,
+                $municipio ?: null, $zona ?: null, $eps ?: null,
+                $est_primaria, $est_secund, $est_tecnico,
+                $est_tecno, $est_univ, $est_otro ?: null,
+                $institucion ?: null, $ocupacion ?: null, $sisben ?: null, $estrato,
+                $nom_acud ?: null, $par_acud ?: null, $tel_acud ?: null,
+                $email_acud ?: null, $num_recibo ?: null,
+                $programa, $taller ?: null, $fecha_inicio, $dia_clase ?: null, $hora_clase,
+                $aut_imagen, $cc_acud ?: null, $ti_est ?: null,
+                $observaciones ?: null, $_SERVER['REMOTE_ADDR'] ?? null,
             ]);
             $preId = $pdo->lastInsertId();
-
-            // Crear usuario — contraseña = documento
-            $pass_hash = password_hash($num_doc, PASSWORD_BCRYPT);
-            $insU = $pdo->prepare("
-                INSERT INTO usuarios
-                    (nombre, email, password, documento, telefono,
-                     direccion, fecha_nacimiento, rol, estado, fecha_registro)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'estudiante', 'activo', NOW())
-            ");
-            $insU->execute([
-                $nombres, $email, $pass_hash, $num_doc,
-                $celular   ?: null,
-                $direccion ?: null,
-                ($fecha_nac ?: null),
-            ]);
-            $nuevoId = $pdo->lastInsertId();
-
-            // ── Crear matrícula ───────────────────────────────
-            $fecha_inicio_mat = !empty($fecha_nac) ? date('Y-m-d') : date('Y-m-d');
-            $pdo->prepare("
-                INSERT INTO matriculas
-                    (estudiante_id, grupo_id, fecha_matricula, fecha_inicio, estado, observaciones, preinscripcion_id)
-                VALUES (?, NULL, CURDATE(), CURDATE(), 'activa', ?, ?)
-            ")->execute([
-                $nuevoId,
-                "Matrícula creada por administrador — Programa: {$programa}",
-                $preId,
-            ]);
-
-            // Vincular usuario a preinscripción
-            $pdo->prepare("
-                UPDATE preinscripciones
-                SET usuario_creado_id = ?, fecha_aprobacion = NOW()
-                WHERE id = ?
-            ")->execute([$nuevoId, $preId]);
 
             // Log
             $pdo->prepare("
@@ -253,26 +285,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 VALUES (?, 'preinscripcion_creada_admin', ?, ?)
             ")->execute([
                 $_SESSION['user_id'],
-                "Admin creó preinscripción aprobada #{$preId} para {$nombres} — Matrícula creada",
-                $_SERVER['REMOTE_ADDR'] ?? null
+                "Admin registró preinscripción #{$preId} para {$nombres} — Programa: {$programa}",
+                $_SERVER['REMOTE_ADDR'] ?? null,
             ]);
 
-            // ── Notificaciones automáticas ───────────────────────────
-            // Notifica a todos los admins
-            NotificacionesHelper::crearParaRoles(
-                $pdo,
-                ['admin'],
-                'sistema',
-                'Estudiante creado desde admin',
-                "El admin creó directamente al estudiante {$nombres} con matrícula en {$programa}.",
-                $user['nombre'] ?? 'Administrador',
-                'normal',
-                '/AMIMBR3/modules/inscripciones/matriculas/index.php'
-            );
-            // ────────────────────────────────────────────────────────
-
             $pdo->commit();
-            $mensaje      = "Estudiante y matrícula creados. Contraseña temporal: <strong>{$num_doc}</strong>. Recuerda asignarle un grupo.";
+            $mensaje      = "✅ Prematrícula registrada correctamente para <strong>{$nombres}</strong>. Ahora puedes aprobarla desde el listado.";
             $tipo_mensaje = 'success';
 
         } catch (Exception $e) {
@@ -307,19 +325,20 @@ if ($estado !== 'todos') {
 
 $sql_where = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 
-// Conteos por estado
+// Conteos por estado — estados vacíos se cuentan como pendientes
 try {
     $cntRow = $pdo->query("
         SELECT
-            SUM(estado = 'pendiente')  AS pendientes,
-            SUM(estado = 'aprobada')   AS aprobadas,
-            SUM(estado = 'rechazada')  AS rechazadas,
-            COUNT(*)                   AS total
+            SUM(estado = 'pendiente' OR estado = '' OR estado IS NULL) AS pendientes,
+            SUM(estado = 'contactado')                                  AS contactados,
+            SUM(estado = 'matriculado')                                 AS matriculados,
+            SUM(estado = 'rechazado')                                   AS rechazados,
+            COUNT(*)                                                     AS total
         FROM preinscripciones
     ")->fetch(PDO::FETCH_ASSOC);
-    $cnt = $cntRow ?: ['pendientes'=>0,'aprobadas'=>0,'rechazadas'=>0,'total'=>0];
+    $cnt = $cntRow ?: ['pendientes'=>0,'contactados'=>0,'matriculados'=>0,'rechazados'=>0,'total'=>0];
 } catch (PDOException $e) {
-    $cnt = ['pendientes'=>0,'aprobadas'=>0,'rechazadas'=>0,'total'=>0];
+    $cnt = ['pendientes'=>0,'contactados'=>0,'matriculados'=>0,'rechazados'=>0,'total'=>0];
 }
 
 // Total para paginación
@@ -333,18 +352,14 @@ try {
     $total_paginas   = 1;
 }
 
-// Listado paginado
+// Listado paginado — pendientes primero
 try {
     $stmtL = $pdo->prepare("
         SELECT p.*
         FROM preinscripciones p
         {$sql_where}
         ORDER BY
-            CASE p.estado
-                WHEN 'pendiente'  THEN 0
-                WHEN 'aprobada'   THEN 1
-                ELSE 2
-            END,
+            FIELD(p.estado, 'pendiente', 'contactado', 'matriculado', 'rechazado'),
             p.fecha_preinscripcion DESC
         LIMIT {$por_pag} OFFSET {$offset}
     ");
@@ -359,18 +374,16 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Preinscripciones — Amimbré</title>
+    <title>Prematrículas — Amimbré</title>
     <link rel="shortcut icon" href="../../../assets/img/3.png">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"/>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0"/>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="../../../assets/css/colores.css">
     <link rel="stylesheet" href="../../../assets/css/style-prematriculas.css">
     <script>
         (function() {
-            const theme = localStorage.getItem('amimbre-theme');
-            if (theme === 'light') {
-                document.documentElement.setAttribute('data-theme', 'light');
-            }
+            const t = localStorage.getItem('amimbre-theme');
+            if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
         })();
     </script>
 </head>
@@ -380,19 +393,19 @@ try {
 
 <main class="main-content" id="mainContent">
 
-    <!-- ══ Page Header ══════════════════════════════════════ -->
+    <!-- ══ Encabezado ════════════════════════════════════════ -->
     <div class="page-header">
         <div>
-            <h1 class="page-title">Prematriculas</h1>
+            <h1 class="page-title">Prematrículas</h1>
             <p class="page-subtitle">Gestiona las solicitudes de preinscripción recibidas</p>
         </div>
         <button class="btn-primary" onclick="abrirModal('modalCrear')">
             <span class="material-symbols-rounded">person_add</span>
-            Nueva Preinscripción
+            Nueva Prematrícula
         </button>
     </div>
 
-    <!-- ══ Alerta de resultado ══════════════════════════════ -->
+    <!-- ══ Alerta de resultado ═══════════════════════════════ -->
     <?php if ($mensaje): ?>
     <div class="alert alert-<?= $tipo_mensaje ?>" id="alertMsg">
         <?= $mensaje ?>
@@ -402,9 +415,9 @@ try {
     </div>
     <?php endif; ?>
 
-    <!-- ══ Tarjetas de estado ════════════════════════════════ -->
+    <!-- ══ Pills de estado ════════════════════════════════════ -->
     <div class="stats-row">
-        <a class="stat-pill stat-pill--warning <?= $estado==='pendiente'?'stat-pill--active':'' ?>"
+        <a class="stat-pill stat-pill--warning <?= $estado==='pendiente'   ? 'stat-pill--active' : '' ?>"
            href="?estado=pendiente">
             <span class="material-symbols-rounded">schedule</span>
             <div>
@@ -412,23 +425,31 @@ try {
                 <span class="pill-lbl">Pendientes</span>
             </div>
         </a>
-        <a class="stat-pill stat-pill--success <?= $estado==='aprobada'?'stat-pill--active':'' ?>"
-           href="?estado=aprobada">
+        <a class="stat-pill stat-pill--info <?= $estado==='contactado'  ? 'stat-pill--active' : '' ?>"
+           href="?estado=contactado">
+            <span class="material-symbols-rounded">contact_phone</span>
+            <div>
+                <span class="pill-num"><?= (int)$cnt['contactados'] ?></span>
+                <span class="pill-lbl">Contactados</span>
+            </div>
+        </a>
+        <a class="stat-pill stat-pill--success <?= $estado==='matriculado' ? 'stat-pill--active' : '' ?>"
+           href="?estado=matriculado">
             <span class="material-symbols-rounded">check_circle</span>
             <div>
-                <span class="pill-num"><?= (int)$cnt['aprobadas'] ?></span>
-                <span class="pill-lbl">Aprobadas</span>
+                <span class="pill-num"><?= (int)$cnt['matriculados'] ?></span>
+                <span class="pill-lbl">Matriculados</span>
             </div>
         </a>
-        <a class="stat-pill stat-pill--danger <?= $estado==='rechazada'?'stat-pill--active':'' ?>"
-           href="?estado=rechazada">
+        <a class="stat-pill stat-pill--danger <?= $estado==='rechazado'  ? 'stat-pill--active' : '' ?>"
+           href="?estado=rechazado">
             <span class="material-symbols-rounded">cancel</span>
             <div>
-                <span class="pill-num"><?= (int)$cnt['rechazadas'] ?></span>
-                <span class="pill-lbl">Rechazadas</span>
+                <span class="pill-num"><?= (int)$cnt['rechazados'] ?></span>
+                <span class="pill-lbl">Rechazados</span>
             </div>
         </a>
-        <a class="stat-pill stat-pill--neutral <?= $estado==='todos'?'stat-pill--active':'' ?>"
+        <a class="stat-pill stat-pill--neutral <?= $estado==='todos' ? 'stat-pill--active' : '' ?>"
            href="?estado=todos">
             <span class="material-symbols-rounded">list_alt</span>
             <div>
@@ -438,7 +459,7 @@ try {
         </a>
     </div>
 
-    <!-- ══ Toolbar ══════════════════════════════════════════ -->
+    <!-- ══ Barra de búsqueda y filtro ════════════════════════ -->
     <div class="toolbar">
         <form method="GET" class="search-box" id="searchForm">
             <span class="material-symbols-rounded">search</span>
@@ -449,18 +470,41 @@ try {
                    oninput="clearTimeout(window._st);window._st=setTimeout(()=>this.form.submit(),400)">
             <input type="hidden" name="estado" value="<?= htmlspecialchars($estado) ?>">
         </form>
-        <div class="filter-select">
-            <span class="material-symbols-rounded">filter_list</span>
-            <select onchange="location.href='?estado='+this.value+'&q=<?= urlencode($buscar) ?>'">
-                <option value="todos"     <?= $estado==='todos'    ?'selected':'' ?>>Todos los estados</option>
-                <option value="pendiente" <?= $estado==='pendiente'?'selected':'' ?>>Pendientes</option>
-                <option value="aprobada"  <?= $estado==='aprobada' ?'selected':'' ?>>Aprobadas</option>
-                <option value="rechazada" <?= $estado==='rechazada'?'selected':'' ?>>Rechazadas</option>
-            </select>
+
+        <!-- Dropdown personalizado de filtro -->
+        <?php
+        $filtro_opciones = [
+            'todos'       => ['lbl' => 'Todos los estados', 'icon' => 'list_alt',      'cls' => ''],
+            'pendiente'   => ['lbl' => 'Pendientes',        'icon' => 'schedule',       'cls' => 'fdd--warning'],
+            'contactado'  => ['lbl' => 'Contactados',       'icon' => 'contact_phone',  'cls' => 'fdd--info'],
+            'matriculado' => ['lbl' => 'Matriculados',      'icon' => 'check_circle',   'cls' => 'fdd--success'],
+            'rechazado'   => ['lbl' => 'Rechazados',        'icon' => 'cancel',         'cls' => 'fdd--danger'],
+        ];
+        $actual = $filtro_opciones[$estado] ?? $filtro_opciones['todos'];
+        ?>
+        <div class="fdd-wrap" id="fddWrap">
+            <button type="button" class="fdd-trigger <?= $actual['cls'] ?>" id="fddTrigger"
+                    onclick="toggleFdd()">
+                <span class="material-symbols-rounded">filter_list</span>
+                <span class="fdd-trigger-lbl"><?= $actual['lbl'] ?></span>
+                <span class="material-symbols-rounded fdd-chevron">expand_more</span>
+            </button>
+            <div class="fdd-menu" id="fddMenu">
+                <?php foreach ($filtro_opciones as $val => $opt): ?>
+                <a href="?estado=<?= $val ?>&q=<?= urlencode($buscar) ?>"
+                   class="fdd-item <?= $opt['cls'] ?> <?= $estado === $val ? 'fdd-item--active' : '' ?>">
+                    <span class="material-symbols-rounded"><?= $opt['icon'] ?></span>
+                    <?= $opt['lbl'] ?>
+                    <?php if ($estado === $val): ?>
+                    <span class="material-symbols-rounded fdd-check">check</span>
+                    <?php endif; ?>
+                </a>
+                <?php endforeach; ?>
+            </div>
         </div>
     </div>
 
-    <!-- ══ Lista de preinscripciones ════════════════════════ -->
+    <!-- ══ Lista de preinscripciones ═════════════════════════ -->
     <div class="inscripciones-lista">
         <?php if (empty($preinscripciones)): ?>
         <div class="empty-state">
@@ -468,16 +512,22 @@ try {
             <p>No hay preinscripciones que coincidan con los filtros.</p>
         </div>
         <?php else: ?>
+
         <?php foreach ($preinscripciones as $p):
-            $badge_cls = match($p['estado']) {
-                'aprobada'  => 'badge--success',
-                'rechazada' => 'badge--danger',
-                default     => 'badge--warning'
+            // Normalizar estado vacío a 'pendiente'
+            $estado_real = (!empty($p['estado'])) ? $p['estado'] : 'pendiente';
+
+            $badge_cls = match($estado_real) {
+                'matriculado' => 'badge--success',
+                'rechazado'   => 'badge--danger',
+                'contactado'  => 'badge--info',
+                default       => 'badge--warning',
             };
-            $badge_lbl = match($p['estado']) {
-                'aprobada'  => 'Aprobada',
-                'rechazada' => 'Rechazada',
-                default     => 'Pendiente'
+            $badge_lbl = match($estado_real) {
+                'matriculado' => 'Matriculado',
+                'rechazado'   => 'Rechazado',
+                'contactado'  => 'Contactado',
+                default       => 'Pendiente',
             };
             $fecha = !empty($p['fecha_preinscripcion'])
                 ? date('d/m/Y', strtotime($p['fecha_preinscripcion'])) : '—';
@@ -525,10 +575,10 @@ try {
                     Ver
                 </button>
 
-                <?php if ($p['estado'] === 'pendiente'): ?>
+                <?php if ($p['estado'] === 'pendiente' || $p['estado'] === 'contactado'): ?>
                 <button class="btn-icon btn-icon--approve"
                         onclick="confirmarAprobar(<?= $p['id'] ?>, '<?= addslashes(htmlspecialchars($p['nombres_apellidos'])) ?>')"
-                        title="Aprobar">
+                        title="Aprobar y matricular">
                     <span class="material-symbols-rounded">check_circle</span>
                     Aprobar
                 </button>
@@ -557,7 +607,7 @@ try {
 
         <?php for ($i = max(1,$pagina-2); $i <= min($total_paginas,$pagina+2); $i++): ?>
         <a href="?page=<?= $i ?>&q=<?= urlencode($buscar) ?>&estado=<?= urlencode($estado) ?>"
-           class="page-btn <?= $i===$pagina?'page-btn--active':'' ?>">
+           class="page-btn <?= $i===$pagina ? 'page-btn--active' : '' ?>">
             <?= $i ?>
         </a>
         <?php endfor; ?>
@@ -571,15 +621,13 @@ try {
     </div>
     <?php endif; ?>
 
-</main><!-- /main-content -->
+</main>
 
 
-<!-- ══════════════════════════════════════════════════════════
-     MODAL: Ver Detalle completo
-     ══════════════════════════════════════════════════════════ -->
+<!-- ══ MODAL: Ver Detalle con gestión de estado ══════════════ -->
 <div class="modal-overlay" id="modalDetalle" aria-hidden="true">
     <div class="modal modal--lg">
-        <div class="modal-header">
+        <div class="modal-header" id="detalleHeader">
             <h2 class="modal-title">
                 <span class="material-symbols-rounded">person</span>
                 Detalle de Preinscripción
@@ -588,18 +636,21 @@ try {
                 <span class="material-symbols-rounded">close</span>
             </button>
         </div>
+
+        <!-- Barra de progreso de estado -->
+        <div class="estado-progreso" id="estadoProgreso"></div>
+
         <div class="modal-body" id="detalleContent">
             <p class="loading-txt">Cargando información…</p>
         </div>
+
         <div class="modal-footer" id="detalleFooter">
             <button class="btn-secondary" onclick="cerrarModal('modalDetalle')">Cerrar</button>
         </div>
     </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════
-     MODAL: Confirmar Aprobar
-     ══════════════════════════════════════════════════════════ -->
+<!-- ══ MODAL: Confirmar Aprobar ══════════════════════════════ -->
 <div class="modal-overlay" id="modalAprobar" aria-hidden="true">
     <div class="modal modal--sm">
         <div class="modal-header modal-header--success">
@@ -633,9 +684,7 @@ try {
     </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════
-     MODAL: Rechazar
-     ══════════════════════════════════════════════════════════ -->
+<!-- ══ MODAL: Rechazar ═══════════════════════════════════════ -->
 <div class="modal-overlay" id="modalRechazar" aria-hidden="true">
     <div class="modal modal--sm">
         <div class="modal-header modal-header--danger">
@@ -669,99 +718,304 @@ try {
     </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════
-     MODAL: Crear Preinscripción (Admin)
-     ══════════════════════════════════════════════════════════ -->
+<!-- ══ MODAL: Nueva Prematrícula ═════════════════════════════ -->
 <div class="modal-overlay" id="modalCrear" aria-hidden="true">
-    <div class="modal modal--lg">
+    <div class="modal modal--xl">
         <div class="modal-header modal-header--primary">
             <h2 class="modal-title">
-                <span class="material-symbols-rounded">person_add</span>
-                Nueva Preinscripción
-                <span class="modal-badge">Aprobación automática</span>
+                <span class="material-symbols-rounded">assignment_ind</span>
+                Nueva Prematrícula
             </h2>
             <button class="modal-close" onclick="cerrarModal('modalCrear')">
                 <span class="material-symbols-rounded">close</span>
             </button>
         </div>
+
         <form method="POST" id="formCrear" onsubmit="return validarFormCrear()">
             <input type="hidden" name="accion" value="crear_admin">
             <div class="modal-body">
+
                 <div class="modal-info-box">
                     <span class="material-symbols-rounded">info</span>
-                    Al crear desde el panel, la preinscripción se aprueba de inmediato y se genera el
-                    usuario con <strong>contraseña = número de documento</strong>.
+                    La prematrícula quedará en estado <strong>Pendiente</strong>. Desde el listado podrás aprobarla para crear el usuario y su matrícula.
                 </div>
-                <div class="modal-grid">
-                    <div class="form-group-modal col-full">
-                        <label>Nombres y apellidos <span class="req">*</span></label>
-                        <input type="text" name="nombres_apellidos" required
-                               placeholder="Nombre completo del estudiante">
+
+                <!-- ── 1. Datos personales ─────────────────────── -->
+                <div class="form-seccion">
+                    <div class="form-seccion-titulo">
+                        <span class="material-symbols-rounded">person</span>
+                        Datos Personales
                     </div>
-                    <div class="form-group-modal">
-                        <label>Tipo de documento <span class="req">*</span></label>
-                        <select name="tipo_documento" required>
-                            <option value="TI">Tarjeta de Identidad (TI)</option>
-                            <option value="CC">Cédula de Ciudadanía (CC)</option>
-                            <option value="CE">Cédula de Extranjería (CE)</option>
-                            <option value="PA">Pasaporte (PA)</option>
-                            <option value="RC">Registro Civil (RC)</option>
-                        </select>
-                    </div>
-                    <div class="form-group-modal">
-                        <label>Número de documento <span class="req">*</span></label>
-                        <input type="text" name="numero_documento" required
-                               placeholder="Sin puntos ni guiones" id="inputDoc">
-                    </div>
-                    <div class="form-group-modal">
-                        <label>Correo electrónico <span class="req">*</span></label>
-                        <input type="email" name="email" required placeholder="correo@ejemplo.com">
-                    </div>
-                    <div class="form-group-modal">
-                        <label>Celular</label>
-                        <input type="tel" name="celular" placeholder="3XX XXX XXXX">
-                    </div>
-                    <div class="form-group-modal">
-                        <label>Programa <span class="req">*</span></label>
-                        <select name="programa" required>
-                            <option value="">— Selecciona —</option>
-                            <option>Iniciación Musical Infantil</option>
-                            <option>Guitarra</option>
-                            <option>Piano</option>
-                            <option>Instrumentos de Viento</option>
-                            <option>Técnica Vocal y Canto</option>
-                            <option>Teoría y Lenguaje Musical</option>
-                            <option>Ensambles Musicales</option>
-                            <option>Preparación Universitaria</option>
-                        </select>
-                    </div>
-                    <div class="form-group-modal">
-                        <label>Municipio</label>
-                        <input type="text" name="municipio" placeholder="Ej: El Carmen de Viboral">
-                    </div>
-                    <div class="form-group-modal">
-                        <label>Dirección</label>
-                        <input type="text" name="direccion" placeholder="Dirección de residencia">
-                    </div>
-                    <div class="form-group-modal">
-                        <label>Fecha de nacimiento</label>
-                        <input type="date" name="fecha_nacimiento">
-                    </div>
-                    <div class="form-group-modal">
-                        <label>Nombre del acudiente</label>
-                        <input type="text" name="nombre_acudiente">
-                    </div>
-                    <div class="form-group-modal">
-                        <label>Teléfono del acudiente</label>
-                        <input type="tel" name="telefono_acudiente" placeholder="3XX XXX XXXX">
+                    <div class="modal-grid">
+                        <div class="form-group-modal col-full">
+                            <label>Nombres y apellidos <span class="req">*</span></label>
+                            <input type="text" name="nombres_apellidos" required
+                                   placeholder="Nombre completo del estudiante">
+                        </div>
+                        <div class="form-group-modal">
+                            <label>Tipo de documento <span class="req">*</span></label>
+                            <select name="tipo_documento" required>
+                                <option value="TI">Tarjeta de Identidad (TI)</option>
+                                <option value="CC">Cédula de Ciudadanía (CC)</option>
+                                <option value="CE">Cédula de Extranjería (CE)</option>
+                                <option value="PA">Pasaporte (PA)</option>
+                                <option value="RC">Registro Civil (RC)</option>
+                                <option value="NIT">NIT</option>
+                                <option value="OTRO">Otro</option>
+                            </select>
+                        </div>
+                        <div class="form-group-modal">
+                            <label>Número de documento <span class="req">*</span></label>
+                            <input type="text" name="numero_documento" id="inputDoc" required
+                                   placeholder="Sin puntos ni guiones">
+                        </div>
+                        <div class="form-group-modal">
+                            <label>Fecha de nacimiento</label>
+                            <input type="date" name="fecha_nacimiento" id="inputFechaNac"
+                                   onchange="calcularEdad()">
+                        </div>
+                        <div class="form-group-modal">
+                            <label>Edad</label>
+                            <input type="number" name="edad" id="inputEdad" min="1" max="120"
+                                   placeholder="Se calcula automáticamente">
+                        </div>
+                        <div class="form-group-modal">
+                            <label>Lugar de nacimiento</label>
+                            <input type="text" name="lugar_nacimiento" placeholder="Ciudad o municipio">
+                        </div>
+                        <div class="form-group-modal">
+                            <label>Correo electrónico <span class="req">*</span></label>
+                            <input type="email" name="email" required placeholder="correo@ejemplo.com">
+                        </div>
+                        <div class="form-group-modal">
+                            <label>Celular <span class="req">*</span></label>
+                            <input type="tel" name="celular" required placeholder="3XX XXX XXXX">
+                        </div>
+                        <div class="form-group-modal">
+                            <label>Ocupación</label>
+                            <input type="text" name="ocupacion" placeholder="Ej: Estudiante, Empleado…">
+                        </div>
+                        <div class="form-group-modal">
+                            <label>TI del estudiante</label>
+                            <input type="text" name="ti_estudiante" placeholder="Número de TI si aplica">
+                        </div>
                     </div>
                 </div>
-            </div>
+
+                <!-- ── 2. Ubicación ───────────────────────────── -->
+                <div class="form-seccion">
+                    <div class="form-seccion-titulo">
+                        <span class="material-symbols-rounded">location_on</span>
+                        Ubicación
+                    </div>
+                    <div class="modal-grid">
+                        <div class="form-group-modal col-full">
+                            <label>Dirección</label>
+                            <input type="text" name="direccion" placeholder="Carrera / Calle y número">
+                        </div>
+                        <div class="form-group-modal">
+                            <label>Barrio</label>
+                            <input type="text" name="barrio" placeholder="Barrio de residencia">
+                        </div>
+                        <div class="form-group-modal">
+                            <label>Municipio</label>
+                            <input type="text" name="municipio" placeholder="Ej: El Carmen de Viboral">
+                        </div>
+                        <div class="form-group-modal">
+                            <label>Zona</label>
+                            <select name="zona">
+                                <option value="">— Selecciona —</option>
+                                <option>Urbana</option>
+                                <option>Rural</option>
+                            </select>
+                        </div>
+                        <div class="form-group-modal">
+                            <label>Estrato</label>
+                            <select name="estrato">
+                                <option value="">— Selecciona —</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── 3. Salud y socioeconómico ──────────────── -->
+                <div class="form-seccion">
+                    <div class="form-seccion-titulo">
+                        <span class="material-symbols-rounded">local_hospital</span>
+                        Salud y Datos Socioeconómicos
+                    </div>
+                    <div class="modal-grid">
+                        <div class="form-group-modal">
+                            <label>EPS</label>
+                            <input type="text" name="eps" placeholder="Entidad de salud">
+                        </div>
+                        <div class="form-group-modal">
+                            <label>Nivel SISBEN</label>
+                            <input type="text" name="nivel_sisben" placeholder="Ej: A1, B2…">
+                        </div>
+                        <div class="form-group-modal">
+                            <label>Institución educativa</label>
+                            <input type="text" name="institucion_educativa"
+                                   placeholder="Colegio o institución actual">
+                        </div>
+                    </div>
+                    <div class="form-group-modal" style="margin-top:10px;">
+                        <label>Nivel de estudios alcanzado</label>
+                        <div class="checkboxes-grid">
+                            <label class="check-item">
+                                <input type="checkbox" name="estudio_primaria" value="1">
+                                <span>Primaria</span>
+                            </label>
+                            <label class="check-item">
+                                <input type="checkbox" name="estudio_secundaria" value="1">
+                                <span>Secundaria</span>
+                            </label>
+                            <label class="check-item">
+                                <input type="checkbox" name="estudio_tecnico" value="1">
+                                <span>Técnico</span>
+                            </label>
+                            <label class="check-item">
+                                <input type="checkbox" name="estudio_tecnologico" value="1">
+                                <span>Tecnológico</span>
+                            </label>
+                            <label class="check-item">
+                                <input type="checkbox" name="estudio_universitario" value="1">
+                                <span>Universitario</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group-modal" style="margin-top:10px;">
+                        <label>Otro nivel de estudios</label>
+                        <input type="text" name="estudio_otro" placeholder="Especifica si aplica">
+                    </div>
+                </div>
+
+                <!-- ── 4. Programa ────────────────────────────── -->
+                <div class="form-seccion">
+                    <div class="form-seccion-titulo">
+                        <span class="material-symbols-rounded">music_note</span>
+                        Programa Musical
+                    </div>
+                    <div class="modal-grid">
+                        <div class="form-group-modal">
+                            <label>Programa <span class="req">*</span></label>
+                            <select name="programa" required>
+                                <option value="">— Selecciona —</option>
+                                <option>Iniciación Musical Infantil</option>
+                                <option>Guitarra</option>
+                                <option>Piano</option>
+                                <option>Instrumentos de Viento</option>
+                                <option>Técnica Vocal y Canto</option>
+                                <option>Teoría y Lenguaje Musical</option>
+                                <option>Ensambles Musicales</option>
+                                <option>Preparación Universitaria</option>
+                            </select>
+                        </div>
+                        <div class="form-group-modal">
+                            <label>Taller específico</label>
+                            <input type="text" name="taller"
+                                   placeholder="Ej: Guitarra eléctrica, Saxofón…">
+                        </div>
+                        <div class="form-group-modal">
+                            <label>Fecha de inicio deseada</label>
+                            <input type="date" name="fecha_inicio">
+                        </div>
+                        <div class="form-group-modal">
+                            <label>Día(s) de clase preferido</label>
+                            <input type="text" name="dia_clase"
+                                   placeholder="Ej: Lunes y Miércoles">
+                        </div>
+                        <div class="form-group-modal">
+                            <label>Hora de clase preferida</label>
+                            <input type="time" name="hora_clase">
+                        </div>
+                        <div class="form-group-modal">
+                            <label>Número de recibo de pago</label>
+                            <input type="text" name="numero_recibo"
+                                   placeholder="N° del recibo si ya pagó">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── 5. Acudiente ───────────────────────────── -->
+                <div class="form-seccion">
+                    <div class="form-seccion-titulo">
+                        <span class="material-symbols-rounded">family_restroom</span>
+                        Datos del Acudiente
+                    </div>
+                    <div class="modal-grid">
+                        <div class="form-group-modal">
+                            <label>Nombre del acudiente</label>
+                            <input type="text" name="nombre_acudiente"
+                                   placeholder="Nombre completo">
+                        </div>
+                        <div class="form-group-modal">
+                            <label>Parentesco</label>
+                            <select name="parentesco_acudiente">
+                                <option value="">— Selecciona —</option>
+                                <option>Madre</option>
+                                <option>Padre</option>
+                                <option>Abuelo/a</option>
+                                <option>Hermano/a</option>
+                                <option>Tío/a</option>
+                                <option>Tutor legal</option>
+                                <option>Otro</option>
+                            </select>
+                        </div>
+                        <div class="form-group-modal">
+                            <label>Teléfono del acudiente</label>
+                            <input type="tel" name="telefono_acudiente"
+                                   placeholder="3XX XXX XXXX">
+                        </div>
+                        <div class="form-group-modal">
+                            <label>Email del acudiente</label>
+                            <input type="email" name="email_acudiente"
+                                   placeholder="correo@ejemplo.com">
+                        </div>
+                        <div class="form-group-modal">
+                            <label>CC del acudiente firmante</label>
+                            <input type="text" name="firma_acudiente_cc"
+                                   placeholder="Número de cédula">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── 6. Autorización y observaciones ────────── -->
+                <div class="form-seccion">
+                    <div class="form-seccion-titulo">
+                        <span class="material-symbols-rounded">policy</span>
+                        Autorización y Observaciones
+                    </div>
+                    <div class="modal-grid">
+                        <div class="form-group-modal col-full">
+                            <label class="check-item check-item--full">
+                                <input type="checkbox" name="autoriza_imagen" value="1">
+                                <span>El acudiente <strong>autoriza el uso de imagen</strong> del estudiante con fines pedagógicos e institucionales</span>
+                            </label>
+                        </div>
+                        <div class="form-group-modal col-full">
+                            <label>Observaciones</label>
+                            <textarea name="observaciones" rows="3"
+                                      placeholder="Información adicional relevante…"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- /modal-body -->
+
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="cerrarModal('modalCrear')">Cancelar</button>
+                <button type="button" class="btn-secondary" onclick="cerrarModal('modalCrear')">
+                    Cancelar
+                </button>
                 <button type="submit" class="btn-primary">
-                    <span class="material-symbols-rounded">check</span>
-                    Crear y Aprobar
+                    <span class="material-symbols-rounded">save</span>
+                    Registrar Prematrícula
                 </button>
             </div>
         </form>
@@ -769,16 +1023,18 @@ try {
 </div>
 
 
-<!-- ══════════════════════════════════════════════════════════
-     DATOS JSON para el modal de detalle (solo página actual)
-     ══════════════════════════════════════════════════════════ -->
+<!-- ══ Datos JSON para modal de detalle ══════════════════════ -->
 <script>
+// Normalizar estado vacío a 'pendiente' antes de pasar al JS
 const DATA = <?= json_encode(
-    array_column($preinscripciones, null, 'id'),
+    array_map(function($p) {
+        if (empty($p['estado'])) $p['estado'] = 'pendiente';
+        return $p;
+    }, array_column($preinscripciones, null, 'id')),
     JSON_UNESCAPED_UNICODE | JSON_HEX_TAG
 ) ?>;
 
-// ── Helpers modales ───────────────────────────────────────
+// ── Helpers modales ───────────────────────────────────────────
 function abrirModal(id) {
     const m = document.getElementById(id);
     if (!m) return;
@@ -793,62 +1049,95 @@ function cerrarModal(id) {
     m.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
 }
-
-// Cerrar al hacer clic en el overlay
 document.querySelectorAll('.modal-overlay').forEach(o =>
     o.addEventListener('click', e => { if (e.target === o) cerrarModal(o.id); })
 );
-
-// Cerrar con Escape
 document.addEventListener('keydown', e => {
     if (e.key === 'Escape')
         document.querySelectorAll('.modal-overlay.open').forEach(o => cerrarModal(o.id));
 });
 
-// ── Confirmar aprobar ─────────────────────────────────────
+// ── Confirmar aprobar ─────────────────────────────────────────
 function confirmarAprobar(id, nombre) {
-    document.getElementById('aprobarId').value      = id;
+    document.getElementById('aprobarId').value       = id;
     document.getElementById('aprobarTexto').innerHTML =
-        `¿Aprobar la preinscripción de <strong>${nombre}</strong>?`;
+        `¿Aprobar y matricular a <strong>${nombre}</strong>?`;
     abrirModal('modalAprobar');
 }
 
-// ── Abrir modal rechazar ──────────────────────────────────
+// ── Abrir modal rechazar ──────────────────────────────────────
 function abrirModalRechazar(id, nombre) {
-    document.getElementById('rechazarId').value         = id;
-    document.getElementById('rechazarNombre').innerHTML =
+    document.getElementById('rechazarId').value          = id;
+    document.getElementById('rechazarNombre').innerHTML  =
         `Rechazando solicitud de: <strong>${nombre}</strong>`;
-    document.getElementById('motivoRechazo').value      = '';
+    document.getElementById('motivoRechazo').value       = '';
     abrirModal('modalRechazar');
 }
 
-// ── Ver detalle ───────────────────────────────────────────
+// ── Ver detalle con gestión de estado ────────────────────────
 function verDetalle(id) {
     const p = DATA[id];
     if (!p) { alert('No se encontraron los datos.'); return; }
 
-    const val  = v => (v !== null && v !== undefined && v !== '')
+    const val = v => (v !== null && v !== undefined && v !== '')
         ? v : '<span class="nd">—</span>';
-    const fmt  = f => f ? new Date(f + 'T00:00:00').toLocaleDateString('es-CO') : '—';
-    const st   = { aprobada:'badge--success', rechazada:'badge--danger', pendiente:'badge--warning' };
-    const sl   = { aprobada:'Aprobada', rechazada:'Rechazada', pendiente:'Pendiente' };
+    const fmt = f => f ? new Date(f + 'T00:00:00').toLocaleDateString('es-CO') : '—';
 
+    const stCls = { matriculado:'badge--success', rechazado:'badge--danger',
+                    contactado:'badge--info',      pendiente:'badge--warning' };
+    const stLbl = { matriculado:'Matriculado', rechazado:'Rechazado',
+                    contactado:'Contactado',   pendiente:'Pendiente' };
+
+    // ── Barra de progreso del flujo ───────────────────────────
+    const pasos = [
+        { key: 'pendiente',   icon: 'schedule',       lbl: 'Pendiente' },
+        { key: 'contactado',  icon: 'contact_phone',  lbl: 'Contactado' },
+        { key: 'matriculado', icon: 'check_circle',   lbl: 'Matriculado' },
+    ];
+    const orden = { pendiente: 0, contactado: 1, matriculado: 2, rechazado: -1 };
+    const posActual = orden[p.estado] ?? -1;
+
+    let progresoHtml = '';
+    if (p.estado === 'rechazado') {
+        progresoHtml = `
+        <div class="estado-progreso-inner estado-rechazado">
+            <span class="material-symbols-rounded">cancel</span>
+            Esta preinscripción fue <strong>rechazada</strong>
+            ${p.motivo_rechazo ? `<span class="progreso-motivo">${p.motivo_rechazo}</span>` : ''}
+        </div>`;
+    } else {
+        const pasosHtml = pasos.map((paso, i) => {
+            const hecho    = i <= posActual;
+            const activo   = i === posActual;
+            const cls      = activo ? 'paso-activo' : hecho ? 'paso-hecho' : 'paso-pendiente';
+            return `
+            <div class="progreso-paso ${cls}">
+                <div class="progreso-circulo">
+                    <span class="material-symbols-rounded">${hecho ? (activo ? paso.icon : 'check') : paso.icon}</span>
+                </div>
+                <span class="progreso-lbl">${paso.lbl}</span>
+            </div>
+            ${i < pasos.length - 1 ? `<div class="progreso-linea ${i < posActual ? 'linea-hecha' : ''}"></div>` : ''}`;
+        }).join('');
+        progresoHtml = `<div class="estado-progreso-inner">${pasosHtml}</div>`;
+    }
+    document.getElementById('estadoProgreso').innerHTML = progresoHtml;
+
+    // ── Contenido de detalle ──────────────────────────────────
     const html = `
     <div class="detalle-grid">
 
-        <!-- Encabezado -->
         <div class="detalle-seccion col-full">
             <div class="detalle-avatar">${p.nombres_apellidos.charAt(0).toUpperCase()}</div>
             <div>
                 <h3 class="detalle-nombre">${p.nombres_apellidos}</h3>
-                <span class="badge ${st[p.estado]||'badge--warning'}" style="margin-bottom:4px;display:inline-flex;">
-                    ${sl[p.estado]||p.estado}
+                <span class="badge ${stCls[p.estado]||'badge--warning'}" style="margin-bottom:4px;display:inline-flex;">
+                    ${stLbl[p.estado]||p.estado}
                 </span>
                 <p class="detalle-sub">${p.email} &bull; ${p.celular||'—'}</p>
             </div>
         </div>
 
-        <!-- Programa -->
         <div class="detalle-seccion">
             <h4 class="det-title"><span class="material-symbols-rounded">music_note</span>Programa</h4>
             <div class="det-row"><span>Programa:</span>${val(p.programa)}</div>
@@ -858,7 +1147,6 @@ function verDetalle(id) {
             <div class="det-row"><span>Inicio:</span>${fmt(p.fecha_inicio)}</div>
         </div>
 
-        <!-- Identificación -->
         <div class="detalle-seccion">
             <h4 class="det-title"><span class="material-symbols-rounded">badge</span>Identificación</h4>
             <div class="det-row"><span>Tipo doc.:</span>${val(p.tipo_documento)}</div>
@@ -868,7 +1156,6 @@ function verDetalle(id) {
             <div class="det-row"><span>Lugar nac.:</span>${val(p.lugar_nacimiento)}</div>
         </div>
 
-        <!-- Ubicación -->
         <div class="detalle-seccion">
             <h4 class="det-title"><span class="material-symbols-rounded">location_on</span>Ubicación</h4>
             <div class="det-row"><span>Dirección:</span>${val(p.direccion)}</div>
@@ -878,7 +1165,6 @@ function verDetalle(id) {
             <div class="det-row"><span>Estrato:</span>${val(p.estrato)}</div>
         </div>
 
-        <!-- Salud y Socioeconómico -->
         <div class="detalle-seccion">
             <h4 class="det-title"><span class="material-symbols-rounded">local_hospital</span>Salud y Socioecon.</h4>
             <div class="det-row"><span>EPS:</span>${val(p.eps)}</div>
@@ -887,7 +1173,6 @@ function verDetalle(id) {
             <div class="det-row"><span>Institución:</span>${val(p.institucion_educativa)}</div>
         </div>
 
-        <!-- Acudiente -->
         <div class="detalle-seccion">
             <h4 class="det-title"><span class="material-symbols-rounded">family_restroom</span>Acudiente</h4>
             <div class="det-row"><span>Nombre:</span>${val(p.nombre_acudiente)}</div>
@@ -897,7 +1182,6 @@ function verDetalle(id) {
             <div class="det-row"><span>N° Recibo:</span>${val(p.numero_recibo)}</div>
         </div>
 
-        <!-- Autorización imagen -->
         <div class="detalle-seccion">
             <h4 class="det-title"><span class="material-symbols-rounded">photo_camera</span>Autorización Imagen</h4>
             <div class="det-row">
@@ -926,10 +1210,27 @@ function verDetalle(id) {
 
     document.getElementById('detalleContent').innerHTML = html;
 
-    // Footer dinámico según estado
+    // ── Footer con acciones según estado ─────────────────────
     const footer = document.getElementById('detalleFooter');
+    const n = p.nombres_apellidos.replace(/'/g, "\\'");
+
     if (p.estado === 'pendiente') {
-        const n = p.nombres_apellidos.replace(/'/g, "\\'");
+        footer.innerHTML = `
+            <button class="btn-secondary" onclick="cerrarModal('modalDetalle')">Cerrar</button>
+            <button class="btn-icon btn-icon--view" style="padding:9px 16px; border-radius:10px;"
+                    onclick="submitAccion(${p.id}, 'contactar')">
+                <span class="material-symbols-rounded">contact_phone</span> Marcar contactado
+            </button>
+            <button class="btn-danger"
+                    onclick="cerrarModal('modalDetalle');abrirModalRechazar(${p.id},'${n}')">
+                <span class="material-symbols-rounded">cancel</span> Rechazar
+            </button>
+            <button class="btn-success"
+                    onclick="cerrarModal('modalDetalle');confirmarAprobar(${p.id},'${n}')">
+                <span class="material-symbols-rounded">check_circle</span> Aprobar y matricular
+            </button>`;
+
+    } else if (p.estado === 'contactado') {
         footer.innerHTML = `
             <button class="btn-secondary" onclick="cerrarModal('modalDetalle')">Cerrar</button>
             <button class="btn-danger"
@@ -938,9 +1239,11 @@ function verDetalle(id) {
             </button>
             <button class="btn-success"
                     onclick="cerrarModal('modalDetalle');confirmarAprobar(${p.id},'${n}')">
-                <span class="material-symbols-rounded">check_circle</span> Aprobar
+                <span class="material-symbols-rounded">check_circle</span> Aprobar y matricular
             </button>`;
+
     } else {
+        // matriculado o rechazado — solo cerrar
         footer.innerHTML = `
             <button class="btn-secondary" onclick="cerrarModal('modalDetalle')">Cerrar</button>`;
     }
@@ -948,18 +1251,66 @@ function verDetalle(id) {
     abrirModal('modalDetalle');
 }
 
-// ── Validar form crear ─────────────────
-// ───────────────────
+// ── Enviar acción directa (contactar) sin modal extra ────────
+function submitAccion(id, accion) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.style.display = 'none';
+    form.innerHTML = `
+        <input name="accion" value="${accion}">
+        <input name="id"     value="${id}">`;
+    document.body.appendChild(form);
+    cerrarModal('modalDetalle');
+    form.submit();
+}
+
+// ── Calcular edad automáticamente ────────────────────────────
+function calcularEdad() {
+    const fnac = document.getElementById('inputFechaNac').value;
+    if (!fnac) return;
+    const hoy  = new Date();
+    const nac  = new Date(fnac);
+    let edad   = hoy.getFullYear() - nac.getFullYear();
+    const m    = hoy.getMonth() - nac.getMonth();
+    if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--;
+    document.getElementById('inputEdad').value = edad > 0 ? edad : '';
+}
+
+// ── Validar formulario crear ──────────────────────────────────
 function validarFormCrear() {
-    const doc = document.getElementById('inputDoc').value.trim();
-    if (doc.length < 5) { alert('El número de documento debe tener al menos 5 caracteres.'); return false; }
+    const doc = document.getElementById('inputDoc')?.value.trim() ?? '';
+    if (doc.length < 5) {
+        alert('El número de documento debe tener al menos 5 caracteres.');
+        return false;
+    }
     return true;
 }
 
-// Auto-ocultar alerta tras 7s
+// ── Dropdown personalizado de filtro ─────────────────────────
+function toggleFdd() {
+    const trigger = document.getElementById('fddTrigger');
+    const menu    = document.getElementById('fddMenu');
+    const isOpen  = menu.classList.contains('fdd-menu--open');
+    trigger.classList.toggle('fdd-open', !isOpen);
+    menu.classList.toggle('fdd-menu--open', !isOpen);
+}
+
+document.addEventListener('click', e => {
+    const wrap = document.getElementById('fddWrap');
+    if (wrap && !wrap.contains(e.target)) {
+        document.getElementById('fddTrigger')?.classList.remove('fdd-open');
+        document.getElementById('fddMenu')?.classList.remove('fdd-menu--open');
+    }
+});
+
+// Auto-ocultar alerta tras 7 s
 setTimeout(() => {
     const a = document.getElementById('alertMsg');
-    if (a) { a.style.transition='opacity .5s'; a.style.opacity='0'; setTimeout(()=>a.remove(),500); }
+    if (a) {
+        a.style.transition = 'opacity .5s';
+        a.style.opacity    = '0';
+        setTimeout(() => a.remove(), 500);
+    }
 }, 7000);
 </script>
 

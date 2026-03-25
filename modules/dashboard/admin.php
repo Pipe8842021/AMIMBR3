@@ -237,14 +237,14 @@ if (file_exists('../../includes/header.php')) {
     <?php if ($prematriculas_pendientes > 0 || $pagos_vencidos > 0): ?>
     <div class="alert-strip">
         <?php if ($prematriculas_pendientes > 0): ?>
-        <a href="../prematriculas/index.php" class="alert-chip warning">
+        <a href="../inscripciones/prematriculas/index.php" class="alert-chip warning">
             <span class="material-symbols-rounded">pending_actions</span>
             <?php echo $prematriculas_pendientes; ?> prematrículas pendientes de revisión
             <span class="material-symbols-rounded">arrow_forward</span>
         </a>
         <?php endif; ?>
         <?php if ($pagos_vencidos > 0): ?>
-        <a href="../pagos/index.php" class="alert-chip danger">
+        <a href="../inscripciones/matriculas/index.php?buscar=&estado=&pago=vencido" class="alert-chip danger">
             <span class="material-symbols-rounded">payments</span>
             <?php echo $pagos_vencidos; ?> pagos vencidos
             <span class="material-symbols-rounded">arrow_forward</span>

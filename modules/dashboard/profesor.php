@@ -423,7 +423,7 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
                         <span class="material-symbols-rounded arrow">arrow_forward</span>
                     </a>
 
-                    <a href="../bitacoras/index.php" class="quick-action">
+                    <a href="../grupos/index.php" class="quick-action">
                         <div class="quick-action-icon attendance">
                             <span class="material-symbols-rounded">fact_check</span>
                         </div>
