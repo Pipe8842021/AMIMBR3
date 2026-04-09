@@ -63,6 +63,15 @@ $dias_en_mes = date('t', strtotime("$anio_actual-$mes_actual-01"));
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="../../assets/css/colores.css">
     <link rel="stylesheet" href="../../assets/css/style-horariosProfe.css">
+    <script>
+        (function() {
+            const theme = localStorage.getItem('amimbre-theme'); // 'amimbre-theme' es la clave del helper
+            if (theme === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+
+        })();
+    </script>
 </head>
 
 <body>
@@ -99,7 +108,7 @@ $dias_en_mes = date('t', strtotime("$anio_actual-$mes_actual-01"));
                     <?php
                     for ($i = 1; $i < $primer_dia_mes; $i++) echo '<div class="day empty"></div>';
                     for ($dia = 1; $dia <= $dias_en_mes; $dia++) {
-           $timestamp = strtotime("$anio_actual-$mes_actual-$dia");
+                        $timestamp = strtotime("$anio_actual-$mes_actual-$dia");
                         $dia_semana_key = strtolower($dias_semana_nombres[date('N', $timestamp) - 1]);
                         $clase_hoy = ($dia == $hoy) ? 'today' : '';
                         echo "<div class='day $clase_hoy'><span class='day-number'>$dia</span>";
