@@ -20,18 +20,109 @@ $hoy = date('j');
 // --- BACKEND: PROCESAR NUEVO HORARIO ---
 $mensaje_feedback = "";
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'guardar_horario') {
-    try {
-        $stmt = $pdo->prepare("INSERT INTO horarios (grupo_id, dia_semana, hora_inicio, hora_fin, aula) VALUES (?, ?, ?, ?, ?)");
-        $stmt->execute([
-            $_POST['grupo_id'],
-            $_POST['dia_semana'],
-            $_POST['hora_inicio'],
-            $_POST['hora_fin'],
-            $_POST['aula']
-        ]);
-        $mensaje_feedback = "Horario guardado correctamente.";
-    } catch (PDOException $e) {
-        $mensaje_feedback = "Error: " . $e->getMessage();
+    $grupo_id   = intval($_POST['grupo_id']);
+    $dia        = $_POST['dia_semana'];
+    $hora_ini   = $_POST['hora_inicio'];
+    $hora_fin   = $_POST['hora_fin'];
+    $aula       = trim($_POST['aula']);
+    $conflictos = [];
+
+    // 1. Conflicto de AULA
+    if (!empty($aula)) {
+        $stmt = $pdo->prepare("
+            SELECT g.nombre as nombre_grupo, c.nombre as nombre_curso
+            FROM horarios h
+            JOIN grupos g ON h.grupo_id = g.id
+            JOIN cursos c ON g.curso_id = c.id
+            WHERE h.aula = ?
+              AND h.dia_semana = ?
+              AND h.hora_inicio < ?   -- la clase existente empieza antes de que termine la nueva
+              AND h.hora_fin   > ?    -- la clase existente termina después de que empiece la nueva
+        ");
+        $stmt->execute([$aula, $dia, $hora_fin, $hora_ini]);
+        $conflicto_aula = $stmt->fetch();
+        if ($conflicto_aula) {
+            $conflictos[] = "El aula '{$aula}' ya está ocupada ese día en ese horario 
+                             por el grupo '{$conflicto_aula['nombre_grupo']}' 
+                             ({$conflicto_aula['nombre_curso']}).";
+        }
+    }
+
+    // 2. Conflicto de PROFESOR
+    $stmt = $pdo->prepare("SELECT profesor_id FROM grupos WHERE id = ?");
+    $stmt->execute([$grupo_id]);
+    $profesor_id = $stmt->fetchColumn();
+
+    if ($profesor_id) {
+        $stmt = $pdo->prepare("
+            SELECT g.nombre as nombre_grupo, c.nombre as nombre_curso
+            FROM horarios h
+            JOIN grupos g ON h.grupo_id = g.id
+            JOIN cursos c ON g.curso_id = c.id
+            WHERE g.profesor_id = ?
+              AND g.id != ?           -- excluir el mismo grupo
+              AND h.dia_semana = ?
+              AND h.hora_inicio < ?
+              AND h.hora_fin   > ?
+        ");
+        $stmt->execute([$profesor_id, $grupo_id, $dia, $hora_fin, $hora_ini]);
+        $conflicto_prof = $stmt->fetch();
+        if ($conflicto_prof) {
+            $conflictos[] = "El profesor ya tiene clase ese día en ese horario 
+                             con el grupo '{$conflicto_prof['nombre_grupo']}' 
+                             ({$conflicto_prof['nombre_curso']}).";
+        }
+    }
+
+    // 3. Conflicto de ESTUDIANTES (matriculados en el grupo nuevo
+    //    que también están en otro grupo con horario solapado)
+    $stmt = $pdo->prepare("
+        SELECT DISTINCT u.nombre as nombre_estudiante, 
+               g2.nombre as nombre_grupo_conflicto,
+               c2.nombre as nombre_curso_conflicto
+        FROM matriculas m
+        JOIN usuarios u ON m.estudiante_id = u.id
+        -- buscar otros grupos donde esté el mismo estudiante
+        JOIN matriculas m2 ON m2.estudiante_id = m.estudiante_id AND m2.grupo_id != ?
+        JOIN grupos g2 ON m2.grupo_id = g2.id
+        JOIN cursos c2 ON g2.curso_id = c2.id
+        JOIN horarios h2 ON h2.grupo_id = g2.id
+        WHERE m.grupo_id = ?
+          AND m.estado   = 'activa'
+          AND m2.estado  = 'activa'
+          AND h2.dia_semana  = ?
+          AND h2.hora_inicio < ?
+          AND h2.hora_fin    > ?
+        LIMIT 5  -- mostrar solo los primeros 5 casos
+    ");
+    $stmt->execute([$grupo_id, $grupo_id, $dia, $hora_fin, $hora_ini]);
+    $conflictos_estudiantes = $stmt->fetchAll();
+    foreach ($conflictos_estudiantes as $ce) {
+        $conflictos[] = "El estudiante '{$ce['nombre_estudiante']}' ya tiene clase 
+                         en '{$ce['nombre_grupo_conflicto']}' 
+                         ({$ce['nombre_curso_conflicto']}) en ese mismo horario.";
+    }
+
+    // --- Guardar solo si no hay conflictos ---
+    if (empty($conflictos)) {
+        try {
+            $stmt = $pdo->prepare("
+                INSERT INTO horarios (grupo_id, dia_semana, hora_inicio, hora_fin, aula) 
+                VALUES (?, ?, ?, ?, ?)
+            ");
+            $stmt->execute([$grupo_id, $dia, $hora_ini, $hora_fin, $aula]);
+            $mensaje_feedback = "<span style='color:var(--primary-green)'>
+                ✓ Horario guardado correctamente.</span>";
+        } catch (PDOException $e) {
+            $mensaje_feedback = "<span style='color:#ef4444'>Error al guardar: "
+                . $e->getMessage() . "</span>";
+        }
+    } else {
+        // Mostrar todos los conflictos encontrados
+        $mensaje_feedback = "<span style='color:#ef4444'>
+            <b>No se guardó el horario. Se encontraron los siguientes conflictos:</b><br>"
+            . implode('<br>', array_map('htmlspecialchars', $conflictos))
+            . "</span>";
     }
 }
 
@@ -87,6 +178,15 @@ $dias_en_mes = date('t', strtotime("$anio_actual-$mes_actual-01"));
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="../../assets/css/colores.css">
     <link rel="stylesheet" href="../../assets/css/style-horariosAdmin.css">
+    <script>
+        (function() {
+            const theme = localStorage.getItem('amimbre-theme'); // 'amimbre-theme' es la clave del helper
+            if (theme === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }   
+
+        })();
+    </script>
 </head>
 
 <body>
