@@ -323,9 +323,10 @@
 //  ├─────────────────┼───────┼──────────┼────────────┤
 //  │ Dashboard       │  ✓   │    ✓     │     ✓      │
 //  │ Inscripciones   │  ✓   │    ✗     │     ✗      │
-//  │ Usuarios        │  ✓   │    ✓     │     ✗      │
+//  │ Usuarios        │  ✓   │    ✗     │     ✗      │  ← solo admin
 //  │ Cursos          │  ✓   │    ✓     │     ✓      │
-//  │ Documentación   │  ✓   │    ✓     │     ✓      │
+//  │ Doc. Administ.  │  ✓   │    ✓     │     ✗      │  ← no estudiante
+//  │ Doc. Institucio.│  ✓   │    ✓     │     ✓      │
 //  │ Grupos          │  ✓   │    ✓     │     ✗      │
 //  │ Notificaciones  │  ✓   │    ✓     │     ✓      │
 //  │ Reportes        │  ✓   │    ✗     │     ✗      │
@@ -390,7 +391,8 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                 </li>
                 <?php endif; ?>
 
-                <?php if (has_any_role(['admin', 'profesor'])): ?>
+                <!-- ✏️ CAMBIO 1: Usuarios — ahora solo visible para admin -->
+                <?php if (has_any_role(['admin'])): ?>
                 <li class="nav-item">
                     <a href="/AMIMBR3/modules/usuarios/index.php" class="nav-link">
                         <span class="material-symbols-rounded">group</span>
@@ -414,6 +416,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                 </li>
                 <?php endif; ?>
 
+                <!-- ✏️ CAMBIO 2: Documentación — el item Administrativa se oculta para estudiante -->
                 <?php if (has_any_role(['admin', 'profesor', 'estudiante'])): ?>
                 <li class="nav-item dropdown-container">
                     <a href="#" class="nav-link dropdown-toggle">
@@ -423,7 +426,9 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                     </a>
                     <ul class="dropdown-menu">
                         <li class="nav-item"><a class="nav-link dropdown-title">Documentación</a></li>
+                        <?php if (has_any_role(['admin', 'profesor'])): ?>
                         <li class="nav-item"><a href="/AMIMBR3/modules/documentos/administrativos/index.php" class="nav-link dropdown-link">Administrativa</a></li>
+                        <?php endif; ?>
                         <li class="nav-item"><a href="/AMIMBR3/modules/documentos/institucionales/index.php" class="nav-link dropdown-link">Institucional</a></li>
                     </ul>
                 </li>
