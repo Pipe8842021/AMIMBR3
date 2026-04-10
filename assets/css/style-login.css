@@ -1,4 +1,6 @@
-/* Style del login */
+/* ============================================================
+   style-login.css
+   ============================================================ */
 * {
     margin: 0;
     padding: 0;
@@ -18,6 +20,7 @@ body {
     width: 100%;
 }
 
+/* ── LADO IZQUIERDO ───────────────────────────────────────── */
 .left-side {
     display: none;
     position: relative;
@@ -28,13 +31,13 @@ body {
 .gradient-overlay-1 {
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle at 30% 50%, rgba(255, 255, 255, 0.1), transparent 50%);
+    background: radial-gradient(circle at 30% 50%, rgba(255,255,255,0.1), transparent 50%);
 }
 
 .gradient-overlay-2 {
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle at 70% 80%, rgba(255, 255, 255, 0.05), transparent 50%);
+    background: radial-gradient(circle at 70% 80%, rgba(255,255,255,0.05), transparent 50%);
 }
 
 #canvas-container {
@@ -75,6 +78,7 @@ body {
     opacity: 0.9;
 }
 
+/* ── LADO DERECHO ─────────────────────────────────────────── */
 .right-side {
     width: 100%;
     display: flex;
@@ -89,26 +93,7 @@ body {
     max-width: 28rem;
 }
 
-.mobile-logo {
-    display: block;
-    margin-bottom: 2rem;
-    text-align: center;
-}
-
-.logo-wrapper {
-    display: inline-block;
-    padding: 1rem;
-    border-radius: 1rem;
-    background: var(--subtle-blue);
-}
-
-.logo-circle {
-    width: 4rem;
-    height: 4rem;
-    border-radius: 50%;
-    background: var(--gradient-primary-blue);
-}
-
+/* ── LOGO ─────────────────────────────────────────────────── */
 .logo-img {
     width: 5rem;
     height: 5rem;
@@ -142,6 +127,7 @@ body {
     color: var(--text-secondary);
 }
 
+/* ── GRUPOS DE CAMPO ──────────────────────────────────────── */
 .form-group {
     margin-bottom: 1.5rem;
 }
@@ -182,6 +168,8 @@ body {
     color: var(--text-primary);
     font-size: 1rem;
     transition: all 0.2s;
+    appearance: none;
+    -webkit-appearance: none;
 }
 
 .form-input:focus {
@@ -190,11 +178,11 @@ body {
     box-shadow: 0 0 0 3px var(--subtle-blue);
 }
 
-/* Placeholder */
 .form-input::placeholder {
     color: var(--muted);
 }
 
+/* ── CHECKBOX ─────────────────────────────────────────────── */
 .checkbox-group {
     display: flex;
     align-items: center;
@@ -215,6 +203,7 @@ body {
     cursor: pointer;
 }
 
+/* ── BOTÓN PRINCIPAL ──────────────────────────────────────── */
 .btn-primary {
     width: 100%;
     height: 3rem;
@@ -226,107 +215,40 @@ body {
     font-weight: 500;
     cursor: pointer;
     transition: opacity 0.2s, transform 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
     opacity: 0.9;
     transform: translateY(-1px);
 }
 
-.divider {
-    position: relative;
-    margin: 1.5rem 0;
-    text-align: center;
+.btn-primary:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
 }
 
-.divider::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: var(--border-color);
+/* Spinner dentro del botón */
+.btn-spinner {
+    display: inline-block;
+    width: 17px;
+    height: 17px;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
 }
 
-.divider span {
-    position: relative;
-    background: var(--dark-bg);
-    padding: 0 0.5rem;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    color: var(--muted);
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 
-.social-buttons {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-}
-
-.btn-social {
-    height: 3rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    border: 1px solid var(--border-color);
-    border-radius: 0.5rem;
-    background: var(--card-bg);
-    color: var(--text-primary);
-    font-size: 1rem;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.btn-social:hover {
-    background: var(--hover-bg);
-    border-color: var(--primary-blue);
-}
-
-.btn-social svg {
-    width: 1.25rem;
-    height: 1.25rem;
-}
-
-.signup-text {
-    text-align: center;
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-}
-
-.signup-link {
-    color: var(--primary-blue);
-    text-decoration: none;
-    font-weight: 500;
-    transition: color 0.2s;
-}
-
-.signup-link:hover {
-    color: var(--text-secondary);
-}
-
-.alert {
-    padding: 12px 16px;
-    margin-bottom: 20px;
-    border-radius: 8px;
-    font-size: 14px;
-    display: none;
-}
-
-.alert-error {
-    background-color: var(--subtle-red);
-    border: 1px solid var(--primary-red);
-    color: var(--primary-red);
-}
-
-.alert-success {
-    background-color: var(--subtle-green);
-    border: 1px solid var(--primary-green);
-    color: var(--primary-green);
-}
-
+/* ── LINKS ────────────────────────────────────────────────── */
 .back-link {
     display: inline-flex;
     align-items: center;
@@ -339,15 +261,33 @@ body {
     transition: color 0.2s;
 }
 
-.back-link:hover {
-    color: var(--text-secondary);
-}
+.back-link:hover { color: var(--text-secondary); }
 
 .back-link svg {
     width: 16px;
     height: 16px;
 }
 
+.signup-text {
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-top: 1.5rem;
+}
+
+.signup-link {
+    color: var(--primary-blue);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.signup-link:hover { color: var(--text-secondary); }
+
+/* ── ALERTS (ocultos, reemplazados por la modal) ──────────── */
+.alert { display: none !important; }
+
+/* ── RESPONSIVE ───────────────────────────────────────────── */
 @media (min-width: 1024px) {
     .left-side {
         display: flex;
@@ -357,11 +297,184 @@ body {
         justify-content: center;
     }
 
-    .right-side {
-        width: 50%;
-    }
+    .right-side { width: 50%; }
+}
 
-    .mobile-logo {
-        display: none;
+/* ════════════════════════════════════════════════════════════
+   MODAL DE LOGIN
+   ════════════════════════════════════════════════════════════ */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 20px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.modal-overlay.modal-visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-box {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 40px 36px 32px;
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+    position: relative;
+    transform: translateY(24px) scale(0.97);
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+}
+
+.modal-overlay.modal-visible .modal-box {
+    transform: translateY(0) scale(1);
+}
+
+/* Línea decorativa superior */
+.modal-box::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 3px;
+    border-radius: 0 0 4px 4px;
+}
+
+.modal-box--success::before { background: var(--gradient-primary-green); }
+.modal-box--error::before   { background: var(--gradient-primary-orange); }
+
+/* Icono */
+.modal-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+}
+
+.modal-icon svg {
+    width: 36px;
+    height: 36px;
+}
+
+.modal-icon--success {
+    background: var(--subtle-green);
+    border: 2px solid rgba(78, 195, 54, 0.4);
+    color: var(--primary-green);
+}
+
+.modal-icon--error {
+    background: var(--subtle-red);
+    border: 2px solid rgba(186, 38, 38, 0.35);
+    color: var(--primary-red);
+}
+
+/* Textos */
+.modal-title {
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+    line-height: 1.2;
+}
+
+.modal-msg {
+    font-size: 0.92rem;
+    color: var(--text-secondary);
+    line-height: 1.65;
+    margin-bottom: 24px;
+}
+
+/* Info de redirección (modal de éxito) */
+.modal-redirect-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: var(--dark-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+/* Spinner del modal de redirección */
+.modal-spinner {
+    width: 18px;
+    height: 18px;
+    color: var(--primary-blue);
+    animation: spin 1s linear infinite;
+    flex-shrink: 0;
+}
+
+/* Botones de la modal */
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 4px;
+}
+
+.modal-btn {
+    padding: 11px 24px;
+    border-radius: 9px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    letter-spacing: 0.02em;
+    font-family: inherit;
+}
+
+.modal-btn--primary {
+    background: var(--gradient-primary-blue);
+    color: #fff;
+}
+
+.modal-btn--primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(20, 121, 176, 0.35);
+}
+
+.modal-btn--ghost {
+    background: transparent;
+    border: 1.5px solid var(--border-color);
+    color: var(--text-secondary);
+}
+
+.modal-btn--ghost:hover {
+    background: var(--hover-bg);
+    border-color: var(--primary-blue);
+    color: var(--text-primary);
+}
+
+@media (max-width: 480px) {
+    .modal-box {
+        padding: 32px 20px 26px;
+    }
+    .modal-actions {
+        flex-direction: column;
+    }
+    .modal-btn {
+        width: 100%;
     }
 }

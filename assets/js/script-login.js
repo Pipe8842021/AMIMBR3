@@ -1,4 +1,11 @@
-// Script del login
+/* ============================================================
+   script-login.js
+   - Moneda 3D interactiva (Three.js) — código original
+   - Modal de éxito / error en el login
+   - Spinner en el botón al hacer submit
+   ============================================================ */
+
+/* ── THREE.JS — MONEDA 3D ───────────────────────────────────── */
 const container = document.getElementById('three-canvas');
 const scene = new THREE.Scene();
 scene.background = null;
@@ -104,13 +111,10 @@ container.addEventListener('mousedown', (e) => {
 
 document.addEventListener('mousemove', (e) => {
     if (!isDragging) return;
-    
     const deltaX = e.clientX - previousMousePosition.x;
     const deltaY = e.clientY - previousMousePosition.y;
-    
     coinGroup.rotation.z += deltaX * 0.01;
     coinGroup.rotation.y += deltaY * 0.01;
-    
     rotationVelocity = { x: deltaX * 0.01, y: deltaY * 0.01 };
     previousMousePosition = { x: e.clientX, y: e.clientY };
 });
@@ -130,14 +134,11 @@ container.addEventListener('touchstart', (e) => {
 container.addEventListener('touchmove', (e) => {
     if (!isDragging) return;
     e.preventDefault();
-    
     const touch = e.touches[0];
     const deltaX = touch.clientX - previousMousePosition.x;
     const deltaY = touch.clientY - previousMousePosition.y;
-    
     coinGroup.rotation.z += deltaX * 0.01;
     coinGroup.rotation.y += deltaY * 0.01;
-    
     rotationVelocity = { x: deltaX * 0.01, y: deltaY * 0.01 };
     previousMousePosition = { x: touch.clientX, y: touch.clientY };
 });
@@ -146,10 +147,10 @@ container.addEventListener('touchend', () => {
     isDragging = false;
 });
 
-// Animation
+// Animation loop
 function animate() {
     requestAnimationFrame(animate);
-    
+
     if (autoRotate) {
         const time = Date.now() * 0.001;
         coinGroup.rotation.z = time * 0.2;
@@ -157,15 +158,13 @@ function animate() {
     } else {
         rotationVelocity.x *= 0.95;
         rotationVelocity.y *= 0.95;
-        
         coinGroup.rotation.z += rotationVelocity.x;
         coinGroup.rotation.y += rotationVelocity.y;
-        
         if (Math.abs(rotationVelocity.x) < 0.001 && Math.abs(rotationVelocity.y) < 0.001) {
             autoRotate = true;
         }
     }
-    
+
     renderer.render(scene, camera);
 }
 animate();
@@ -181,3 +180,137 @@ function handleResize() {
 }
 window.addEventListener('resize', handleResize);
 handleResize();
+
+
+/* ── MODAL + SPINNER ────────────────────────────────────────── */
+(function () {
+    'use strict';
+
+    function crearModal(type, titulo, mensaje) {
+        const existing = document.getElementById('login-modal');
+        if (existing) existing.remove();
+
+        const isSuccess = type === 'success';
+
+        const iconSVG = isSuccess
+            ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                   <polyline points="20 6 9 17 4 12"/>
+               </svg>`
+            : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                   <circle cx="12" cy="12" r="10"/>
+                   <line x1="12" y1="8" x2="12" y2="12"/>
+                   <line x1="12" y1="16" x2="12.01" y2="16"/>
+               </svg>`;
+
+        const extraHTML = isSuccess
+            ? `<div class="modal-redirect-info">
+                   <svg class="modal-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                       <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                   </svg>
+                   <span>Redirigiendo al dashboard…</span>
+               </div>`
+            : '';
+
+        const botonesHTML = isSuccess
+            ? ''
+            : `<div class="modal-actions">
+                   <button class="modal-btn modal-btn--ghost"   id="modal-cerrar">Cancelar</button>
+                   <button class="modal-btn modal-btn--primary" id="modal-reintentar">Intentar de nuevo</button>
+               </div>`;
+
+        document.body.insertAdjacentHTML('beforeend', `
+        <div class="modal-overlay" id="login-modal" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+            <div class="modal-box modal-box--${type}">
+                <div class="modal-icon modal-icon--${type}">${iconSVG}</div>
+                <h2 class="modal-title" id="modal-titulo">${titulo}</h2>
+                <p class="modal-msg">${mensaje}</p>
+                ${extraHTML}
+                ${botonesHTML}
+            </div>
+        </div>`);
+
+        // Animación de entrada
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                const modal = document.getElementById('login-modal');
+                if (modal) modal.classList.add('modal-visible');
+            });
+        });
+
+        const btnCerrar     = document.getElementById('modal-cerrar');
+        const btnReintentar = document.getElementById('modal-reintentar');
+
+        if (btnCerrar) {
+            btnCerrar.addEventListener('click', cerrarModal);
+        }
+
+        if (btnReintentar) {
+            btnReintentar.addEventListener('click', () => {
+                cerrarModal();
+                setTimeout(() => {
+                    const emailField = document.getElementById('email');
+                    if (emailField) emailField.focus();
+                }, 350);
+            });
+        }
+
+        // Cerrar con clic fuera o Escape (solo en error)
+        if (!isSuccess) {
+            document.getElementById('login-modal').addEventListener('click', function (e) {
+                if (e.target === this) cerrarModal();
+            });
+            document.addEventListener('keydown', onEscape);
+        }
+    }
+
+    function cerrarModal() {
+        const modal = document.getElementById('login-modal');
+        if (!modal) return;
+        modal.classList.remove('modal-visible');
+        document.removeEventListener('keydown', onEscape);
+        modal.addEventListener('transitionend', () => modal.remove(), { once: true });
+    }
+
+    function onEscape(e) {
+        if (e.key === 'Escape') cerrarModal();
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const body        = document.body;
+        const loginStatus = body.dataset.loginStatus   || '';
+        const loginMsg    = body.dataset.loginMsg      || '';
+        const redirectUrl = body.dataset.loginRedirect || '';
+
+        if (loginStatus === 'error') {
+            crearModal(
+                'error',
+                'Acceso denegado',
+                loginMsg || 'Las credenciales ingresadas son incorrectas. Por favor verifica tu correo y contraseña.'
+            );
+        } else if (loginStatus === 'success') {
+            crearModal(
+                'success',
+                '¡Bienvenido de nuevo!',
+                loginMsg || 'Autenticación exitosa. Serás redirigido en un momento…'
+            );
+            if (redirectUrl) {
+                setTimeout(() => { window.location.href = redirectUrl; }, 2200);
+            }
+        }
+
+        // Spinner en el botón al hacer submit
+        const form      = document.getElementById('loginForm');
+        const btnSubmit = form ? form.querySelector('.btn-primary') : null;
+
+        if (form && btnSubmit) {
+            form.addEventListener('submit', function () {
+                const email    = document.getElementById('email');
+                const password = document.getElementById('password');
+                if (!email?.value.trim() || !password?.value.trim()) return;
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = `<span class="btn-spinner"></span> Verificando…`;
+            });
+        }
+    });
+
+})();
