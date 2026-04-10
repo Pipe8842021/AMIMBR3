@@ -15,6 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="../assets/css/colores.css">
     <link rel="stylesheet" href="../assets/css/style-preInscripcion.css">
+    <link rel="shortcut icon" href="../assets/img/3.png">
     <script>
         (function() {
             const theme = localStorage.getItem('amimbre-theme');

@@ -1,252 +1,214 @@
-// Validación y envío del formulario de preinscripción
-document.addEventListener('DOMContentLoaded', function() {
+/* ============================================================
+   script-preinscripcion.js
+   - Calcula edad automáticamente al cambiar fecha de nacimiento
+   - Valida campos requeridos antes de enviar
+   - Muestra modal de éxito o error tras el envío del formulario
+   ============================================================ */
+
+(function () {
+    'use strict';
+
+    /* ── 1. CÁLCULO AUTOMÁTICO DE EDAD ─────────────────────── */
+    const fechaNac = document.getElementById('fecha_nacimiento');
+    const edadInput = document.getElementById('edad');
+
+    if (fechaNac && edadInput) {
+        fechaNac.addEventListener('change', function () {
+            const hoy = new Date();
+            const nac = new Date(this.value);
+            if (!isNaN(nac)) {
+                let edad = hoy.getFullYear() - nac.getFullYear();
+                const m = hoy.getMonth() - nac.getMonth();
+                if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--;
+                edadInput.value = edad >= 0 ? edad : '';
+            }
+        });
+    }
+
+    /* ── 2. MODAL ───────────────────────────────────────────── */
+    /**
+     * Crea e inyecta el HTML de la modal en el body.
+     * @param {'success'|'error'} type
+     * @param {string} name  - Nombre del estudiante (para personalizar el mensaje)
+     */
+    function crearModal(type, name) {
+        // Evitar duplicados
+        const existing = document.getElementById('preins-modal');
+        if (existing) existing.remove();
+
+        const isSuccess = type === 'success';
+
+        const iconSVG = isSuccess
+            ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                   <polyline points="20 6 9 17 4 12"/>
+               </svg>`
+            : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                   <circle cx="12" cy="12" r="10"/>
+                   <line x1="12" y1="8" x2="12" y2="12"/>
+                   <line x1="12" y1="16" x2="12.01" y2="16"/>
+               </svg>`;
+
+        const titulo = isSuccess ? '¡Preinscripción enviada!' : 'Error al enviar';
+
+        const mensaje = isSuccess
+            ? (name
+                ? `Tu solicitud ha sido registrada con éxito, <strong>${name}</strong>. Nos comunicaremos contigo muy pronto para confirmar tu cupo.`
+                : 'Tu solicitud ha sido registrada con éxito. Nos comunicaremos contigo muy pronto para confirmar tu cupo.')
+            : 'Ocurrió un problema al procesar tu solicitud. Por favor revisa tu conexión e inténtalo nuevamente. Si el problema persiste, contáctanos directamente.';
+
+        const botones = isSuccess
+            ? `<button class="modal-btn modal-btn--primary" id="modal-cerrar">Entendido</button>`
+            : `<button class="modal-btn modal-btn--ghost"   id="modal-cerrar">Cancelar</button>
+               <button class="modal-btn modal-btn--primary" id="modal-reintentar">Reintentar</button>`;
+
+        const detalle = isSuccess
+            ? `<span class="modal-detail">📧 Revisa tu correo electrónico</span>`
+            : `<span class="modal-detail">📞 312 286 72 97 · escuelademusicaamimbre@gmail.com</span>`;
+
+        const html = `
+        <div class="modal-overlay" id="preins-modal" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+            <div class="modal-box modal-box--${type}">
+                <div class="modal-icon modal-icon--${type}">${iconSVG}</div>
+                <h2 class="modal-title" id="modal-titulo">${titulo}</h2>
+                <p class="modal-msg">${mensaje}</p>
+                ${detalle}
+                <div class="modal-actions">${botones}</div>
+            </div>
+        </div>`;
+
+        document.body.insertAdjacentHTML('beforeend', html);
+
+        // Mostrar con animación (pequeño delay para que el CSS transition funcione)
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                document.getElementById('preins-modal').classList.add('modal-visible');
+            });
+        });
+
+        // Eventos de cierre
+        document.getElementById('modal-cerrar').addEventListener('click', cerrarModal);
+
+        const btnReintentar = document.getElementById('modal-reintentar');
+        if (btnReintentar) {
+            btnReintentar.addEventListener('click', cerrarModal);
+        }
+
+        // Cerrar al hacer clic fuera del modal-box
+        document.getElementById('preins-modal').addEventListener('click', function (e) {
+            if (e.target === this) cerrarModal();
+        });
+
+        // Cerrar con Escape
+        document.addEventListener('keydown', onEscape);
+    }
+
+    function cerrarModal() {
+        const modal = document.getElementById('preins-modal');
+        if (!modal) return;
+        modal.classList.remove('modal-visible');
+        document.removeEventListener('keydown', onEscape);
+        modal.addEventListener('transitionend', () => modal.remove(), { once: true });
+    }
+
+    function onEscape(e) {
+        if (e.key === 'Escape') cerrarModal();
+    }
+
+    /* ── 3. DETECCIÓN DE PARÁMETROS EN LA URL ───────────────── */
+    // Si el servidor redirige a ?success o ?error, mostramos la modal
+    // en lugar del alert inline del PHP.
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.has('success')) {
+        // Intenta leer el nombre del campo si quedó guardado en sessionStorage
+        const nombre = sessionStorage.getItem('preins-nombre') || '';
+        sessionStorage.removeItem('preins-nombre');
+        // Pequeño delay para que el DOM esté listo
+        setTimeout(() => crearModal('success', nombre), 200);
+        // Limpiar la URL sin recargar
+        history.replaceState(null, '', window.location.pathname);
+    } else if (params.has('error')) {
+        setTimeout(() => crearModal('error', ''), 200);
+        history.replaceState(null, '', window.location.pathname);
+    }
+
+    /* ── 4. VALIDACIÓN Y ENVÍO DEL FORMULARIO ───────────────── */
     const form = document.getElementById('preregistrationForm');
-    
     if (!form) return;
-    
-    // Validación en tiempo real
-    const inputs = form.querySelectorAll('input, select, textarea');
-    
-    inputs.forEach(input => {
-        input.addEventListener('blur', function() {
-            validateField(this);
-        });
-        
-        input.addEventListener('input', function() {
-            if (this.classList.contains('error')) {
-                validateField(this);
+
+    form.addEventListener('submit', function (e) {
+        // Quitar errores previos
+        this.querySelectorAll('.input-error').forEach(el => el.classList.remove('input-error'));
+
+        const requeridos = this.querySelectorAll('[required]');
+        let valido = true;
+
+        requeridos.forEach(el => {
+            const vacio =
+                (el.type === 'checkbox' && !el.checked) ||
+                (el.tagName === 'SELECT' && !el.value) ||
+                (el.type !== 'checkbox' && el.tagName !== 'SELECT' && !el.value.trim());
+
+            if (vacio) {
+                el.classList.add('input-error');
+                valido = false;
             }
         });
-    });
-    
-    // Envío del formulario
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        // Validar todos los campos
-        let isValid = true;
-        inputs.forEach(input => {
-            if (!validateField(input)) {
-                isValid = false;
-            }
-        });
-        
-        if (!isValid) {
-            showMessage('Por favor, corrige los errores en el formulario', 'error');
+
+        if (!valido) {
+            e.preventDefault();
+            const primerError = this.querySelector('.input-error');
+            primerError?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             return;
         }
-        
-        // Deshabilitar botón y mostrar loading
-        const submitBtn = form.querySelector('button[type="submit"]');
-        const originalText = submitBtn.textContent;
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Enviando...';
-        
-        try {
-            const formData = new FormData(form);
-            
-            const response = await fetch('../includes/procesar_preinscripcion.php', {
-                method: 'POST',
-                body: formData
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                showMessage(data.message, 'success');
-                form.reset();
-                
-                // Redirigir después de 2 segundos
-                setTimeout(() => {
-                    window.location.href = '../public/index.html';
-                }, 2000);
-            } else {
-                showMessage(data.message, 'error');
-            }
-            
-        } catch (error) {
-            console.error('Error:', error);
-            showMessage('Error al enviar el formulario. Por favor, intenta nuevamente.', 'error');
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.textContent = originalText;
-        }
-    });
-    
-    // Función para validar campos individuales
-    function validateField(field) {
-        const value = field.value.trim();
-        const fieldName = field.name;
-        let isValid = true;
-        let errorMessage = '';
-        
-        // Limpiar error previo
-        removeError(field);
-        
-        // Validaciones específicas
-        switch(fieldName) {
-            case 'nombre':
-                if (value.length < 3) {
-                    errorMessage = 'El nombre debe tener al menos 3 caracteres';
-                    isValid = false;
-                } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(value)) {
-                    errorMessage = 'El nombre solo puede contener letras';
-                    isValid = false;
-                }
-                break;
-                
-            case 'email':
-                const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (!emailPattern.test(value)) {
-                    errorMessage = 'Email inválido';
-                    isValid = false;
-                }
-                break;
-                
-            case 'telefono':
-                if (!/^[0-9]{7,15}$/.test(value)) {
-                    errorMessage = 'Teléfono inválido (7-15 dígitos)';
-                    isValid = false;
-                }
-                break;
-                
-            case 'documento':
-                if (!/^[0-9]{6,15}$/.test(value)) {
-                    errorMessage = 'Documento inválido (6-15 dígitos)';
-                    isValid = false;
-                }
-                break;
-                
-            case 'curso':
-                if (value === '') {
-                    errorMessage = 'Debe seleccionar un curso';
-                    isValid = false;
-                }
-                break;
-                
-            case 'terminos':
-                if (!field.checked) {
-                    errorMessage = 'Debe aceptar los términos';
-                    isValid = false;
-                }
-                break;
-        }
-        
-        if (!isValid) {
-            showFieldError(field, errorMessage);
-        }
-        
-        return isValid;
-    }
-    
-    // Función para mostrar error en campo
-    function showFieldError(field, message) {
-        field.classList.add('error');
-        
-        let errorDiv = field.parentElement.querySelector('.error-message');
-        if (!errorDiv) {
-            errorDiv = document.createElement('div');
-            errorDiv.className = 'error-message';
-            field.parentElement.appendChild(errorDiv);
-        }
-        errorDiv.textContent = message;
-    }
-    
-    // Función para remover error
-    function removeError(field) {
-        field.classList.remove('error');
-        const errorDiv = field.parentElement.querySelector('.error-message');
-        if (errorDiv) {
-            errorDiv.remove();
-        }
-    }
-    
-    // Función para mostrar mensajes generales
-    function showMessage(message, type) {
-        // Remover mensaje anterior si existe
-        const existingAlert = document.querySelector('.alert-message');
-        if (existingAlert) {
-            existingAlert.remove();
-        }
-        
-        const alertDiv = document.createElement('div');
-        alertDiv.className = `alert-message alert-${type}`;
-        alertDiv.innerHTML = `
-            <span>${message}</span>
-            <button onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; font-size: 1.2em; cursor: pointer;">&times;</button>
-        `;
-        
-        const container = document.querySelector('.container');
-        container.insertBefore(alertDiv, container.firstChild);
-        
-        // Auto-remover después de 5 segundos
-        setTimeout(() => {
-            alertDiv.remove();
-        }, 5000);
-    }
-    
-    // Formatear teléfono mientras escribe
-    const telefonoInput = document.getElementById('telefono');
-    if (telefonoInput) {
-        telefonoInput.addEventListener('input', function(e) {
-            this.value = this.value.replace(/[^0-9]/g, '');
-        });
-    }
-    
-    // Formatear documento mientras escribe
-    const documentoInput = document.getElementById('documento');
-    if (documentoInput) {
-        documentoInput.addEventListener('input', function(e) {
-            this.value = this.value.replace(/[^0-9]/g, '');
-        });
-    }
-});
 
-// Agregar estilos CSS para los errores
-const style = document.createElement('style');
-style.textContent = `
-    .error {
-        border-color: #ff6d00 !important;
-        box-shadow: 0 0 0 3px rgba(255, 109, 0, 0.1) !important;
-    }
-    
-    .error-message {
-        color: #ff6d00;
-        font-size: 0.85em;
-        margin-top: 4px;
-        display: block;
-    }
-    
-    .alert-message {
-        padding: 15px 20px;
-        margin-bottom: 20px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        animation: slideDown 0.3s ease;
-    }
-    
-    .alert-success {
-        background-color: #d4edda;
-        border: 1px solid #c3e6cb;
-        color: #155724;
-    }
-    
-    .alert-error {
-        background-color: #f8d7da;
-        border: 1px solid #f5c6cb;
-        color: #721c24;
-    }
-    
-    @keyframes slideDown {
-        from {
-            opacity: 0;
-            transform: translateY(-10px);
+        // Guardar nombre en sessionStorage para personalizar el mensaje de éxito
+        const nombreInput = document.getElementById('nombres_apellidos');
+        if (nombreInput && nombreInput.value.trim()) {
+            const partes = nombreInput.value.trim().split(' ');
+            // Guardar solo el primer nombre
+            sessionStorage.setItem('preins-nombre', partes[0]);
         }
-        to {
-            opacity: 1;
-            transform: translateY(0);
+
+        /* ── MODO AJAX (opcional) ─────────────────────────────
+           Si el formulario tiene data-ajax="true", se envía via
+           fetch y la modal aparece sin recargar la página.
+           De lo contrario el form hace submit normal y el PHP
+           redirige a ?success / ?error.
+        ─────────────────────────────────────────────────────── */
+        if (form.dataset.ajax === 'true') {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+
+            // Mostrar estado de carga en el botón
+            const btnSubmit = form.querySelector('.btn-submit');
+            const textoOriginal = btnSubmit.innerHTML;
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                </svg>
+                Enviando…`;
+
+            fetch(form.action, { method: 'POST', body: formData })
+                .then(res => {
+                    if (res.ok || res.redirected) {
+                        const nombre = sessionStorage.getItem('preins-nombre') || '';
+                        sessionStorage.removeItem('preins-nombre');
+                        crearModal('success', nombre);
+                        form.reset();
+                    } else {
+                        crearModal('error', '');
+                    }
+                })
+                .catch(() => crearModal('error', ''))
+                .finally(() => {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = textoOriginal;
+                });
         }
-    }
-`;
-document.head.appendChild(style);
+        // Si NO es ajax, el form hace submit normal → PHP redirige → JS detecta params arriba.
+    });
+
+})();

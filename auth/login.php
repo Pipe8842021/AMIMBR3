@@ -4,133 +4,119 @@ require_once '../config/session.php';
 // Luego incluir la base de datos
 require_once '../config/database.php';
 
-$error_message = '';
-$success_message = '';
+$login_status = '';   // 'success' | 'error' | ''
+$login_msg    = '';
+
+// Verificar si ya hay sesión activa (ANTES de procesar el POST)
+if (is_logged_in()) {
+    $rol = $_SESSION['user_rol'] ?? 'estudiante';
+    switch ($rol) {
+        case 'admin':     header("Location: ../modules/dashboard/admin.php");    break;
+        case 'profesor':  header("Location: ../modules/dashboard/profesor.php"); break;
+        case 'estudiante':header("Location: ../modules/dashboard/estudiante.php");break;
+        default:          header("Location: ../modules/dashboard/index.php");
+    }
+    exit;
+}
 
 // Procesar el formulario si se envía
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Debug
-    error_log("POST recibido en login.php");
-    
-    $email = filter_var($_POST['email'] ?? '', FILTER_SANITIZE_EMAIL);
+
+    $email    = filter_var($_POST['email']    ?? '', FILTER_SANITIZE_EMAIL);
     $password = $_POST['password'] ?? '';
     $remember = isset($_POST['remember']);
-    
-    error_log("Email intentando login: $email");
-    
+
+    error_log("POST recibido en login.php — Email: $email");
+
     if (empty($email) || empty($password)) {
-        $error_message = 'Por favor, completa todos los campos';
+
+        $login_status = 'error';
+        $login_msg    = 'Por favor, completa todos los campos antes de continuar.';
         error_log("Login fallido: campos vacíos");
+
     } else {
         try {
-            // Buscar usuario en la base de datos
             $stmt = $pdo->prepare("SELECT id, nombre, email, password, rol, estado FROM usuarios WHERE email = ?");
             $stmt->execute([$email]);
             $user = $stmt->fetch();
-            
-            // Debug detallado
+
             if ($user) {
-                error_log("Usuario encontrado: {$user['nombre']} - Rol: {$user['rol']} - Estado: {$user['estado']}");
-                error_log("Hash en BD: " . substr($user['password'], 0, 30) . "...");
-                
-                // Verificar estado del usuario
+                error_log("Usuario encontrado: {$user['nombre']} — Rol: {$user['rol']} — Estado: {$user['estado']}");
+
                 if ($user['estado'] !== 'activo') {
-                    $error_message = 'Tu cuenta está ' . $user['estado'] . '. Contacta al administrador.';
+
+                    $login_status = 'error';
+                    $login_msg    = 'Tu cuenta está ' . htmlspecialchars($user['estado']) . '. Contacta al administrador.';
                     error_log("Login fallido: cuenta {$user['estado']}");
-                } 
-                // Verificar contraseña
-                else if (password_verify($password, $user['password'])) {
+
+                } elseif (password_verify($password, $user['password'])) {
+
                     error_log("Login exitoso para: $email");
-                    
-                    // Login exitoso - Guardar datos en sesión
-                    $_SESSION['user_id'] = $user['id'];
+
+                    // Guardar sesión
+                    $_SESSION['user_id']     = $user['id'];
                     $_SESSION['user_nombre'] = $user['nombre'];
-                    $_SESSION['user_email'] = $user['email'];
-                    $_SESSION['user_rol'] = $user['rol'];
-                    
-                    // Si marcó "recordarme", crear cookie
+                    $_SESSION['user_email']  = $user['email'];
+                    $_SESSION['user_rol']    = $user['rol'];
+
+                    // Cookie "Recordarme"
                     if ($remember) {
                         $token = bin2hex(random_bytes(32));
                         setcookie('remember_token', $token, time() + (86400 * 30), '/', '', false, true);
-                        
-                        // Guardar token en BD
                         $stmt = $pdo->prepare("UPDATE usuarios SET remember_token = ? WHERE id = ?");
                         $stmt->execute([$token, $user['id']]);
-                        error_log("Token de recordar creado");
                     }
-                    
-                    // Registrar acceso
+
+                    // Log de acceso
                     try {
                         $stmt = $pdo->prepare("INSERT INTO logs_acceso (usuario_id, ip_address, user_agent) VALUES (?, ?, ?)");
                         $stmt->execute([
                             $user['id'],
-                            $_SERVER['REMOTE_ADDR'] ?? 'unknown',
-                            $_SERVER['HTTP_USER_AGENT'] ?? 'unknown'
+                            $_SERVER['REMOTE_ADDR']     ?? 'unknown',
+                            $_SERVER['HTTP_USER_AGENT'] ?? 'unknown',
                         ]);
                     } catch (PDOException $e) {
                         error_log("Error al registrar log de acceso: " . $e->getMessage());
-                        // No interrumpir el login por error en logs
                     }
-                    
-                    // Redirigir según el rol
-                    switch($user['rol']) {
-                        case 'admin':
-                            header('Location: ../modules/dashboard/admin.php');
-                            break;
-                        case 'profesor':
-                            header('Location: ../modules/dashboard/profesor.php');
-                            break;
-                        case 'estudiante':
-                            header('Location: ../modules/dashboard/estudiante.php');
-                            break;
-                        default:
-                            header('Location: ../modules/dashboard/index.php');
+
+                    // Estado de éxito para la modal
+                    $nombre_corto = explode(' ', trim($user['nombre']))[0];
+                    $login_status = 'success';
+                    $login_msg    = "¡Hola, $nombre_corto! Tu sesión ha sido iniciada correctamente.";
+
+                    // Determinar URL de destino según rol
+                    switch ($user['rol']) {
+                        case 'admin':     $redirect = '../modules/dashboard/admin.php';    break;
+                        case 'profesor':  $redirect = '../modules/dashboard/profesor.php'; break;
+                        case 'estudiante':$redirect = '../modules/dashboard/estudiante.php';break;
+                        default:          $redirect = '../modules/dashboard/index.php';
                     }
-                    exit;
+
                 } else {
-                    // Contraseña incorrecta
+
                     error_log("Login fallido: contraseña incorrecta para $email");
-                    error_log("IMPORTANTE: Verifica que el password en BD esté hasheado con password_hash()");
-                    
-                    // Verificar si el hash parece válido
+
                     if (substr($user['password'], 0, 4) !== '$2y$' && substr($user['password'], 0, 4) !== '$2a$') {
-                        error_log("ADVERTENCIA: El hash de password NO parece ser bcrypt. Hash inicio: " . substr($user['password'], 0, 10));
-                        $error_message = 'Error de configuración. Contacta al administrador (Error: HASH_FORMAT)';
+                        $login_status = 'error';
+                        $login_msg    = 'Error de configuración del servidor. Contacta al administrador (Error: HASH_FORMAT).';
                     } else {
-                        $error_message = 'Credenciales incorrectas';
+                        $login_status = 'error';
+                        $login_msg    = 'La contraseña ingresada no es correcta. Verifica e inténtalo de nuevo.';
                     }
                 }
+
             } else {
-                error_log("Login fallido: usuario no encontrado con email: $email");
-                $error_message = 'Credenciales incorrectas';
+                error_log("Login fallido: usuario no encontrado — $email");
+                $login_status = 'error';
+                $login_msg    = 'No encontramos una cuenta con ese correo electrónico.';
             }
+
         } catch (PDOException $e) {
             error_log("Error en login: " . $e->getMessage());
-            error_log("Stack trace: " . $e->getTraceAsString());
-            $error_message = 'Error en el sistema. Por favor, intenta más tarde';
+            $login_status = 'error';
+            $login_msg    = 'Error en el sistema. Por favor, intenta más tarde.';
         }
     }
-}
-
-// Verificar si ya hay sesión activa
-if (is_logged_in()) {
-    $rol = $_SESSION['user_rol'] ?? 'estudiante';
-    
-    // Redirigir según rol
-    switch($rol) {
-        case 'admin':
-            header("Location: ../modules/dashboard/admin.php");
-            break;
-        case 'profesor':
-            header("Location: ../modules/dashboard/profesor.php");
-            break;
-        case 'estudiante':
-            header("Location: ../modules/dashboard/estudiante.php");
-            break;
-        default:
-            header("Location: ../modules/dashboard/index.php");
-    }
-    exit;
 }
 ?>
 <!DOCTYPE html>
@@ -138,7 +124,7 @@ if (is_logged_in()) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iniciar Sesión - Amimbré</title>
+    <title>Iniciar Sesión — Amimbré</title>
     <link rel="shortcut icon" href="../assets/img/3.png">
     <script>
         (function() {
@@ -149,12 +135,29 @@ if (is_logged_in()) {
         })();
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <link rel="stylesheet" href="../assets/css/style-login.css">
     <link rel="stylesheet" href="../assets/css/colores.css">
+    <link rel="stylesheet" href="../assets/css/style-login.css">
 </head>
-<body>
+
+<?php
+/* Pasar estado al JS de forma segura mediante data-attributes en <body> */
+$data_status = htmlspecialchars($login_status, ENT_QUOTES, 'UTF-8');
+$data_msg    = htmlspecialchars($login_msg,    ENT_QUOTES, 'UTF-8');
+
+/* Si el login fue exitoso, también pasar la URL de destino */
+$data_redirect = '';
+if ($login_status === 'success' && isset($redirect)) {
+    $data_redirect = htmlspecialchars($redirect, ENT_QUOTES, 'UTF-8');
+}
+?>
+<body
+    data-login-status="<?= $data_status ?>"
+    data-login-msg="<?= $data_msg ?>"
+    data-login-redirect="<?= $data_redirect ?>"
+>
     <div class="container">
-        <!-- Left Side - 3D Coin -->
+
+        <!-- ── LADO IZQUIERDO — 3D ───────────────────── -->
         <div class="left-side">
             <div class="gradient-overlay-1"></div>
             <div class="gradient-overlay-2"></div>
@@ -167,9 +170,10 @@ if (is_logged_in()) {
             </div>
         </div>
 
-        <!-- Right Side - Login Form -->
+        <!-- ── LADO DERECHO — FORMULARIO ─────────────── -->
         <div class="right-side">
             <div class="form-container">
+
                 <a href="../public/index.html" class="back-link">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
@@ -183,24 +187,12 @@ if (is_logged_in()) {
                     <p>Ingresa tus credenciales para acceder</p>
                 </div>
 
-                <?php if ($error_message): ?>
-                <div class="alert alert-error">
-                    <?php echo htmlspecialchars($error_message); ?>
-                </div>
-                <?php endif; ?>
-
-                <?php if ($success_message): ?>
-                <div class="alert alert-success">
-                    <?php echo htmlspecialchars($success_message); ?>
-                </div>
-                <?php endif; ?>
-
-                <form method="POST" action="" id="loginForm">
+                <form method="POST" action="" id="loginForm" novalidate>
                     <div class="form-group">
                         <label class="form-label" for="email">Correo electrónico</label>
-                        <input class="form-input" type="email" id="email" name="email" 
-                                placeholder="tu@email.com" required 
-                                value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>">
+                        <input class="form-input" type="email" id="email" name="email"
+                               placeholder="tu@email.com" required
+                               value="<?= isset($_POST['email']) ? htmlspecialchars($_POST['email']) : '' ?>">
                     </div>
 
                     <div class="form-group">
@@ -208,8 +200,8 @@ if (is_logged_in()) {
                             <label class="form-label" for="password">Contraseña</label>
                             <a href="recuperar-password.php" class="forgot-link">¿Olvidaste tu contraseña?</a>
                         </div>
-                        <input class="form-input" type="password" id="password" name="password" 
-                                placeholder="••••••••" required>
+                        <input class="form-input" type="password" id="password" name="password"
+                               placeholder="••••••••" required>
                     </div>
 
                     <div class="checkbox-group">
@@ -223,28 +215,14 @@ if (is_logged_in()) {
                 </form>
 
                 <p class="signup-text">
-                    ¿Primera vez aquí? <a href="../public/pre-inscripcion.php" class="signup-link">Preinscríbete</a>
+                    ¿Primera vez aquí?
+                    <a href="../public/pre-inscripcion.php" class="signup-link">Preinscríbete</a>
                 </p>
+
             </div>
         </div>
     </div>
 
     <script src="../assets/js/script-login.js"></script>
-    
-    <script>
-        // Debug: verificar si el formulario se está enviando
-        document.addEventListener('DOMContentLoaded', function() {
-            const form = document.getElementById('loginForm');
-            if (form) {
-                form.addEventListener('submit', function(e) {
-                    console.log('Formulario enviado');
-                    const email = document.getElementById('email').value;
-                    const password = document.getElementById('password').value;
-                    console.log('Email:', email);
-                    console.log('Password length:', password.length);
-                });
-            }
-        });
-    </script>
 </body>
 </html>
