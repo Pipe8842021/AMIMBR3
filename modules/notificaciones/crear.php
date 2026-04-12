@@ -1,15 +1,10 @@
 <?php
-/**
- * Crear Nueva Notificación
- * Formulario para crear notificaciones (solo admin)
- * Versión simplificada - Sin APIs externas
- */
 
 require_once '../../config/session.php';
 require_once '../../config/database.php';
 require_once '../../includes/auth_check.php';
 
-// Solo administradores pueden crear notificaciones
+
 require_role('admin');
 
 // Obtener datos del usuario actual

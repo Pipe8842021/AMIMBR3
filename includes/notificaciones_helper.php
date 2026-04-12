@@ -1,32 +1,11 @@
 <?php
-/**
- * ============================================================
- * HELPER DE NOTIFICACIONES AUTOMÁTICAS - Amimbré
- * Archivo: includes/notificaciones_helper.php
- * ============================================================
- * Cómo usar:
- *   require_once '../../includes/notificaciones_helper.php';
- *   NotificacionesHelper::nuevaPreinscripcion($pdo, $nombre, $curso);
- * ============================================================
- */
+
 
 class NotificacionesHelper {
 
-    // ----------------------------------------------------------
-    // MÉTODO BASE: Insertar una notificación para uno o varios usuarios
-    // ----------------------------------------------------------
-
+   
     /**
      * Crea una notificación para un usuario específico.
-     *
-     * @param PDO    $pdo
-     * @param int    $usuario_id   ID del usuario que RECIBE la notificación
-     * @param string $tipo         'sistema' | 'preinscripcion' | 'evento' | 'general'
-     * @param string $titulo
-     * @param string $mensaje
-     * @param string $emisor       Nombre visible del emisor (ej: "Sistema", nombre del admin)
-     * @param string $prioridad    'baja' | 'normal' | 'alta'
-     * @param string|null $enlace  URL opcional hacia donde lleva la notificación
      */
     public static function crear(
         PDO $pdo,
@@ -62,15 +41,6 @@ class NotificacionesHelper {
 
     /**
      * Crea la misma notificación para todos los usuarios de uno o varios roles.
-     *
-     * @param PDO    $pdo
-     * @param array  $roles        Ej: ['admin'], ['admin','profesor']
-     * @param string $tipo
-     * @param string $titulo
-     * @param string $mensaje
-     * @param string $emisor
-     * @param string $prioridad
-     * @param string|null $enlace
      */
     public static function crearParaRoles(
         PDO $pdo,
@@ -100,18 +70,10 @@ class NotificacionesHelper {
         }
     }
 
-    // ----------------------------------------------------------
-    // EVENTOS DE USUARIO
-    // ----------------------------------------------------------
 
-    /**
-     * Notifica a los admins cuando se crea un usuario nuevo.
-     *
-     * @param PDO    $pdo
-     * @param string $nombre_nuevo  Nombre del usuario recién creado
-     * @param string $rol_nuevo     Rol asignado: 'estudiante' | 'profesor' | 'admin'
-     * @param string $emisor        Nombre de quien realizó la acción
-     */
+    // EVENTOS DE USUARIO
+
+
     public static function usuarioCreado(
         PDO $pdo,
         string $nombre_nuevo,
@@ -139,10 +101,6 @@ class NotificacionesHelper {
 
     /**
      * Notifica a los admins cuando se edita un usuario.
-     *
-     * @param PDO    $pdo
-     * @param string $nombre_usuario  Nombre del usuario editado
-     * @param string $emisor
      */
     public static function usuarioEditado(
         PDO $pdo,
@@ -163,10 +121,6 @@ class NotificacionesHelper {
 
     /**
      * Notifica a los admins cuando se elimina un usuario.
-     *
-     * @param PDO    $pdo
-     * @param string $nombre_usuario  Nombre del usuario eliminado
-     * @param string $emisor
      */
     public static function usuarioEliminado(
         PDO $pdo,
@@ -185,16 +139,10 @@ class NotificacionesHelper {
         );
     }
 
-    // ----------------------------------------------------------
     // EVENTOS DE PREINSCRIPCIÓN
-    // ----------------------------------------------------------
 
     /**
      * Notifica a los admins cuando llega una nueva preinscripción.
-     *
-     * @param PDO    $pdo
-     * @param string $nombre_solicitante  Nombre de quien se preinscribió
-     * @param string $curso               Nombre del curso de interés
      */
     public static function nuevaPreinscripcion(
         PDO $pdo,
@@ -215,10 +163,6 @@ class NotificacionesHelper {
 
     /**
      * Notifica al alumno cuando su preinscripción cambia de estado.
-     *
-     * @param PDO    $pdo
-     * @param int    $usuario_id   ID del estudiante que recibe la notificación
-     * @param string $nuevo_estado 'contactado' | 'matriculado' | 'rechazado'
      */
     public static function estadoPreinscripcionCambiado(
         PDO $pdo,
@@ -247,18 +191,10 @@ class NotificacionesHelper {
         );
     }
 
-    // ----------------------------------------------------------
     // EVENTOS DE EVENTO / ACTIVIDAD
-    // ----------------------------------------------------------
 
     /**
      * Notifica a todos los usuarios activos sobre un nuevo evento.
-     *
-     * @param PDO    $pdo
-     * @param string $titulo_evento  Título del evento creado
-     * @param string $descripcion    Breve descripción
-     * @param string $emisor         Nombre del admin que lo creó
-     * @param string|null $enlace
      */
     public static function nuevoEvento(
         PDO $pdo,
@@ -281,11 +217,6 @@ class NotificacionesHelper {
 
     /**
      * Notifica a todos los usuarios activos sobre un evento editado.
-     *
-     * @param PDO    $pdo
-     * @param string $titulo_evento
-     * @param string $emisor
-     * @param string|null $enlace
      */
     public static function eventoEditado(
         PDO $pdo,
@@ -305,18 +236,9 @@ class NotificacionesHelper {
         );
     }
 
-    // ----------------------------------------------------------
     // CONTADORES PARA EL MÓDULO DE NOTIFICACIONES
-    // ----------------------------------------------------------
 
-    /**
-     * Devuelve las 4 estadísticas que muestra tu módulo actual.
-     * Reemplaza las 4 consultas individuales en tu index.php.
-     *
-     * @param PDO $pdo
-     * @param int $usuario_id
-     * @return array ['total', 'sin_leer', 'preinscripciones', 'eventos']
-     */
+    
     public static function obtenerEstadisticas(PDO $pdo, int $usuario_id): array {
         try {
             $stmt = $pdo->prepare("
@@ -345,11 +267,6 @@ class NotificacionesHelper {
 
     /**
      * Devuelve solo el número de notificaciones sin leer de un usuario.
-     * Ideal para el badge del header/sidebar.
-     *
-     * @param PDO $pdo
-     * @param int $usuario_id
-     * @return int
      */
     public static function contarSinLeer(PDO $pdo, int $usuario_id): int {
         try {

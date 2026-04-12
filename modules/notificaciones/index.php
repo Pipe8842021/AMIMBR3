@@ -1,7 +1,4 @@
 <?php
-/**
- * MÓDULO DE NOTIFICACIONES
- */
 
 require_once '../../config/session.php';
 require_once '../../config/database.php';
@@ -60,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
                 }
                 break;
 
-            // devuelve el conteo sin leer para refrescar el badge ──
+            // devuelve el conteo sin leer para refrescar el badge 
             case 'contar_sin_leer':
                 $response = [
                     'success'   => true,
@@ -125,7 +122,7 @@ if ($filtro_estado === 'leidas') {
 }
 
 $sql .= " ORDER BY n.leida ASC, n.fecha_creacion DESC";
-// ^^ las no leídas aparecen primero
+//  las no leídas aparecen primero
 
 try {
     $stmt = $pdo->prepare($sql);
@@ -136,14 +133,14 @@ try {
     $notificaciones = [];
 }
 
-// ─── Estadísticas (1 sola consulta usando el helper) ──
+// ─── Estadísticas (1 sola consulta usando el helper) 
 $stats = NotificacionesHelper::obtenerEstadisticas($pdo, $_SESSION['user_id']);
 $total_notificaciones = $stats['total'];
 $sin_leer             = $stats['sin_leer'];
 $preinscripciones     = $stats['preinscripciones'];
 $eventos              = $stats['eventos'];
 
-// ─── Helpers de presentación 
+//  Helpers de presentación 
 function tiempo_transcurrido(string $fecha): string {
     $diff = (new DateTime())->diff(new DateTime($fecha));
     if ($diff->days > 0) return "Hace {$diff->days} día" . ($diff->days > 1 ? "s" : "");
