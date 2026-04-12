@@ -1,9 +1,4 @@
 <?php
-/**
- * Reportes - Análisis y estadísticas del sistema
- * Amimbré - Escuela de Música
- * Versión mejorada con reportes específicos descargables
- */
 
 require_once '../../config/session.php';
 require_once '../../config/database.php';
@@ -23,16 +18,16 @@ try {
 $year_selected = isset($_GET['year']) ? (int)$_GET['year'] : date('Y');
 $month_selected = isset($_GET['month']) ? (int)$_GET['month'] : 0; // 0 = todos
 
-// ── Manejo de descarga de reportes específicos ────────────────────────────
+// ── Manejo de descarga de reportes específicos 
 $reporte_tipo = $_GET['reporte'] ?? '';
 
 if ($reporte_tipo && isset($_GET['download'])) {
     // Los reportes de descarga se manejarán vía JS con jsPDF + datos del DOM
-    // Aquí solo procesamos si fuera CSV puro (sin layout)
+
 }
 
 try {
-    // ── TARJETAS PRINCIPALES ──────────────────────────────────────────────────
+    //  TARJETAS PRINCIPALES 
     $stmt = $pdo->query("SELECT COUNT(*) as total FROM usuarios WHERE rol='estudiante' AND estado='activo'");
     $total_estudiantes = $stmt->fetch()['total'] ?? 0;
 
@@ -53,7 +48,7 @@ try {
     $stmt = $pdo->query("SELECT COUNT(*) as total FROM grupos WHERE estado='activo'");
     $grupos_activos = $stmt->fetch()['total'] ?? 0;
 
-    // ── FINANCIERO ────────────────────────────────────────────────────────────
+    // ── FINANCIERO 
     $stmt = $pdo->prepare("
         SELECT 
             SUM(CASE WHEN estado='pagado' THEN monto ELSE 0 END) as ingresos_confirmados,
@@ -126,7 +121,7 @@ try {
     ");
     $metodos_pago = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // ── INSCRIPCIONES ────────────────────────────────────────────────────────
+    //  INSCRIPCIONES 
     $stmt = $pdo->prepare("
         SELECT MONTH(fecha_preinscripcion) as mes,
             COUNT(CASE WHEN estado='pendiente' THEN 1 END) as preinscripciones,
@@ -186,7 +181,7 @@ try {
     $stmt->execute([$year_selected]);
     $nuevos_por_mes_raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // ── ACADÉMICO ─────────────────────────────────────────────────────────────
+    //  ACADÉMICO 
     $stmt = $pdo->query("
         SELECT c.nombre as curso, 
                AVG(cal.calificacion) as promedio,
@@ -281,7 +276,7 @@ try {
     ");
     $bitacoras_profesor = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // ── CURSOS ────────────────────────────────────────────────────────────────
+    //  CURSOS 
     $stmt = $pdo->query("
         SELECT c.nombre as curso, c.nivel, c.estado as estado_curso,
                c.precio_mensual,
@@ -316,7 +311,7 @@ try {
     ");
     $ocupacion_grupos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // ── ACTIVIDAD ─────────────────────────────────────────────────────────────
+    //  ACTIVIDAD 
     $stmt = $pdo->prepare("
         SELECT MONTH(fecha_acceso) as mes, COUNT(*) as total
         FROM logs_acceso
@@ -365,7 +360,7 @@ try {
     $accesos_mes_raw = $roles = $profesores_detalle = [];
 }
 
-// ── Preparar datos para JS ─────────────────────────────────────────────────
+//  Preparar datos para JS 
 $meses_labels = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
 $inscr_data = ['preinscripciones'=>array_fill(0,12,0),'matriculas'=>array_fill(0,12,0),'rechazadas'=>array_fill(0,12,0)];
@@ -682,9 +677,9 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
             </button>
         </div>
 
-        <!-- ══════════════════════════════════════════════════════════════════
+        <!-- 
              TAB 1: REPORTES DESCARGABLES
-        ══════════════════════════════════════════════════════════════════ -->
+                                             -->
         <div class="tab-content active" id="tab-descargables">
             <div class="alert-info">
                 <span class="material-symbols-rounded">info</span>
@@ -813,9 +808,9 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
             </div><!-- /reportes-descargables -->
         </div>
 
-        <!-- ══════════════════════════════════════════════════════════════════
+        <!-- 
              TAB 2: FINANCIERO
-        ══════════════════════════════════════════════════════════════════ -->
+        -->
         <div class="tab-content" id="tab-financiero">
             <div class="kpi-row">
                 <div class="kpi-card success">
@@ -926,9 +921,9 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
             <?php endif; ?>
         </div>
 
-        <!-- ══════════════════════════════════════════════════════════════════
+        <!-- 
              TAB 3: INSCRIPCIONES
-        ══════════════════════════════════════════════════════════════════ -->
+        -->
         <div class="tab-content" id="tab-inscripciones">
             <div class="kpi-row">
                 <div class="kpi-card success">
@@ -1049,9 +1044,9 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
             <?php endif; ?>
         </div>
 
-        <!-- ══════════════════════════════════════════════════════════════════
+        <!-- 
              TAB 4: ACADÉMICO
-        ══════════════════════════════════════════════════════════════════ -->
+         -->
         <div class="tab-content" id="tab-academico">
             <div class="kpi-row">
                 <div class="kpi-card info">
@@ -1217,9 +1212,9 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
             <?php endif; ?>
         </div>
 
-        <!-- ══════════════════════════════════════════════════════════════════
+        <!--
              TAB 5: CURSOS
-        ══════════════════════════════════════════════════════════════════ -->
+        -->
         <div class="tab-content" id="tab-cursos">
             <div class="charts-grid">
                 <?php if (!empty($estudiantes_por_curso)): ?>
@@ -1298,9 +1293,9 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
             </div>
         </div>
 
-        <!-- ══════════════════════════════════════════════════════════════════
+        <!-- 
              TAB 6: ACTIVIDAD
-        ══════════════════════════════════════════════════════════════════ -->
+         -->
         <div class="tab-content" id="tab-actividad">
             <div class="kpi-row">
                 <div class="kpi-card info">
@@ -1385,7 +1380,7 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
 </main>
 
 <script>
-// ── PHP → JS ──────────────────────────────────────────────────────────────
+// ── PHP → JS 
 const YEAR    = <?= $year_selected ?>;
 const MESES   = <?= json_encode($meses_labels) ?>;
 const INSCR   = <?= json_encode($inscr_data) ?>;
@@ -1444,7 +1439,7 @@ const FINANCIERO       = {
 };
 const NOMBRE_ESCUELA = 'Amimbré — Escuela de Música';
 
-// ── Paleta ────────────────────────────────────────────────────────────────
+//  Paleta 
 const C = {
     blue:'#1479b0', green:'#4ec336', orange:'#ff6d00', yellow:'#e9e93e', red:'#ba2626',
     sBlue:'#1479b03a', sGreen:'#4ec33633', sOrange:'#ff6f003d', sYellow:'#e9e93e38', sRed:'#ba262646',
@@ -1471,7 +1466,7 @@ function mkChart(id, cfg) {
     return new Chart(el.getContext('2d'), cfg);
 }
 
-// ── Gráficas ──────────────────────────────────────────────────────────────
+// Gráficas 
 
 // Financiero — ingresos por mes
 mkChart('ingresosChart', {
@@ -1626,7 +1621,7 @@ mkChart('nuevosChart', {
     options:baseOpts()
 });
 
-// ── TABS ──────────────────────────────────────────────────────────────────
+//  TABS 
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -1647,7 +1642,7 @@ function switchTab(id) {
 
 function changeYear(y) { window.location.href='?year='+y; }
 
-// ── PDF HELPERS ───────────────────────────────────────────────────────────
+//  PDF HELPERS 
 function showOverlay(msg, sub) {
     document.getElementById('pdf-msg').textContent = msg || 'Generando reporte…';
     document.getElementById('pdf-sub').textContent = sub || 'Por favor espera';
@@ -1687,7 +1682,7 @@ function kpiBox(doc, x, y, w, h, label, value, color) {
 
 function fmt(n) { return '$'+Number(n).toLocaleString('es-CO'); }
 
-// ── REPORTES ESPECÍFICOS ──────────────────────────────────────────────────
+// ── REPORTES ESPECÍFICOS 
 async function descargarReporte(tipo) {
     showOverlay('Preparando reporte de ' + tipo + '…', 'Esto puede tomar unos segundos');
     await new Promise(r=>setTimeout(r,200));
@@ -1708,7 +1703,7 @@ async function descargarReporte(tipo) {
     }
 }
 
-// ─── REPORTE FINANCIERO ──────────────────────────────────────────────────
+//  REPORTE FINANCIERO
 async function reporteFinanciero(jsPDF) {
     const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
     const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
@@ -1774,7 +1769,7 @@ async function reporteFinanciero(jsPDF) {
     doc.save(`Reporte_Financiero_Amimbre_${YEAR}.pdf`);
 }
 
-// ─── REPORTE ACADÉMICO ───────────────────────────────────────────────────
+//  REPORTE ACADÉMICO 
 async function reporteAcademico(jsPDF) {
     const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
     const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
@@ -1828,7 +1823,7 @@ async function reporteAcademico(jsPDF) {
     doc.save(`Reporte_Academico_Amimbre.pdf`);
 }
 
-// ─── REPORTE INSCRIPCIONES ───────────────────────────────────────────────
+//  REPORTE INSCRIPCIONES 
 async function reporteInscripciones(jsPDF) {
     const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
     const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
@@ -1865,7 +1860,7 @@ async function reporteInscripciones(jsPDF) {
     doc.save(`Reporte_Inscripciones_Amimbre_${YEAR}.pdf`);
 }
 
-// ─── REPORTE CARTERA VENCIDA ─────────────────────────────────────────────
+//  REPORTE CARTERA VENCIDA 
 async function reporteCartera(jsPDF) {
     const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
     const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
@@ -1897,7 +1892,7 @@ async function reporteCartera(jsPDF) {
     doc.save(`Cartera_Vencida_Amimbre.pdf`);
 }
 
-// ─── REPORTE ASISTENCIA ──────────────────────────────────────────────────
+//  REPORTE ASISTENCIA 
 async function reporteAsistencia(jsPDF) {
     const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
     const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
@@ -1936,7 +1931,7 @@ async function reporteAsistencia(jsPDF) {
     doc.save(`Control_Asistencia_Amimbre.pdf`);
 }
 
-// ─── REPORTE CURSOS ──────────────────────────────────────────────────────
+//  REPORTE CURSOS 
 async function reporteCursos(jsPDF) {
     const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
     const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
@@ -1978,7 +1973,7 @@ async function reporteCursos(jsPDF) {
     doc.save(`Reporte_Cursos_Amimbre.pdf`);
 }
 
-// ─── PDF GENERAL ────────────────────────────────────────────────────────
+//  PDF GENERAL 
 async function exportarPDFGeneral() {
     showOverlay('Generando PDF general…','Capturando todas las secciones');
     await new Promise(r=>setTimeout(r,200));
