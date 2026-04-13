@@ -1,13 +1,5 @@
 <?php
-/**
- * Grupos – Registro de Asistencia
- *
- * Flujo:
- *  1. El profesor llena el formulario (bitácora + asistencia por estudiante)
- *  2. Se inserta en `bitacoras`
- *  3. Se inserta en `bitacoras_asistencias` (fuente de verdad)
- *  4. Se sincroniza automáticamente a `asistencias` (usando matricula_id)
- */
+
 require_once '../../config/session.php';
 require_once '../../config/database.php';
 require_once '../../includes/auth_check.php';
@@ -22,7 +14,6 @@ if (!$grupo_id) { header("Location: index.php"); exit; }
 $error   = null;
 $success = null;
 
-// ─── Guardar asistencia ──────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'guardar') {
     $titulo        = trim($_POST['titulo']        ?? '');
     $fecha_clase   = $_POST['fecha_clase']        ?? '';
@@ -32,8 +23,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'guard
     $descripcion   = trim($_POST['descripcion']   ?? '');
     $observaciones = trim($_POST['observaciones'] ?? '');
     $compromisos   = trim($_POST['compromisos']   ?? '');
-    $asistencias_post = $_POST['asistencia']      ?? [];   // [estudiante_id => estado]
-    $observaciones_est= $_POST['obs_est']         ?? [];   // [estudiante_id => texto]
+    $asistencias_post = $_POST['asistencia']      ?? [];   
+    $observaciones_est= $_POST['obs_est']         ?? [];   
 
     if (!$titulo || !$fecha_clase || !$hora_inicio || !$hora_fin || !$temas) {
         $error = "Completa los campos obligatorios de la bitácora.";
@@ -162,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'guard
     }
 }
 
-// ─── Cargar datos del grupo y estudiantes ────────────────────────────────────
+
 try {
     $stmt = $pdo->prepare("
         SELECT g.*, c.nombre AS curso_nombre, c.nivel AS curso_nivel,
@@ -176,12 +167,11 @@ try {
     $grupo = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$grupo) { header("Location: index.php"); exit; }
 
-    // Solo el profesor del grupo o el admin
+  
     if ($rol === 'profesor' && $grupo['profesor_id'] != $uid) {
         header("Location: index.php"); exit;
     }
 
-    // Estudiantes activos del grupo
     $stmt = $pdo->prepare("
         SELECT u.id, u.nombre, u.email, m.id AS matricula_id
         FROM matriculas m
@@ -192,7 +182,7 @@ try {
     $stmt->execute([$grupo_id]);
     $estudiantes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Historial reciente de asistencia
+
     $stmt = $pdo->prepare("
         SELECT b.id, b.titulo, b.fecha_clase,
                COUNT(ba.id) AS total,
@@ -272,7 +262,6 @@ function iniciales_a($nombre) {
 
         <div class="asistencia-grid">
 
-            <!-- Columna izquierda: datos de la bitácora -->
             <div class="card">
                 <div class="form-card-header">
                     <span class="material-symbols-rounded">edit_note</span>
@@ -325,7 +314,7 @@ function iniciales_a($nombre) {
                         <input type="text" name="compromisos" placeholder="Tareas o compromisos (opcional)">
                     </div>
 
-                    <!-- Evidencias fotográficas -->
+  
                     <div class="evidencias-section">
                         <div class="evidencias-header">
                             <span class="material-symbols-rounded">photo_camera</span>
@@ -343,16 +332,16 @@ function iniciales_a($nombre) {
                                    multiple style="display:none;">
                         </div>
 
-                        <!-- Vista previa -->
+           
                         <div class="evidencias-preview" id="evidencias-preview"></div>
 
-                        <!-- Descripciones (se generan dinámicamente por JS) -->
+         
                         <div id="evidencias-descripciones"></div>
                     </div>
                 </div>
             </div>
 
-            <!-- Columna derecha: lista de estudiantes con selector -->
+
             <div class="card">
                 <div class="form-card-header">
                     <span class="material-symbols-rounded">fact_check</span>
@@ -362,7 +351,6 @@ function iniciales_a($nombre) {
                     </div>
                 </div>
 
-                <!-- Resumen dinámico -->
                 <div class="asistencia-resumen">
                     <div class="asist-chip presente">
                         <span class="material-symbols-rounded">check_circle</span>
@@ -382,7 +370,7 @@ function iniciales_a($nombre) {
                     </div>
                 </div>
 
-                <!-- Acciones masivas -->
+         
                 <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
                     <button type="button" class="btn-cancel" style="font-size:0.78rem; padding:6px 12px;"
                             onclick="marcarTodos('presente')">
@@ -394,7 +382,6 @@ function iniciales_a($nombre) {
                     </button>
                 </div>
 
-                <!-- Lista de estudiantes -->
                 <div style="display:flex; flex-direction:column; gap:10px;">
                     <?php foreach ($estudiantes as $est): ?>
                     <div class="asistencia-estudiante-row" data-id="<?php echo $est['id']; ?>">
@@ -405,13 +392,12 @@ function iniciales_a($nombre) {
                                    class="obs-input" placeholder="Observación (opcional)...">
                         </div>
 
-                        <!-- Hidden input del estado -->
                         <input type="hidden"
                                name="asistencia[<?php echo $est['id']; ?>]"
                                id="estado-<?php echo $est['id']; ?>"
                                value="ausente">
 
-                        <!-- Botones visuales -->
+            
                         <div class="asistencia-selector">
                             <button type="button" class="asist-btn" data-estado="presente" data-id="<?php echo $est['id']; ?>"
                                     title="Presente">
@@ -442,11 +428,11 @@ function iniciales_a($nombre) {
                 </div>
             </div>
 
-        </div><!-- /asistencia-grid -->
+        </div>
 
     </form>
 
-    <!-- Historial reciente -->
+   
     <?php if (count($historial) > 0): ?>
     <div class="card" style="margin-top:20px;">
         <div class="section-header">
@@ -489,12 +475,12 @@ function iniciales_a($nombre) {
     </div>
     <?php endif; ?>
 
-    <?php endif; // fin if estudiantes ?>
+    <?php endif;  ?>
 
 </main>
 
 <script>
-// ── Selector de estado de asistencia ────────────────────────────────────────
+
 document.querySelectorAll('.asist-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         const id     = btn.dataset.id;
@@ -515,7 +501,7 @@ document.querySelectorAll('.asist-btn').forEach(btn => {
     });
 });
 
-// ── Marcar todos ─────────────────────────────────────────────────────────────
+
 function marcarTodos(estado) {
     document.querySelectorAll('.asist-btn').forEach(btn => {
         if (btn.dataset.estado === estado) {
@@ -524,7 +510,6 @@ function marcarTodos(estado) {
     });
 }
 
-// ── Contadores dinámicos ─────────────────────────────────────────────────────
 function actualizarContadores() {
     const estados = ['presente','ausente','justificado','tardanza'];
     estados.forEach(e => {
@@ -534,7 +519,7 @@ function actualizarContadores() {
     });
 }
 
-// Auto-ocultar alertas
+
 setTimeout(() => {
     document.querySelectorAll('.alert').forEach(a => {
         a.style.transition = 'opacity 0.5s ease';
@@ -543,27 +528,26 @@ setTimeout(() => {
     });
 }, 5000);
 
-// Inicializar con todos en "ausente" por defecto al cargar
+
 document.querySelectorAll('.asist-btn[data-estado="ausente"]').forEach(btn => {
     btn.classList.add('active');
 });
 actualizarContadores();
 
-// ── Evidencias fotográficas ──────────────────────────────────────────────────
+
 (function () {
     const dropzone   = document.getElementById('dropzone');
     const fileInput  = document.getElementById('evidencias-input');
     const preview    = document.getElementById('evidencias-preview');
     const descWrap   = document.getElementById('evidencias-descripciones');
     const MAX_FILES  = 5;
-    let archivos     = [];  // DataTransfer para mantener la lista de File
-
+    let archivos     = []; 
     if (!dropzone) return;
 
-    // Abrir selector al hacer clic en la zona
+
     dropzone.addEventListener('click', () => fileInput.click());
 
-    // Drag & drop
+   
     dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
     dropzone.addEventListener('dragleave', ()  => dropzone.classList.remove('drag-over'));
     dropzone.addEventListener('drop', e => {
@@ -572,10 +556,10 @@ actualizarContadores();
         agregarArchivos(e.dataTransfer.files);
     });
 
-    // Selección por input
+
     fileInput.addEventListener('change', () => {
         agregarArchivos(fileInput.files);
-        fileInput.value = ''; // reset para permitir re-seleccionar el mismo archivo
+        fileInput.value = ''; 
     });
 
     function agregarArchivos(nuevos) {
@@ -595,7 +579,7 @@ actualizarContadores();
         descWrap.innerHTML = '';
 
         archivos.forEach((f, i) => {
-            // Thumb
+         
             const thumb = document.createElement('div');
             thumb.className = 'ev-thumb';
 
@@ -623,7 +607,7 @@ actualizarContadores();
             thumb.appendChild(btn);
             preview.appendChild(thumb);
 
-            // Input descripción
+  
             const group = document.createElement('div');
             group.className = 'ev-desc-group';
             const lbl = document.createElement('label');
@@ -637,7 +621,7 @@ actualizarContadores();
             descWrap.appendChild(group);
         });
 
-        // Actualizar contador en la dropzone
+  
         const hint = dropzone.querySelector('p');
         if (archivos.length > 0) {
             hint.innerHTML = `<strong>${archivos.length}/${MAX_FILES}</strong> imagen${archivos.length > 1 ? 'es' : ''} seleccionada${archivos.length > 1 ? 's' : ''}`;
@@ -647,7 +631,7 @@ actualizarContadores();
     }
 
     function sincronizarInput() {
-        // Reconstruir el input file con la lista actual via DataTransfer
+
         const dt = new DataTransfer();
         archivos.forEach(f => dt.items.add(f));
         fileInput.files = dt.files;

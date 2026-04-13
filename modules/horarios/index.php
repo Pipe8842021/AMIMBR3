@@ -1,9 +1,5 @@
 <?php
 
-/**
- * Horarios Router - modules/horarios/index.php
- * Redirige a la vista de horario específica según el rol
- */
 require_once '../../config/session.php';
 require_once '../../config/database.php';
 require_once '../../includes/auth_check.php';

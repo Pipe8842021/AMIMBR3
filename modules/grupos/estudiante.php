@@ -1,8 +1,5 @@
 <?php
-/**
- * Módulo Grupos – Vista Estudiante
- * Muestra los grupos en los que está matriculado con datos reales
- */
+
 require_once '../../config/session.php';
 require_once '../../config/database.php';
 require_once '../../includes/auth_check.php';
