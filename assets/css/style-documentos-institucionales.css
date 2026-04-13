@@ -85,7 +85,7 @@ body {
     gap: 8px;
     padding: 12px 24px;
     background: var(--gradient-primary-orange);
-    color: var(--text-primary);
+    color: #f8fafc;
     border: none;
     border-radius: 10px;
     font-size: 0.95rem;
@@ -263,7 +263,7 @@ body {
 
 .view-btn.active {
     background: var(--primary-blue);
-    color: var(--text-primary);
+    color: #f8fafc;
 }
 
 .view-btn:hover:not(.active) {
@@ -455,7 +455,7 @@ body {
     gap: 6px;
     padding: 8px 16px;
     background: var(--primary-blue);
-    color: var(--text-primary);
+    color: #f8fafc;
     border: none;
     border-radius: 8px;
     font-size: 0.85rem;
