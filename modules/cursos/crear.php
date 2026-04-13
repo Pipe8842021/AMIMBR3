@@ -1,15 +1,10 @@
 <?php
-/**
- * Crear Nuevo Curso
- * Sistema Amimbré
- */
 
 require_once '../../config/session.php';
 require_once '../../config/database.php';
 require_once '../../includes/auth_check.php';
 require_role('admin');
 
-// Procesar formulario
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nombre = trim($_POST['nombre']);
     $descripcion = trim($_POST['descripcion']);
@@ -22,7 +17,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     $errores = [];
     
-    // Validaciones
     if (empty($nombre)) {
         $errores[] = "El nombre del curso es obligatorio";
     }
@@ -39,7 +33,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errores[] = "El precio debe ser mayor o igual a 0";
     }
     
-    // Procesar imagen desde el cropper (base64)
     $imagen = null;
     $imagen_cropped = $_POST['imagen_cropped'] ?? '';
     $imagen_ext     = strtolower(trim($_POST['imagen_ext'] ?? 'jpg'));
@@ -48,11 +41,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $allowed_ext = ['jpg', 'jpeg', 'png', 'webp'];
         if (!in_array($imagen_ext, $allowed_ext)) $imagen_ext = 'jpg';
 
-        // Extraer datos binarios del base64
         $base64_data = preg_replace('/^data:image\/\w+;base64,/', '', $imagen_cropped);
         $img_data    = base64_decode($base64_data);
 
-        // Verificar tamaño (5MB)
         if (strlen($img_data) > 5 * 1024 * 1024) {
             $errores[] = "La imagen no puede superar 5MB";
         } else {
@@ -69,7 +60,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
     
-    // Si no hay errores, insertar
     if (empty($errores)) {
         try {
             $sql = "INSERT INTO cursos (
@@ -114,7 +104,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         })();
     </script>
     <style>
-        /* ── Cropper Modal ───────────────────────────────────── */
         .cropper-modal-overlay {
             display: none;
             position: fixed;
@@ -292,7 +281,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <form method="POST" enctype="multipart/form-data" class="form-curso">
             <div class="form-grid">
-                <!-- Columna Izquierda -->
                 <div class="form-column">
                     <div class="form-section">
                         <h3 class="section-title">Información Básica</h3>
@@ -356,7 +344,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </div>
 
-                <!-- Columna Derecha -->
                 <div class="form-column">
                     <div class="form-section">
                         <h3 class="section-title">Detalles del Curso</h3>
@@ -422,7 +409,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     accept="image/jpeg,image/png,image/webp"
                                     style="position:absolute;opacity:0;width:0;height:0;"
                                 >
-                                <!-- Campo hidden que recibirá el base64 recortado -->
                                 <input type="hidden" name="imagen_cropped" id="imagen_cropped">
                                 <input type="hidden" name="imagen_ext" id="imagen_ext">
 
@@ -432,7 +418,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 </label>
                                 <small>JPG, PNG o WEBP · Máx. 5MB · Se recortará en proporción 2:1</small>
                             </div>
-                            <!-- Preview de imagen recortada -->
                             <div class="image-preview-cropped" id="preview-cropped">
                                 <img id="preview-cropped-img" src="" alt="Imagen recortada">
                             </div>
@@ -451,7 +436,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </form>
     </main>
 
-    <!-- ── Modal Cropper ──────────────────────────────────────── -->
     <div class="cropper-modal-overlay" id="cropperOverlay">
         <div class="cropper-modal-box">
             <div class="cropper-modal-header">
@@ -485,7 +469,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
     <script>
     (function () {
-        const ASPECT = 2 / 1; // mismo ratio que el hero en ver.php
+        const ASPECT = 2 / 1;
 
         const inputRaw      = document.getElementById('imagen_raw');
         const inputCropped  = document.getElementById('imagen_cropped');
@@ -514,13 +498,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             currentExt = file.name.split('.').pop().toLowerCase();
             const url  = URL.createObjectURL(file);
 
-            // Destruir cropper anterior si existe
             if (cropper) { cropper.destroy(); cropper = null; }
 
             cropImg.src = url;
             overlay.classList.add('active');
 
-            // Esperar a que la imagen cargue para iniciar cropper
             cropImg.onload = function () {
                 cropper = new Cropper(cropImg, {
                     aspectRatio: ASPECT,
@@ -537,11 +519,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     background: true,
                 });
             };
-            // reset input para permitir re-seleccionar el mismo archivo
             this.value = '';
         });
 
-        // ── Confirmar recorte ──────────────────────────────────
         document.getElementById('btnCropConfirm').addEventListener('click', function () {
             if (!cropper) return;
 
@@ -561,7 +541,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             closeCropper();
         });
 
-        // ── Cancelar / cerrar ──────────────────────────────────
         document.getElementById('btnCropCancel').addEventListener('click', closeCropper);
         document.getElementById('btnCropClose').addEventListener('click', closeCropper);
         overlay.addEventListener('click', function (e) {

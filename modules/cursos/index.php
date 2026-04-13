@@ -1,17 +1,11 @@
 <?php
-/**
- * Gestión de Cursos - Vista Principal
- * Sistema Amimbré - Control multi-rol (admin / profesor / estudiante)
- */
 
 require_once '../../config/session.php';
 require_once '../../config/database.php';
 require_once '../../includes/auth_check.php';
 
-// Permitir acceso a admin, profesor y estudiante
 require_any_role(['admin', 'profesor', 'estudiante']);
 
-// Obtener datos del usuario actual
 try {
     $stmt = $pdo->prepare("
         SELECT id, nombre, email, rol, estado, foto_perfil 
@@ -38,12 +32,10 @@ $es_admin     = ($rol === 'admin');
 $es_profesor  = ($rol === 'profesor');
 $es_estudiante = ($rol === 'estudiante');
 
-// Filtros: solo disponibles para admin
 $search           = $es_admin && isset($_GET['search'])    ? trim($_GET['search'])    : '';
 $filter_categoria = $es_admin && isset($_GET['categoria']) ? $_GET['categoria']       : 'todos';
 $filter_nivel     = $es_admin && isset($_GET['nivel'])     ? $_GET['nivel']           : 'todos';
 
-// ─── Estadísticas (solo admin) ───────────────────────────────────────────────
 $total_cursos = $cursos_activos = $estudiantes_inscritos = $grupos_sin_profesor = 0;
 
 if ($es_admin) {
@@ -74,11 +66,9 @@ if ($es_admin) {
     }
 }
 
-// ─── Consulta de cursos según rol ────────────────────────────────────────────
 $params = [];
 
 if ($es_admin) {
-    // Todos los cursos con filtros opcionales
     $query = "
         SELECT 
             c.id, c.nombre, c.descripcion, c.duracion_meses, c.nivel,
@@ -108,7 +98,6 @@ if ($es_admin) {
     $query .= " GROUP BY c.id ORDER BY c.nombre ASC";
 
 } elseif ($es_profesor) {
-    // Solo cursos donde el profesor tiene grupo activo asignado
     $query = "
         SELECT 
             c.id, c.nombre, c.descripcion, c.duracion_meses, c.nivel,
@@ -127,7 +116,6 @@ if ($es_admin) {
     $params[] = $user_id;
 
 } elseif ($es_estudiante) {
-    // Solo cursos en los que el estudiante tiene matrícula activa
     $query = "
         SELECT 
             c.id, c.nombre, c.descripcion, c.duracion_meses, c.nivel,
@@ -156,7 +144,6 @@ try {
     $cursos = [];
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 function get_nivel_badge($nivel) {
     $badges = [
         'basico'     => ['texto' => 'Básico',    'clase' => 'nivel-basico'],
@@ -235,8 +222,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
     ?>
 
     <main class="main-content">
-
-        <!-- ── Page Header ──────────────────────────────────────────────── -->
         <div class="page-header">
             <div class="header-content">
                 <div class="title-section">
@@ -261,7 +246,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
             </div>
         </div>
 
-        <!-- ── Alerta de éxito ───────────────────────────────────────────── -->
         <?php if ($es_admin && isset($_GET['success']) && $_GET['success'] === 'curso_creado'): ?>
         <div class="alert alert-success" id="alertaExito">
             <span class="material-symbols-rounded">check_circle</span>
@@ -275,7 +259,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
         </script>
         <?php endif; ?>
 
-        <!-- ── Stats Cards (solo admin) ─────────────────────────────────── -->
         <?php if ($es_admin): ?>
         <div class="stats-grid">
             <div class="stat-card">
@@ -305,19 +288,9 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
                     <span class="stat-value"><?php echo $estudiantes_inscritos; ?></span>
                 </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-icon profesor">
-                    <span class="material-symbols-rounded">person_off</span>
-                </div>
-                <div class="stat-info">
-                    <span class="stat-label">Sin Profesor</span>
-                    <span class="stat-value"><?php echo $grupos_sin_profesor; ?></span>
-                </div>
-            </div>
         </div>
         <?php endif; ?>
 
-        <!-- ── Filtros (solo admin) ──────────────────────────────────────── -->
         <?php if ($es_admin): ?>
         <div class="filter-section">
             <form method="GET" action="" class="filter-form">
@@ -347,7 +320,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
         </div>
         <?php endif; ?>
 
-        <!-- ── Cursos Grid ───────────────────────────────────────────────── -->
         <div class="cursos-grid">
             <?php if (count($cursos) > 0): ?>
                 <?php foreach ($cursos as $curso): ?>
@@ -390,10 +362,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
 
                             <div class="curso-info">
                                 <div class="info-item">
-                                    <span class="material-symbols-rounded">person</span>
-                                    <span><?php echo htmlspecialchars($curso['profesores'] ?? 'Sin profesor'); ?></span>
-                                </div>
-                                <div class="info-item">
                                     <span class="material-symbols-rounded">schedule</span>
                                     <span><?php echo (int)$curso['duracion_meses']; ?> meses</span>
                                 </div>
@@ -414,7 +382,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
                                 </div>
                             </div>
 
-                            <!-- ── Acciones según rol ────────────────────── -->
                             <div class="curso-actions">
                                 <!-- Ver detalles: todos los roles -->
                                 <a href="ver.php?id=<?php echo $curso['id']; ?>" class="btn-action btn-ver" title="Ver Detalles">
@@ -422,7 +389,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
                                     Ver Detalles
                                 </a>
 
-                                <!-- Editar y Eliminar: solo admin -->
                                 <?php if ($es_admin): ?>
                                 <a href="editar.php?id=<?php echo $curso['id']; ?>" class="btn-action btn-editar" title="Editar">
                                     <span class="material-symbols-rounded">edit</span>
@@ -476,7 +442,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
 
     </main>
 
-    <!-- ── Modal Eliminar (solo admin) ──────────────────────────────────── -->
     <?php if ($es_admin): ?>
     <div id="modalEliminar" class="modal">
         <div class="modal-content">
