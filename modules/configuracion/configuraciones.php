@@ -3,9 +3,9 @@ require_once '../../config/session.php';
 require_once '../../config/database.php';
 require_once '../../includes/auth_check.php';
 
-// El módulo es accesible para cualquier rol logueado, pero la pestaña de permisos es filtrada
+
 $user_id = $_SESSION['user_id'];
-$user_rol = $_SESSION['user_rol']; // Asumiendo que guardas el rol en la sesión
+$user_rol = $_SESSION['user_rol'];
 $mensaje_feedback = "";
 $tipo_feedback = "";
 
@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// --- DATOS INICIALES ---
+// DATOS INICIALES 
 $stmt = $pdo->prepare("SELECT nombre, email, rol, telefono FROM usuarios WHERE id = ?");
 $stmt->execute([$user_id]);
 $usuario_actual = $stmt->fetch();
@@ -380,7 +380,6 @@ function updateThemeButton() {
         : '<i class="fas fa-sun"></i> Cambiar a Modo Claro';
 }
 
-// Actualizar botón al cargar según el tema actual
 document.addEventListener('DOMContentLoaded', updateThemeButton);
 
 function changeFontSize(size) {

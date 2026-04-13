@@ -1,15 +1,11 @@
 <?php
-/**
- * Módulo Grupos – Listado admin
- * Crear → crear.php | Editar → editar.php | Ver → ver.php | Eliminar → eliminar.php
- */
 
 require_once '../../config/session.php';
 require_once '../../config/database.php';
 require_once '../../includes/auth_check.php';
 require_role('admin');
 
-// ─── Cambio de estado rápido (desde dropdown de la tabla) ────────────────────
+
 $success = null;
 $error   = null;
 
@@ -30,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cambi
     }
 }
 
-// ─── Datos para el listado ───────────────────────────────────────────────────
+
 try {
     // Filtros GET
     $filtro_estado = $_GET['estado'] ?? '';
@@ -81,7 +77,6 @@ try {
     $total_general = 0;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 $estado_cfg = [
     'planificado' => ['cls' => 'badge-info',    'txt' => 'Planificado', 'icon' => 'schedule'],
     'activo'      => ['cls' => 'badge-success',  'txt' => 'Activo',      'icon' => 'play_circle'],
@@ -123,7 +118,6 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
 
 <main class="main-content">
 
-    <!-- ── Encabezado ────────────────────────────────────────────────────── -->
     <div class="dashboard-header">
         <div class="dashboard-title">
             <h1>Gestión de Grupos</h1>
@@ -134,7 +128,6 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
         </a>
     </div>
 
-    <!-- ── Alertas ───────────────────────────────────────────────────────── -->
     <?php if ($success): ?>
     <div class="alert alert-success">
         <span class="material-symbols-rounded">check_circle</span>
@@ -148,7 +141,6 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
     </div>
     <?php endif; ?>
 
-    <!-- ── Chips de resumen ──────────────────────────────────────────────── -->
     <div class="modulo-stats">
         <div class="modulo-stat-chip total">
             <span class="material-symbols-rounded">layers</span>
@@ -168,10 +160,8 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
         <?php endforeach; ?>
     </div>
 
-    <!-- ── Card de listado ───────────────────────────────────────────────── -->
     <div class="card">
 
-        <!-- Encabezado + filtros -->
         <div class="section-header">
             <div>
                 <h3 class="section-title">Grupos Registrados</h3>
@@ -204,7 +194,6 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
             <?php endif; ?>
         </form>
 
-        <!-- Tabla -->
         <?php if (count($grupos) > 0): ?>
         <div class="table-wrapper">
             <table class="data-table">
@@ -279,19 +268,19 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
                         <td>
                             <div class="table-actions">
 
-                                <!-- Ver detalle -->
+                    
                                 <a href="ver.php?id=<?php echo $g['id']; ?>"
                                    class="tbl-btn view" title="Ver detalle">
                                     <span class="material-symbols-rounded">visibility</span>
                                 </a>
 
-                                <!-- Editar -->
+                     
                                 <a href="editar.php?id=<?php echo $g['id']; ?>"
                                    class="tbl-btn edit" title="Editar grupo">
                                     <span class="material-symbols-rounded">edit</span>
                                 </a>
 
-                                <!-- Cambiar estado (dropdown) -->
+                       
                                 <div class="dropdown-estado">
                                     <button type="button" class="tbl-btn estado" title="Cambiar estado">
                                         <span class="material-symbols-rounded">swap_horiz</span>
@@ -312,7 +301,6 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
                                     </div>
                                 </div>
 
-                                <!-- Eliminar -->
                                 <a href="eliminar.php?id=<?php echo $g['id']; ?>"
                                    class="tbl-btn delete" title="Eliminar grupo">
                                     <span class="material-symbols-rounded">delete</span>
@@ -344,7 +332,7 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
         </div>
         <?php endif; ?>
 
-    </div><!-- /card -->
+    </div>
 
 </main>
 

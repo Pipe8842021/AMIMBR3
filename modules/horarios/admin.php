@@ -1,8 +1,6 @@
 <?php
 
-/**
- * Gestión de Calendario y Horarios - Amimbré (Corregido)
- */
+
 require_once '../../config/session.php';
 require_once '../../config/database.php';
 require_once '../../includes/auth_check.php';
@@ -17,7 +15,7 @@ $mes_actual = date('n');
 $anio_actual = date('Y');
 $hoy = date('j');
 
-// --- BACKEND: PROCESAR NUEVO HORARIO ---
+//  BACKEND: PROCESAR NUEVO HORARIO 
 $mensaje_feedback = "";
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'guardar_horario') {
     $grupo_id   = intval($_POST['grupo_id']);

@@ -1,7 +1,5 @@
 <?php
-/**
- * Grupos – Eliminar grupo (página de confirmación)
- */
+
 require_once '../../config/session.php';
 require_once '../../config/database.php';
 require_once '../../includes/auth_check.php';
@@ -112,7 +110,6 @@ $nivel_cfg = [
         <h2>¿Eliminar este grupo?</h2>
         <p class="sub">Estás a punto de eliminar permanentemente el siguiente grupo:</p>
 
-        <!-- Datos del grupo -->
         <div class="eliminar-detalle">
             <div class="info-row">
                 <span class="label">Nombre</span>
@@ -136,7 +133,7 @@ $nivel_cfg = [
             </div>
         </div>
 
-        <!-- Advertencia de dependencias -->
+  
         <?php if ($total_matriculas > 0 || $total_bitacoras > 0): ?>
         <div class="eliminar-warning">
             <span class="material-symbols-rounded">warning</span>
@@ -162,7 +159,7 @@ $nivel_cfg = [
         <?php endif; ?>
 
         <?php if ($matriculas_activas > 0): ?>
-        <!-- Bloqueado -->
+
         <div class="alert alert-danger" style="margin-bottom:20px;">
             <span class="material-symbols-rounded">block</span>
             No se puede eliminar un grupo con matrículas activas. Primero cambia el estado del grupo a <strong>Cancelado</strong> o retira a los estudiantes.
@@ -175,7 +172,7 @@ $nivel_cfg = [
         </div>
 
         <?php else: ?>
-        <!-- Confirmación -->
+     
         <form method="POST">
             <input type="hidden" name="id"        value="<?php echo $id; ?>">
             <input type="hidden" name="confirmar" value="si">
