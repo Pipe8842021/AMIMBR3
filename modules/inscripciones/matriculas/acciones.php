@@ -1,349 +1,349 @@
 <?php
 /**
- * Acciones del Módulo de Matrículas
- *
- * Lógica de pagos:
- *  - Al matricular/asignar grupo: se genera 1 solo pago (el del mes actual).
- *  - Cada mes se genera el siguiente pago (via generar_proximo_pago).
- *  - Un cron externo o el propio sistema marca como 'vencido' los pagos
- *    pendientes cuya fecha_vencimiento < HOY.
+ * acciones.php — Módulo Matrículas — Amimbré
  */
 require_once '../../../config/session.php';
 require_once '../../../config/database.php';
 require_once '../../../includes/auth_check.php';
 require_role('admin');
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') { header("Location: index.php"); exit; }
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header("Location: index.php"); exit;
+}
 
-$accion           = $_POST['accion']             ?? '';
-$matricula_id     = (int)($_POST['matricula_id']      ?? 0);
-$redir_estudiante = (int)($_POST['redir_estudiante']  ?? 0);
-$admin_id         = $_SESSION['user_id'];
+$accion           = $_POST['accion']           ?? '';
+$matricula_id     = (int)($_POST['matricula_id']     ?? 0);
+$redir_estudiante = (int)($_POST['redir_estudiante'] ?? 0);
 
-// ── Helpers redirección ──────────────────────────────────────
-function redir_ok($est, $mat, $msg) {
-    header("Location: detalle.php?estudiante=$est&tab=$mat&msg=".urlencode($msg)."&type=success");
+function redir(int $est, int $tab, string $msg, string $type = 'success'): never {
+    header("Location: detalle.php?estudiante=$est&tab=$tab&msg=" . urlencode($msg) . "&type=$type");
     exit;
 }
-function redir_err($est, $mat, $msg) {
-    $url = $est
-        ? "detalle.php?estudiante=$est&tab=$mat&msg=".urlencode($msg)."&type=error"
-        : "index.php?msg=".urlencode($msg)."&type=error";
-    header("Location: $url"); exit;
+function redir_index(string $msg, string $type = 'success'): never {
+    header("Location: index.php?msg=" . urlencode($msg) . "&type=$type");
+    exit;
 }
 
-// ── Genera 1 pago para el mes indicado ───────────────────────
-/**
- * Genera exactamente 1 cuota mensual para una matrícula.
- * No genera si ya existe un pago (pendiente o pagado) para ese mes/año.
- *
- * @param string $fecha_base   YYYY-MM-DD — define el día del mes de vencimiento
- * @param int    $mes_offset   0 = mes actual, 1 = siguiente mes, etc.
- * @return bool  true si se generó, false si ya existía
- */
-function generar_pago_mes(
-    PDO    $pdo,
-    int    $matricula_id,
-    int    $estudiante_id,
-    float  $precio,
-    string $fecha_base,
-    string $curso_nombre,
-    int    $admin_id,
-    int    $mes_offset = 0
-): bool {
+$meses_es = [1=>'Enero',2=>'Febrero',3=>'Marzo',4=>'Abril',5=>'Mayo',6=>'Junio',
+             7=>'Julio',8=>'Agosto',9=>'Septiembre',10=>'Octubre',11=>'Noviembre',12=>'Diciembre'];
 
-    $meses_es = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio',
-                 'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-
-    $dt       = new DateTime($fecha_base);
-    $dia_pago = (int)$dt->format('j');
-
-    if ($mes_offset > 0) $dt->modify("+$mes_offset month");
-
-    $ultimo  = (int)$dt->format('t');
-    $dia_ok  = min($dia_pago, $ultimo);
-    $dt->setDate((int)$dt->format('Y'), (int)$dt->format('n'), $dia_ok);
-
-    $anio_venc = (int)$dt->format('Y');
-    $mes_venc  = (int)$dt->format('n');
-    $fecha_venc = $dt->format('Y-m-d');
-
-    // Verificar si ya existe pago para ese mes/año en esta matrícula
-    $chk = $pdo->prepare("
-        SELECT COUNT(*) FROM pagos
-        WHERE matricula_id = ?
-          AND YEAR(fecha_vencimiento)  = ?
-          AND MONTH(fecha_vencimiento) = ?
-          AND estado != 'anulado'
-    ");
-    $chk->execute([$matricula_id, $anio_venc, $mes_venc]);
-    if ((int)$chk->fetchColumn() > 0) return false;
-
-    $mes_nombre = $meses_es[$mes_venc];
-    $pdo->prepare("
-        INSERT INTO pagos
-            (estudiante_id, matricula_id, monto, concepto, metodo_pago,
-             estado, fecha_vencimiento, registrado_por)
-        VALUES (?, ?, ?, ?, 'efectivo', 'pendiente', ?, ?)
-    ")->execute([
-        $estudiante_id,
-        $matricula_id,
-        $precio,
-        "Mensualidad $mes_nombre $anio_venc — $curso_nombre",
-        $fecha_venc,
-        $admin_id,
-    ]);
-    return true;
-}
-
-// ── Marcar pagos vencidos ────────────────────────────────────
-// Siempre que se cargue esta página, actualizamos los pagos vencidos
 try {
-    $pdo->exec("
-        UPDATE pagos
-        SET estado = 'vencido'
-        WHERE estado = 'pendiente'
-          AND fecha_vencimiento < CURDATE()
+
+/* ════════════════════════════════════════════════════════════
+   CAMBIAR ESTADO
+   Reglas de negocio:
+   - suspendida: anula pagos futuros e inserta placeholders 'anulado'
+     para los próximos meses (bloqueando al cron).
+   - activa (desde suspendida): borra fecha_suspension; el cron solo
+     genera desde el mes actual en adelante porque los meses suspendidos
+     ya tienen registros 'anulado'.
+   - retirado / graduado: anula todos los pagos pendientes/vencidos.
+   ════════════════════════════════════════════════════════════ */
+if ($accion === 'cambiar_estado') {
+
+    $nuevo_estado  = $_POST['nuevo_estado'] ?? '';
+    $observaciones = trim($_POST['observaciones'] ?? '');
+    $estados_ok    = ['activa','suspendida','graduado','retirado'];
+
+    if (!in_array($nuevo_estado, $estados_ok, true))
+        redir($redir_estudiante, $matricula_id, 'Estado no válido.', 'danger');
+
+    $stmt = $pdo->prepare("
+        SELECT m.estado AS estado_actual, m.fecha_suspension, m.estudiante_id,
+               c.precio_mensual, c.nombre AS curso_nombre
+        FROM matriculas m
+        LEFT JOIN grupos g ON m.grupo_id = g.id
+        LEFT JOIN cursos c ON g.curso_id = c.id
+        WHERE m.id = ?
     ");
-} catch (PDOException $e) {
-    error_log("Error marcando vencidos: " . $e->getMessage());
-}
+    $stmt->execute([$matricula_id]);
+    $mat = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$mat) redir($redir_estudiante, $matricula_id, 'Matrícula no encontrada.', 'danger');
 
-// ── Obtener estudiante_id si no vino en el POST ──────────────
-if (!$redir_estudiante && $matricula_id) {
-    try {
-        $s = $pdo->prepare("SELECT estudiante_id FROM matriculas WHERE id = ?");
-        $s->execute([$matricula_id]);
-        $redir_estudiante = (int)($s->fetchColumn() ?: 0);
-    } catch (PDOException $e) {}
-}
+    $estado_actual = $mat['estado_actual'];
+    $hoy           = date('Y-m-d');
 
-// ════════════════════════════════════════════════════════════
-try {
-    switch ($accion) {
+    /* ── SUSPENDER ── */
+    if ($nuevo_estado === 'suspendida' && $estado_actual === 'activa') {
 
-        // ── Cancelar matrícula ───────────────────────────────
-        case 'cancelar':
-            if (!$matricula_id) { header("Location: index.php"); exit; }
-            $pdo->prepare("UPDATE matriculas SET estado='retirado', fecha_retiro=CURDATE() WHERE id=?")
-                ->execute([$matricula_id]);
-            $pdo->prepare("INSERT INTO logs_actividad (usuario_id,accion,detalles,ip_address) VALUES (?,?,?,?)")
-                ->execute([$admin_id,'matricula_cancelada',"Matrícula #$matricula_id cancelada",$_SERVER['REMOTE_ADDR']??null]);
-            $url = $redir_estudiante
-                ? "detalle.php?estudiante=$redir_estudiante&msg=".urlencode('Matrícula cancelada')."&type=success"
-                : "index.php?msg=".urlencode('Matrícula cancelada')."&type=success";
-            header("Location: $url"); exit;
+        $pdo->prepare("
+            UPDATE matriculas SET estado='suspendida', fecha_suspension=?, observaciones=? WHERE id=?
+        ")->execute([$hoy, $observaciones ?: null, $matricula_id]);
 
-        // ── Asignar / cambiar grupo ──────────────────────────
-        case 'asignar_grupo':
-        case 'cambiar_grupo':
-            $grupo_id = (int)($_POST['grupo_id'] ?? 0);
-            if (!$matricula_id || !$grupo_id) redir_err($redir_estudiante, $matricula_id, 'Datos incompletos');
+        // Anular pagos pendientes/vencidos con fecha >= hoy
+        $pdo->prepare("
+            UPDATE pagos
+            SET estado='anulado',
+                observaciones=CONCAT(COALESCE(observaciones,''), ' [Anulado por suspensión]')
+            WHERE matricula_id=? AND estado IN ('pendiente','vencido') AND fecha_vencimiento >= ?
+        ")->execute([$matricula_id, $hoy]);
 
-            $g = $pdo->prepare("SELECT cupo_actual, cupo_maximo FROM grupos WHERE id = ?");
-            $g->execute([$grupo_id]); $gr = $g->fetch();
-            if (!$gr) redir_err($redir_estudiante, $matricula_id, 'Grupo no encontrado');
-            if ($gr['cupo_actual'] >= $gr['cupo_maximo'])
-                redir_err($redir_estudiante, $matricula_id, 'El grupo no tiene cupo disponible');
-
-            $sm = $pdo->prepare("SELECT m.grupo_id AS ant, m.estudiante_id, m.fecha_matricula FROM matriculas m WHERE m.id = ?");
-            $sm->execute([$matricula_id]); $mat_data = $sm->fetch(PDO::FETCH_ASSOC);
-            $grupo_anterior = $mat_data['ant'] ?? null;
-
-            // Datos del NUEVO curso
-            $sg = $pdo->prepare("SELECT c.precio_mensual, c.nombre AS curso_nombre FROM grupos g JOIN cursos c ON g.curso_id=c.id WHERE g.id=?");
-            $sg->execute([$grupo_id]); $curso_nuevo = $sg->fetch(PDO::FETCH_ASSOC);
-
-            $pdo->beginTransaction();
-            $pdo->prepare("UPDATE matriculas SET grupo_id=? WHERE id=?")->execute([$grupo_id, $matricula_id]);
-            $pdo->prepare("UPDATE grupos SET cupo_actual=cupo_actual+1 WHERE id=?")->execute([$grupo_id]);
-            if ($grupo_anterior && $grupo_anterior != $grupo_id) {
-                $pdo->prepare("UPDATE grupos SET cupo_actual=GREATEST(cupo_actual-1,0) WHERE id=?")->execute([$grupo_anterior]);
-            }
-
-            // Si es primera asignación y el curso tiene precio → generar 1 pago del mes actual
-            $pago_generado = false;
-            if (!$grupo_anterior && $curso_nuevo && $curso_nuevo['precio_mensual'] > 0) {
-                $pago_generado = generar_pago_mes(
-                    $pdo, $matricula_id,
-                    $mat_data['estudiante_id'],
-                    (float)$curso_nuevo['precio_mensual'],
-                    $mat_data['fecha_matricula'],
-                    $curso_nuevo['curso_nombre'],
-                    $admin_id, 0
-                );
-            }
-            $pdo->commit();
-
-            $label = $accion === 'asignar_grupo' ? 'Grupo asignado correctamente' : 'Grupo actualizado correctamente';
-            if ($pago_generado) $label .= '. Se generó el pago del mes actual.';
-            redir_ok($redir_estudiante, $matricula_id, $label);
-
-        // ── Cambiar estado ───────────────────────────────────
-        case 'cambiar_estado':
-            $nuevo = $_POST['nuevo_estado'] ?? '';
-            $obs   = trim($_POST['observaciones'] ?? '');
-            if (!in_array($nuevo, ['activa','suspendida','graduado','retirado']))
-                redir_err($redir_estudiante, $matricula_id, 'Estado inválido');
-            $fr = $nuevo === 'retirado' ? ', fecha_retiro=CURDATE()' : '';
-            $pdo->prepare("UPDATE matriculas SET estado=?, observaciones=? $fr WHERE id=?")
-                ->execute([$nuevo, $obs ?: null, $matricula_id]);
-            $pdo->prepare("INSERT INTO logs_actividad (usuario_id,accion,detalles,ip_address) VALUES (?,?,?,?)")
-                ->execute([$admin_id,'cambio_estado_matricula',"Matrícula #$matricula_id → $nuevo",$_SERVER['REMOTE_ADDR']??null]);
-            redir_ok($redir_estudiante, $matricula_id, 'Estado actualizado correctamente');
-
-        // ── Generar pago del próximo mes ─────────────────────
-        // Llámalo con cron mensual: POST accion=generar_proximo_pago&matricula_id=X
-        case 'generar_proximo_pago':
-            $sm = $pdo->prepare("
-                SELECT m.estudiante_id, m.fecha_matricula,
-                       c.precio_mensual, c.nombre AS curso_nombre
-                FROM matriculas m
-                JOIN grupos g ON m.grupo_id=g.id
-                JOIN cursos c ON g.curso_id=c.id
-                WHERE m.id=? AND m.estado='activa'
+        // Insertar placeholders 'anulado' para los próximos 12 meses sin cobertura
+        // → el cron los detectará y no generará pagos para esos meses al reactivar
+        if ($mat['precio_mensual'] > 0 && $mat['curso_nombre']) {
+            $chk = $pdo->prepare("
+                SELECT COUNT(*) FROM pagos
+                WHERE matricula_id=?
+                  AND YEAR(fecha_vencimiento)=?
+                  AND MONTH(fecha_vencimiento)=?
+                  AND estado!='anulado'
             ");
-            $sm->execute([$matricula_id]); $dat = $sm->fetch(PDO::FETCH_ASSOC);
-            if (!$dat) redir_err($redir_estudiante, $matricula_id, 'Matrícula no activa o sin curso');
-
-            // Calcular cuántos meses han pasado desde fecha_matricula
-            $inicio = new DateTime($dat['fecha_matricula']);
-            $hoy    = new DateTime();
-            $diff   = (int)$inicio->diff($hoy)->m + ((int)$inicio->diff($hoy)->y * 12);
-
-            $generado = generar_pago_mes(
-                $pdo, $matricula_id,
-                $dat['estudiante_id'],
-                (float)$dat['precio_mensual'],
-                $dat['fecha_matricula'],
-                $dat['curso_nombre'],
-                $admin_id, $diff
-            );
-            $msg = $generado ? 'Pago del mes generado correctamente.' : 'Ya existe un pago para este mes.';
-            redir_ok($redir_estudiante, $matricula_id, $msg);
-
-        // ── Editar pago (vencido o pendiente) ───────────────
-        case 'editar_pago':
-            $pago_id  = (int)($_POST['pago_id'] ?? 0);
-            $concepto = trim($_POST['concepto'] ?? '');
-            $monto    = (float)($_POST['monto'] ?? 0);
-            $metodo   = $_POST['metodo_pago']  ?? '';
-            $estado_p = $_POST['estado']       ?? '';
-            $fvence   = $_POST['fecha_vencimiento'] ?? '';
-            $fpago    = $_POST['fecha_pago']   ?? null;
-            $obs      = trim($_POST['observaciones'] ?? '');
-
-            if (!$pago_id) redir_err($redir_estudiante, $matricula_id, 'ID de pago inválido');
-            if (!$concepto || $monto <= 0)
-                redir_err($redir_estudiante, $matricula_id, 'Concepto y monto son obligatorios');
-            if (!in_array($metodo, ['efectivo','transferencia','tarjeta','pse']))
-                redir_err($redir_estudiante, $matricula_id, 'Método de pago inválido');
-            if (!in_array($estado_p, ['pendiente','vencido','pagado','anulado']))
-                redir_err($redir_estudiante, $matricula_id, 'Estado inválido');
-
-            // Solo permitir editar pagos que NO estén ya pagados (salvo que el admin cambie el estado)
-            $chkPago = $pdo->prepare("SELECT estado FROM pagos WHERE id = ? AND matricula_id = ?");
-            $chkPago->execute([$pago_id, $matricula_id]);
-            $pagoActual = $chkPago->fetch(PDO::FETCH_ASSOC);
-            if (!$pagoActual) redir_err($redir_estudiante, $matricula_id, 'Pago no encontrado');
-
-            $fpago_val = ($estado_p === 'pagado') ? ($fpago ?: date('Y-m-d')) : null;
-
-            $pdo->prepare("
-                UPDATE pagos
-                SET concepto          = ?,
-                    monto             = ?,
-                    metodo_pago       = ?,
-                    estado            = ?,
-                    fecha_vencimiento = ?,
-                    fecha_pago        = ?,
-                    observaciones     = ?
-                WHERE id = ? AND matricula_id = ?
-            ")->execute([
-                $concepto, $monto, $metodo, $estado_p,
-                $fvence ?: null, $fpago_val, $obs ?: null,
-                $pago_id, $matricula_id,
-            ]);
-
-            // Si se marcó como pagado al editar, también generar el siguiente mes
-            $siguiente_msg = '';
-            if ($estado_p === 'pagado' && $pagoActual['estado'] !== 'pagado') {
-                $sm = $pdo->prepare("SELECT m.estudiante_id, m.fecha_matricula, c.precio_mensual, c.nombre AS curso_nombre FROM matriculas m JOIN grupos g ON m.grupo_id=g.id JOIN cursos c ON g.curso_id=c.id WHERE m.id=? AND m.estado='activa'");
-                $sm->execute([$matricula_id]);
-                $dat = $sm->fetch(PDO::FETCH_ASSOC);
-                if ($dat && $dat['precio_mensual'] > 0) {
-                    $inicio   = new DateTime($dat['fecha_matricula']);
-                    $hoy      = new DateTime();
-                    $diff     = (int)$inicio->diff($hoy)->m + ((int)$inicio->diff($hoy)->y * 12);
-                    $generado = generar_pago_mes($pdo, $matricula_id, $dat['estudiante_id'],
-                        (float)$dat['precio_mensual'], $dat['fecha_matricula'],
-                        $dat['curso_nombre'], $admin_id, $diff + 1);
-                    if ($generado) $siguiente_msg = ' Se generó el pago del próximo mes.';
+            $ins_sus = $pdo->prepare("
+                INSERT INTO pagos
+                    (estudiante_id,matricula_id,monto,concepto,metodo_pago,estado,fecha_vencimiento,registrado_por)
+                VALUES (?,?,0,?,'efectivo','anulado',?,1)
+            ");
+            $iter = new DateTime($hoy);
+            $iter->modify('first day of this month');
+            for ($i = 0; $i < 12; $i++) {
+                $a  = (int)$iter->format('Y');
+                $me = (int)$iter->format('n');
+                $chk->execute([$matricula_id, $a, $me]);
+                if ((int)$chk->fetchColumn() === 0) {
+                    $concepto_sus = "[Suspendido] Mensualidad {$meses_es[$me]} $a — {$mat['curso_nombre']}";
+                    $ins_sus->execute([$mat['estudiante_id'], $matricula_id, $concepto_sus, $iter->format('Y-m-01')]);
                 }
+                $iter->modify('+1 month');
             }
-            redir_ok($redir_estudiante, $matricula_id, 'Pago actualizado correctamente.' . $siguiente_msg);
+        }
 
-        // ── Registrar pago manual ────────────────────────────
-        case 'registrar_pago':
-            $concepto = trim($_POST['concepto'] ?? '');
-            $monto    = (float)($_POST['monto'] ?? 0);
-            $metodo   = $_POST['metodo_pago']  ?? '';
-            $estado_p = $_POST['estado']       ?? 'pendiente';
-            $fvence   = $_POST['fecha_vencimiento'] ?? date('Y-m-t');
-            $fpago    = $_POST['fecha_pago']   ?? null;
-            $obs      = trim($_POST['observaciones'] ?? '');
-            $est_id   = (int)($_POST['estudiante_id'] ?? $redir_estudiante);
-
-            if (!$concepto || $monto <= 0 || !$metodo)
-                redir_err($redir_estudiante, $matricula_id, 'Completa los campos requeridos');
-            if (!in_array($metodo, ['efectivo','transferencia','tarjeta','pse']))
-                redir_err($redir_estudiante, $matricula_id, 'Método de pago inválido');
-
-            $fpago_val = ($estado_p === 'pagado') ? ($fpago ?: date('Y-m-d')) : null;
-            $pdo->prepare("INSERT INTO pagos (estudiante_id,matricula_id,monto,concepto,metodo_pago,estado,fecha_vencimiento,fecha_pago,observaciones,registrado_por) VALUES (?,?,?,?,?,?,?,?,?,?)")
-                ->execute([$est_id,$matricula_id,$monto,$concepto,$metodo,$estado_p,$fvence,$fpago_val,$obs?:null,$admin_id]);
-            redir_ok($redir_estudiante, $matricula_id, 'Pago registrado correctamente');
-
-        // ── Marcar pago como pagado ──────────────────────────
-        case 'marcar_pagado':
-            $pago_id = (int)($_POST['pago_id'] ?? 0);
-            if (!$pago_id) redir_err($redir_estudiante, $matricula_id, 'ID de pago inválido');
-            $pdo->prepare("UPDATE pagos SET estado='pagado', fecha_pago=CURDATE() WHERE id=? AND matricula_id=?")
-                ->execute([$pago_id, $matricula_id]);
-
-            // Tras marcar pagado, generar el pago del mes siguiente si no existe
-            $sm = $pdo->prepare("
-                SELECT m.estudiante_id, m.fecha_matricula,
-                       c.precio_mensual, c.nombre AS curso_nombre
-                FROM matriculas m
-                JOIN grupos g ON m.grupo_id=g.id
-                JOIN cursos c ON g.curso_id=c.id
-                WHERE m.id=? AND m.estado='activa'
-            ");
-            $sm->execute([$matricula_id]); $dat = $sm->fetch(PDO::FETCH_ASSOC);
-            $siguiente_msg = '';
-            if ($dat && $dat['precio_mensual'] > 0) {
-                $inicio = new DateTime($dat['fecha_matricula']);
-                $hoy    = new DateTime();
-                $diff   = (int)$inicio->diff($hoy)->m + ((int)$inicio->diff($hoy)->y * 12);
-                // Generar el pago del MES SIGUIENTE al actual
-                $generado = generar_pago_mes(
-                    $pdo, $matricula_id,
-                    $dat['estudiante_id'],
-                    (float)$dat['precio_mensual'],
-                    $dat['fecha_matricula'],
-                    $dat['curso_nombre'],
-                    $admin_id, $diff + 1
-                );
-                if ($generado) $siguiente_msg = ' Se generó el pago del próximo mes.';
-            }
-            redir_ok($redir_estudiante, $matricula_id, 'Pago marcado como pagado.' . $siguiente_msg);
-
-        default:
-            header("Location: index.php"); exit;
+        redir($redir_estudiante, $matricula_id, 'Matrícula suspendida. Los pagos futuros han sido pausados.');
     }
 
+    /* ── REACTIVAR desde suspendida ── */
+    if ($nuevo_estado === 'activa' && $estado_actual === 'suspendida') {
+        $pdo->prepare("
+            UPDATE matriculas SET estado='activa', fecha_suspension=NULL, observaciones=? WHERE id=?
+        ")->execute([$observaciones ?: null, $matricula_id]);
+
+        // Los placeholders 'anulado' de los meses suspendidos quedan intactos
+        // → el cron solo generará desde el mes actual en adelante.
+        redir($redir_estudiante, $matricula_id, 'Matrícula reactivada. Los pagos se reanudarán desde este mes.');
+    }
+
+    /* ── RETIRADO / GRADUADO / otros ── */
+    $extra_fields = '';
+    $params       = [$nuevo_estado, $observaciones ?: null];
+
+    if ($nuevo_estado === 'retirado') {
+        $extra_fields = ', fecha_retiro=?';
+        $params[]     = $hoy;
+        $pdo->prepare("UPDATE pagos SET estado='anulado' WHERE matricula_id=? AND estado IN ('pendiente','vencido')")
+            ->execute([$matricula_id]);
+    }
+
+    $params[] = $matricula_id;
+    $pdo->prepare("UPDATE matriculas SET estado=?, observaciones=? $extra_fields WHERE id=?")->execute($params);
+
+    $msgs = [
+        'graduado' => 'Matrícula marcada como Graduado.',
+        'retirado' => 'Matrícula marcada como Retirado. Pagos pendientes anulados.',
+        'activa'   => 'Estado actualizado a Activa.',
+    ];
+    redir($redir_estudiante, $matricula_id, $msgs[$nuevo_estado] ?? 'Estado actualizado.');
+}
+
+/* ════════════════════════════════════════════════════════════
+   ELIMINAR MATRÍCULA
+   Requiere que el admin escriba "eliminar" en el campo de confirmación.
+   Conserva el historial de pagos (los marca anulados) y registra en log.
+   ════════════════════════════════════════════════════════════ */
+if ($accion === 'eliminar_matricula') {
+
+    $stmt = $pdo->prepare("
+        SELECT m.*, u.nombre AS estudiante_nombre
+        FROM matriculas m JOIN usuarios u ON m.estudiante_id=u.id
+        WHERE m.id=?
+    ");
+    $stmt->execute([$matricula_id]);
+    $mat = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$mat) redir_index('Matrícula no encontrada.', 'danger');
+
+    if (strtolower(trim($_POST['confirmacion'] ?? '')) !== 'eliminar')
+        redir($redir_estudiante, $matricula_id, 'Debes escribir "eliminar" para confirmar la eliminación.', 'danger');
+
+    $pdo->beginTransaction();
+
+    // Anular pagos (conservar historial, no borrar)
+    $pdo->prepare("UPDATE pagos SET estado='anulado' WHERE matricula_id=?")->execute([$matricula_id]);
+
+    // Eliminar la matrícula (CASCADE borra asistencias, calificaciones, etc.)
+    $pdo->prepare("DELETE FROM matriculas WHERE id=?")->execute([$matricula_id]);
+
+    // Log
+    $pdo->prepare("
+        INSERT INTO logs_actividad (usuario_id,accion,detalles,ip_address)
+        VALUES (?,?,?,?)
+    ")->execute([
+        $_SESSION['usuario_id'] ?? 1,
+        'eliminar_matricula',
+        "Matrícula #{$matricula_id} del estudiante '{$mat['estudiante_nombre']}' eliminada manualmente.",
+        $_SERVER['REMOTE_ADDR'] ?? 'cli',
+    ]);
+
+    // Liberar cupo del grupo si tenía
+    if ($mat['grupo_id']) {
+        $pdo->prepare("UPDATE grupos SET cupo_actual=GREATEST(0,cupo_actual-1) WHERE id=?")
+            ->execute([$mat['grupo_id']]);
+    }
+
+    $pdo->commit();
+
+    // Redirigir: si quedan más matrículas del estudiante → detalle; si no → index
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM matriculas WHERE estudiante_id=?");
+    $stmt->execute([$redir_estudiante]);
+    if ((int)$stmt->fetchColumn() > 0) {
+        header("Location: detalle.php?estudiante={$redir_estudiante}&msg=" . urlencode('Matrícula eliminada correctamente.') . "&type=success");
+    } else {
+        redir_index('Matrícula eliminada. El estudiante ya no tiene matrículas registradas.');
+    }
+    exit;
+}
+
+/* ════════════════════════════════════════════════════════════
+   REGISTRAR PAGO
+   ════════════════════════════════════════════════════════════ */
+if ($accion === 'registrar_pago') {
+    $concepto          = trim($_POST['concepto'] ?? '');
+    $monto             = (float)($_POST['monto'] ?? 0);
+    $metodo_pago       = $_POST['metodo_pago']        ?? 'efectivo';
+    $estado_pago       = $_POST['estado']              ?? 'pagado';
+    $fecha_vencimiento = $_POST['fecha_vencimiento']   ?? date('Y-m-t');
+    $fecha_pago        = $_POST['fecha_pago']          ?: null;
+    $observaciones     = trim($_POST['observaciones']  ?? '');
+    $estudiante_id     = (int)($_POST['estudiante_id'] ?? 0);
+
+    if (!$concepto || $monto <= 0)
+        redir($redir_estudiante, $matricula_id, 'Concepto y monto son obligatorios.', 'danger');
+
+    $pdo->prepare("
+        INSERT INTO pagos
+            (estudiante_id,matricula_id,monto,concepto,metodo_pago,estado,
+             fecha_vencimiento,fecha_pago,observaciones,registrado_por)
+        VALUES (?,?,?,?,?,?,?,?,?,?)
+    ")->execute([
+        $estudiante_id, $matricula_id, $monto, $concepto,
+        $metodo_pago, $estado_pago, $fecha_vencimiento,
+        $fecha_pago, $observaciones ?: null, $_SESSION['usuario_id'] ?? 1,
+    ]);
+
+    redir($redir_estudiante, $matricula_id, 'Pago registrado correctamente.');
+}
+
+/* ════════════════════════════════════════════════════════════
+   MARCAR PAGADO
+   ════════════════════════════════════════════════════════════ */
+if ($accion === 'marcar_pagado') {
+    $pago_id = (int)($_POST['pago_id'] ?? 0);
+    $pdo->prepare("UPDATE pagos SET estado='pagado', fecha_pago=CURDATE() WHERE id=? AND matricula_id=?")
+        ->execute([$pago_id, $matricula_id]);
+    redir($redir_estudiante, $matricula_id, 'Pago marcado como pagado.');
+}
+
+/* ════════════════════════════════════════════════════════════
+   EDITAR PAGO
+   ════════════════════════════════════════════════════════════ */
+if ($accion === 'editar_pago') {
+    $pago_id           = (int)($_POST['pago_id']          ?? 0);
+    $concepto          = trim($_POST['concepto']           ?? '');
+    $monto             = (float)($_POST['monto']           ?? 0);
+    $metodo_pago       = $_POST['metodo_pago']             ?? 'efectivo';
+    $estado_pago       = $_POST['estado']                  ?? 'pendiente';
+    $fecha_vencimiento = $_POST['fecha_vencimiento']       ?? null;
+    $fecha_pago        = $_POST['fecha_pago']              ?: null;
+    $observaciones     = trim($_POST['observaciones']      ?? '');
+
+    $pdo->prepare("
+        UPDATE pagos SET concepto=?,monto=?,metodo_pago=?,estado=?,
+                         fecha_vencimiento=?,fecha_pago=?,observaciones=?
+        WHERE id=? AND matricula_id=?
+    ")->execute([
+        $concepto,$monto,$metodo_pago,$estado_pago,
+        $fecha_vencimiento,$fecha_pago,
+        $observaciones ?: null, $pago_id,$matricula_id,
+    ]);
+    redir($redir_estudiante, $matricula_id, 'Pago actualizado correctamente.');
+}
+
+/* ════════════════════════════════════════════════════════════
+   REGENERAR CUOTAS
+   ════════════════════════════════════════════════════════════ */
+if ($accion === 'regenerar_pagos') {
+    $stmt = $pdo->prepare("
+        SELECT m.fecha_matricula, m.estudiante_id, c.precio_mensual, c.nombre AS curso_nombre
+        FROM matriculas m
+        JOIN grupos g ON m.grupo_id=g.id
+        JOIN cursos c ON g.curso_id=c.id
+        WHERE m.id=?
+    ");
+    $stmt->execute([$matricula_id]);
+    $mat = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$mat) redir($redir_estudiante, $matricula_id, 'Matrícula no encontrada.', 'danger');
+
+    $pdo->beginTransaction();
+    $pdo->prepare("DELETE FROM pagos WHERE matricula_id=? AND estado IN ('pendiente','vencido')")->execute([$matricula_id]);
+
+    $chk = $pdo->prepare("
+        SELECT COUNT(*) FROM pagos
+        WHERE matricula_id=? AND YEAR(fecha_vencimiento)=? AND MONTH(fecha_vencimiento)=? AND estado!='anulado'
+    ");
+    $ins = $pdo->prepare("
+        INSERT INTO pagos (estudiante_id,matricula_id,monto,concepto,metodo_pago,estado,fecha_vencimiento,registrado_por)
+        VALUES (?,?,?,?,'efectivo',?,?,1)
+    ");
+
+    $fmat = new DateTime($mat['fecha_matricula']);
+    $dbase= (int)$fmat->format('j');
+    $ia   = (int)$fmat->format('Y');
+    $im   = (int)$fmat->format('n');
+    $hoy  = new DateTime();
+    $la   = (int)$hoy->format('Y');
+    $lm   = (int)$hoy->format('n');
+
+    while ($ia < $la || ($ia === $la && $im <= $lm)) {
+        $chk->execute([$matricula_id, $ia, $im]);
+        if ((int)$chk->fetchColumn() === 0) {
+            $t  = (int)(new DateTime("$ia-$im-01"))->format('t');
+            $d  = min($dbase,$t);
+            $fv = sprintf('%04d-%02d-%02d',$ia,$im,$d);
+            $es = ($fv < date('Y-m-d')) ? 'vencido' : 'pendiente';
+            $co = "Mensualidad {$meses_es[$im]} $ia — {$mat['curso_nombre']}";
+            $ins->execute([$mat['estudiante_id'],$matricula_id,$mat['precio_mensual'],$co,$es,$fv]);
+        }
+        $im++; if ($im>12){$im=1;$ia++;}
+    }
+    $pdo->commit();
+    redir($redir_estudiante, $matricula_id, 'Cuotas regeneradas correctamente.');
+}
+
+/* ════════════════════════════════════════════════════════════
+   ASIGNAR / CAMBIAR GRUPO
+   ════════════════════════════════════════════════════════════ */
+if (in_array($accion, ['asignar_grupo','cambiar_grupo'], true)) {
+    $grupo_id = (int)($_POST['grupo_id'] ?? 0);
+    if (!$grupo_id) redir($redir_estudiante, $matricula_id, 'Selecciona un grupo.', 'danger');
+
+    $pdo->beginTransaction();
+    $stmt = $pdo->prepare("SELECT grupo_id FROM matriculas WHERE id=?");
+    $stmt->execute([$matricula_id]);
+    $anterior = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($anterior && $anterior['grupo_id'])
+        $pdo->prepare("UPDATE grupos SET cupo_actual=GREATEST(0,cupo_actual-1) WHERE id=?")->execute([$anterior['grupo_id']]);
+
+    $pdo->prepare("UPDATE matriculas SET grupo_id=? WHERE id=?")->execute([$grupo_id,$matricula_id]);
+    $pdo->prepare("UPDATE grupos SET cupo_actual=cupo_actual+1 WHERE id=?")->execute([$grupo_id]);
+    $pdo->commit();
+
+    redir($redir_estudiante, $matricula_id, $accion==='cambiar_grupo' ? 'Grupo actualizado.' : 'Grupo asignado.');
+}
+
+redir_index('Acción no reconocida.', 'danger');
+
 } catch (PDOException $e) {
-    error_log("Error acciones matrícula: " . $e->getMessage());
-    redir_err($redir_estudiante, $matricula_id, 'Error del sistema. Intenta de nuevo.');
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    error_log('[acciones matriculas] '.$e->getMessage());
+    if ($redir_estudiante)
+        redir($redir_estudiante, $matricula_id, 'Error interno: '.$e->getMessage(), 'danger');
+    else
+        redir_index('Error interno: '.$e->getMessage(), 'danger');
 }
