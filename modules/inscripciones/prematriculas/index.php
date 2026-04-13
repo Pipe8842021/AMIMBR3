@@ -12,7 +12,7 @@ require_once '../../../includes/auth_check.php';
 require_once '../../../includes/notificaciones_helper.php';
 require_role('admin');
 
-// Datos del admin en sesión (necesario para notificaciones)
+// Datos del admin en sesión
 try {
     $stmtU = $pdo->prepare("SELECT id, nombre FROM usuarios WHERE id = ?");
     $stmtU->execute([$_SESSION['user_id']]);
@@ -21,9 +21,6 @@ try {
     $user = ['id' => $_SESSION['user_id'], 'nombre' => 'Administrador'];
 }
 
-// ═══════════════════════════════════════════════════════════
-//  PROCESAMIENTO DE ACCIONES POST
-// ═══════════════════════════════════════════════════════════
 $mensaje      = null;
 $tipo_mensaje = null;
 
@@ -31,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $accion = $_POST['accion'] ?? '';
 
     // ──────────────────────────────────────────────────────
-    // APROBAR — crea usuario + matrícula, estado → 'matriculado'
+    // APROBAR
     // ──────────────────────────────────────────────────────
     if ($accion === 'aprobar') {
         $id = (int)($_POST['id'] ?? 0);
@@ -44,12 +41,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if (!$pre) throw new Exception("Preinscripción no encontrada o ya fue procesada.");
 
-            // Verificar duplicados
             $chk = $pdo->prepare("SELECT id FROM usuarios WHERE email = ? OR documento = ?");
             $chk->execute([$pre['email'], $pre['numero_documento']]);
             if ($chk->fetch()) throw new Exception("Ya existe un usuario con ese correo o documento.");
 
-            // Crear usuario — contraseña = número de documento
             $pass_hash = password_hash($pre['numero_documento'], PASSWORD_BCRYPT);
             $pdo->prepare("
                 INSERT INTO usuarios
@@ -67,7 +62,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             $nuevo_usuario_id = $pdo->lastInsertId();
 
-            // Crear matrícula (sin grupo, se asigna luego)
             $fecha_inicio_mat = !empty($pre['fecha_inicio']) ? $pre['fecha_inicio'] : date('Y-m-d');
             $pdo->prepare("
                 INSERT INTO matriculas
@@ -81,7 +75,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $id,
             ]);
 
-            // Actualizar preinscripción → 'matriculado' (estado real del ENUM)
             $pdo->prepare("
                 UPDATE preinscripciones
                 SET estado            = 'matriculado',
@@ -90,7 +83,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 WHERE id = ?
             ")->execute([$nuevo_usuario_id, $id]);
 
-            // Notificaciones
             NotificacionesHelper::crearParaRoles(
                 $pdo, ['admin'], 'sistema',
                 'Nueva matrícula creada',
@@ -100,7 +92,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             );
             NotificacionesHelper::estadoPreinscripcionCambiado($pdo, $nuevo_usuario_id, 'matriculado');
 
-            // Log
             $pdo->prepare("
                 INSERT INTO logs_actividad (usuario_id, accion, detalles, ip_address)
                 VALUES (?, 'preinscripcion_aprobada', ?, ?)
@@ -152,7 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
     // ──────────────────────────────────────────────────────
-    // RECHAZAR — estado → 'rechazado'
+    // RECHAZAR
     // ──────────────────────────────────────────────────────
     } elseif ($accion === 'rechazar') {
         $id     = (int)($_POST['id'] ?? 0);
@@ -183,13 +174,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
     // ──────────────────────────────────────────────────────
-    // CREAR DESDE ADMIN — aprobación inmediata → 'matriculado'
+    // CREAR DESDE ADMIN
     // ──────────────────────────────────────────────────────
     } elseif ($accion === 'crear_admin') {
         try {
             $pdo->beginTransaction();
 
-            // ── Recoger todos los campos ──────────────────────────────
             $nombres      = htmlspecialchars(strip_tags(trim($_POST['nombres_apellidos']   ?? '')));
             $tipo_doc     = $_POST['tipo_documento']                                        ?? 'TI';
             $num_doc      = trim($_POST['numero_documento']                                 ?? '');
@@ -225,7 +215,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $hora_clase   = !empty($_POST['hora_clase']) ? $_POST['hora_clase']             : null;
             $aut_imagen   = isset($_POST['autoriza_imagen'])      ? 1 : 0;
             $cc_acud      = trim($_POST['firma_acudiente_cc']                               ?? '');
-            $ti_est       = trim($_POST['ti_estudiante']                                    ?? '');
             $observaciones= trim($_POST['observaciones']                                    ?? '');
 
             if (empty($nombres) || empty($num_doc) || empty($email) || empty($programa)) {
@@ -238,12 +227,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception("El número de documento debe tener al menos 5 caracteres.");
             }
 
-            // Verificar duplicados en preinscripciones
             $chkP = $pdo->prepare("SELECT id FROM preinscripciones WHERE email = ? OR numero_documento = ?");
             $chkP->execute([$email, $num_doc]);
             if ($chkP->fetch()) throw new Exception("Ya existe una preinscripción con ese correo o documento.");
 
-            // Insertar preinscripción completa — estado 'pendiente' para que pase por el flujo normal
             $pdo->prepare("
                 INSERT INTO preinscripciones (
                     nombres_apellidos, tipo_documento, numero_documento, email, celular,
@@ -255,14 +242,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     nombre_acudiente, parentesco_acudiente, telefono_acudiente,
                     email_acudiente, numero_recibo,
                     programa, taller, fecha_inicio, dia_clase, hora_clase,
-                    autoriza_imagen, firma_acudiente_cc, ti_estudiante,
+                    autoriza_imagen, firma_acudiente_cc,
                     observaciones, estado, ip_address
                 ) VALUES (
                     ?,?,?,?,?,  ?,?,?,?,?,  ?,?,?,
                     ?,?,?,      ?,?,?,
                     ?,?,?,?,    ?,?,?,
                     ?,?,        ?,?,?,?,?,
-                    ?,?,?,      ?,'pendiente',?
+                    ?,?,        ?,'pendiente',?
                 )
             ")->execute([
                 $nombres, $tipo_doc, $num_doc, $email, $celular ?: null,
@@ -274,12 +261,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $nom_acud ?: null, $par_acud ?: null, $tel_acud ?: null,
                 $email_acud ?: null, $num_recibo ?: null,
                 $programa, $taller ?: null, $fecha_inicio, $dia_clase ?: null, $hora_clase,
-                $aut_imagen, $cc_acud ?: null, $ti_est ?: null,
+                $aut_imagen, $cc_acud ?: null,
                 $observaciones ?: null, $_SERVER['REMOTE_ADDR'] ?? null,
             ]);
             $preId = $pdo->lastInsertId();
 
-            // Log
             $pdo->prepare("
                 INSERT INTO logs_actividad (usuario_id, accion, detalles, ip_address)
                 VALUES (?, 'preinscripcion_creada_admin', ?, ?)
@@ -325,7 +311,6 @@ if ($estado !== 'todos') {
 
 $sql_where = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 
-// Conteos por estado — estados vacíos se cuentan como pendientes
 try {
     $cntRow = $pdo->query("
         SELECT
@@ -341,7 +326,6 @@ try {
     $cnt = ['pendientes'=>0,'contactados'=>0,'matriculados'=>0,'rechazados'=>0,'total'=>0];
 }
 
-// Total para paginación
 try {
     $stmtC = $pdo->prepare("SELECT COUNT(*) FROM preinscripciones p {$sql_where}");
     $stmtC->execute($params);
@@ -352,7 +336,6 @@ try {
     $total_paginas   = 1;
 }
 
-// Listado paginado — pendientes primero
 try {
     $stmtL = $pdo->prepare("
         SELECT p.*
@@ -393,7 +376,6 @@ try {
 
 <main class="main-content" id="mainContent">
 
-    <!-- ══ Encabezado ════════════════════════════════════════ -->
     <div class="page-header">
         <div>
             <h1 class="page-title">Prematrículas</h1>
@@ -405,7 +387,6 @@ try {
         </button>
     </div>
 
-    <!-- ══ Alerta de resultado ═══════════════════════════════ -->
     <?php if ($mensaje): ?>
     <div class="alert alert-<?= $tipo_mensaje ?>" id="alertMsg">
         <?= $mensaje ?>
@@ -415,51 +396,29 @@ try {
     </div>
     <?php endif; ?>
 
-    <!-- ══ Pills de estado ════════════════════════════════════ -->
     <div class="stats-row">
-        <a class="stat-pill stat-pill--warning <?= $estado==='pendiente'   ? 'stat-pill--active' : '' ?>"
-           href="?estado=pendiente">
+        <a class="stat-pill stat-pill--warning <?= $estado==='pendiente'   ? 'stat-pill--active' : '' ?>" href="?estado=pendiente">
             <span class="material-symbols-rounded">schedule</span>
-            <div>
-                <span class="pill-num"><?= (int)$cnt['pendientes'] ?></span>
-                <span class="pill-lbl">Pendientes</span>
-            </div>
+            <div><span class="pill-num"><?= (int)$cnt['pendientes'] ?></span><span class="pill-lbl">Pendientes</span></div>
         </a>
-        <a class="stat-pill stat-pill--info <?= $estado==='contactado'  ? 'stat-pill--active' : '' ?>"
-           href="?estado=contactado">
+        <a class="stat-pill stat-pill--info <?= $estado==='contactado'  ? 'stat-pill--active' : '' ?>" href="?estado=contactado">
             <span class="material-symbols-rounded">contact_phone</span>
-            <div>
-                <span class="pill-num"><?= (int)$cnt['contactados'] ?></span>
-                <span class="pill-lbl">Contactados</span>
-            </div>
+            <div><span class="pill-num"><?= (int)$cnt['contactados'] ?></span><span class="pill-lbl">Contactados</span></div>
         </a>
-        <a class="stat-pill stat-pill--success <?= $estado==='matriculado' ? 'stat-pill--active' : '' ?>"
-           href="?estado=matriculado">
+        <a class="stat-pill stat-pill--success <?= $estado==='matriculado' ? 'stat-pill--active' : '' ?>" href="?estado=matriculado">
             <span class="material-symbols-rounded">check_circle</span>
-            <div>
-                <span class="pill-num"><?= (int)$cnt['matriculados'] ?></span>
-                <span class="pill-lbl">Matriculados</span>
-            </div>
+            <div><span class="pill-num"><?= (int)$cnt['matriculados'] ?></span><span class="pill-lbl">Matriculados</span></div>
         </a>
-        <a class="stat-pill stat-pill--danger <?= $estado==='rechazado'  ? 'stat-pill--active' : '' ?>"
-           href="?estado=rechazado">
+        <a class="stat-pill stat-pill--danger <?= $estado==='rechazado'  ? 'stat-pill--active' : '' ?>" href="?estado=rechazado">
             <span class="material-symbols-rounded">cancel</span>
-            <div>
-                <span class="pill-num"><?= (int)$cnt['rechazados'] ?></span>
-                <span class="pill-lbl">Rechazados</span>
-            </div>
+            <div><span class="pill-num"><?= (int)$cnt['rechazados'] ?></span><span class="pill-lbl">Rechazados</span></div>
         </a>
-        <a class="stat-pill stat-pill--neutral <?= $estado==='todos' ? 'stat-pill--active' : '' ?>"
-           href="?estado=todos">
+        <a class="stat-pill stat-pill--neutral <?= $estado==='todos' ? 'stat-pill--active' : '' ?>" href="?estado=todos">
             <span class="material-symbols-rounded">list_alt</span>
-            <div>
-                <span class="pill-num"><?= (int)$cnt['total'] ?></span>
-                <span class="pill-lbl">Total</span>
-            </div>
+            <div><span class="pill-num"><?= (int)$cnt['total'] ?></span><span class="pill-lbl">Total</span></div>
         </a>
     </div>
 
-    <!-- ══ Barra de búsqueda y filtro ════════════════════════ -->
     <div class="toolbar">
         <form method="GET" class="search-box" id="searchForm">
             <span class="material-symbols-rounded">search</span>
@@ -471,7 +430,6 @@ try {
             <input type="hidden" name="estado" value="<?= htmlspecialchars($estado) ?>">
         </form>
 
-        <!-- Dropdown personalizado de filtro -->
         <?php
         $filtro_opciones = [
             'todos'       => ['lbl' => 'Todos los estados', 'icon' => 'list_alt',      'cls' => ''],
@@ -483,8 +441,7 @@ try {
         $actual = $filtro_opciones[$estado] ?? $filtro_opciones['todos'];
         ?>
         <div class="fdd-wrap" id="fddWrap">
-            <button type="button" class="fdd-trigger <?= $actual['cls'] ?>" id="fddTrigger"
-                    onclick="toggleFdd()">
+            <button type="button" class="fdd-trigger <?= $actual['cls'] ?>" id="fddTrigger" onclick="toggleFdd()">
                 <span class="material-symbols-rounded">filter_list</span>
                 <span class="fdd-trigger-lbl"><?= $actual['lbl'] ?></span>
                 <span class="material-symbols-rounded fdd-chevron">expand_more</span>
@@ -504,7 +461,6 @@ try {
         </div>
     </div>
 
-    <!-- ══ Lista de preinscripciones ═════════════════════════ -->
     <div class="inscripciones-lista">
         <?php if (empty($preinscripciones)): ?>
         <div class="empty-state">
@@ -512,11 +468,8 @@ try {
             <p>No hay preinscripciones que coincidan con los filtros.</p>
         </div>
         <?php else: ?>
-
         <?php foreach ($preinscripciones as $p):
-            // Normalizar estado vacío a 'pendiente'
             $estado_real = (!empty($p['estado'])) ? $p['estado'] : 'pendiente';
-
             $badge_cls = match($estado_real) {
                 'matriculado' => 'badge--success',
                 'rechazado'   => 'badge--danger',
@@ -533,11 +486,9 @@ try {
                 ? date('d/m/Y', strtotime($p['fecha_preinscripcion'])) : '—';
         ?>
         <div class="inscripcion-card" id="card-<?= $p['id'] ?>">
-
             <div class="card-avatar">
                 <?= mb_strtoupper(mb_substr($p['nombres_apellidos'], 0, 1)) ?>
             </div>
-
             <div class="card-info">
                 <div class="card-top">
                     <span class="card-nombre"><?= htmlspecialchars($p['nombres_apellidos']) ?></span>
@@ -545,48 +496,28 @@ try {
                 </div>
                 <span class="card-email"><?= htmlspecialchars($p['email']) ?></span>
                 <div class="card-meta">
-                    <span>
-                        <span class="material-symbols-rounded">badge</span>
-                        <?= htmlspecialchars($p['tipo_documento'] ?? '') ?>
-                        <?= htmlspecialchars($p['numero_documento'] ?? '—') ?>
-                    </span>
-                    <span>
-                        <span class="material-symbols-rounded">music_note</span>
-                        <?= htmlspecialchars($p['programa'] ?? '—') ?>
-                    </span>
-                    <span>
-                        <span class="material-symbols-rounded">calendar_today</span>
-                        <?= $fecha ?>
-                    </span>
+                    <span><span class="material-symbols-rounded">badge</span><?= htmlspecialchars($p['tipo_documento'] ?? '') ?> <?= htmlspecialchars($p['numero_documento'] ?? '—') ?></span>
+                    <span><span class="material-symbols-rounded">music_note</span><?= htmlspecialchars($p['programa'] ?? '—') ?></span>
+                    <span><span class="material-symbols-rounded">calendar_today</span><?= $fecha ?></span>
                     <?php if (!empty($p['municipio'])): ?>
-                    <span>
-                        <span class="material-symbols-rounded">location_on</span>
-                        <?= htmlspecialchars($p['municipio']) ?>
-                    </span>
+                    <span><span class="material-symbols-rounded">location_on</span><?= htmlspecialchars($p['municipio']) ?></span>
                     <?php endif; ?>
                 </div>
             </div>
-
             <div class="card-actions">
-                <button class="btn-icon btn-icon--view"
-                        onclick="verDetalle(<?= $p['id'] ?>)"
-                        title="Ver detalles">
-                    <span class="material-symbols-rounded">visibility</span>
-                    Ver
+                <button class="btn-icon btn-icon--view" onclick="verDetalle(<?= $p['id'] ?>)" title="Ver detalles">
+                    <span class="material-symbols-rounded">visibility</span> Ver
                 </button>
-
                 <?php if ($p['estado'] === 'pendiente' || $p['estado'] === 'contactado'): ?>
                 <button class="btn-icon btn-icon--approve"
                         onclick="confirmarAprobar(<?= $p['id'] ?>, '<?= addslashes(htmlspecialchars($p['nombres_apellidos'])) ?>')"
                         title="Aprobar y matricular">
-                    <span class="material-symbols-rounded">check_circle</span>
-                    Aprobar
+                    <span class="material-symbols-rounded">check_circle</span> Aprobar
                 </button>
                 <button class="btn-icon btn-icon--reject"
                         onclick="abrirModalRechazar(<?= $p['id'] ?>, '<?= addslashes(htmlspecialchars($p['nombres_apellidos'])) ?>')"
                         title="Rechazar">
-                    <span class="material-symbols-rounded">cancel</span>
-                    Rechazar
+                    <span class="material-symbols-rounded">cancel</span> Rechazar
                 </button>
                 <?php endif; ?>
             </div>
@@ -595,26 +526,19 @@ try {
         <?php endif; ?>
     </div>
 
-    <!-- ══ Paginación ════════════════════════════════════════ -->
     <?php if ($total_paginas > 1): ?>
     <div class="pagination">
         <?php if ($pagina > 1): ?>
-        <a href="?page=<?= $pagina-1 ?>&q=<?= urlencode($buscar) ?>&estado=<?= urlencode($estado) ?>"
-           class="page-btn">
+        <a href="?page=<?= $pagina-1 ?>&q=<?= urlencode($buscar) ?>&estado=<?= urlencode($estado) ?>" class="page-btn">
             <span class="material-symbols-rounded">chevron_left</span>
         </a>
         <?php endif; ?>
-
         <?php for ($i = max(1,$pagina-2); $i <= min($total_paginas,$pagina+2); $i++): ?>
         <a href="?page=<?= $i ?>&q=<?= urlencode($buscar) ?>&estado=<?= urlencode($estado) ?>"
-           class="page-btn <?= $i===$pagina ? 'page-btn--active' : '' ?>">
-            <?= $i ?>
-        </a>
+           class="page-btn <?= $i===$pagina ? 'page-btn--active' : '' ?>"><?= $i ?></a>
         <?php endfor; ?>
-
         <?php if ($pagina < $total_paginas): ?>
-        <a href="?page=<?= $pagina+1 ?>&q=<?= urlencode($buscar) ?>&estado=<?= urlencode($estado) ?>"
-           class="page-btn">
+        <a href="?page=<?= $pagina+1 ?>&q=<?= urlencode($buscar) ?>&estado=<?= urlencode($estado) ?>" class="page-btn">
             <span class="material-symbols-rounded">chevron_right</span>
         </a>
         <?php endif; ?>
@@ -624,7 +548,7 @@ try {
 </main>
 
 
-<!-- ══ MODAL: Ver Detalle con gestión de estado ══════════════ -->
+<!-- ══ MODAL: Ver Detalle ════════════════════════════════════ -->
 <div class="modal-overlay" id="modalDetalle" aria-hidden="true">
     <div class="modal modal--lg">
         <div class="modal-header" id="detalleHeader">
@@ -636,14 +560,10 @@ try {
                 <span class="material-symbols-rounded">close</span>
             </button>
         </div>
-
-        <!-- Barra de progreso de estado -->
         <div class="estado-progreso" id="estadoProgreso"></div>
-
         <div class="modal-body" id="detalleContent">
             <p class="loading-txt">Cargando información…</p>
         </div>
-
         <div class="modal-footer" id="detalleFooter">
             <button class="btn-secondary" onclick="cerrarModal('modalDetalle')">Cerrar</button>
         </div>
@@ -672,12 +592,11 @@ try {
         </div>
         <form method="POST">
             <input type="hidden" name="accion" value="aprobar">
-            <input type="hidden" name="id"     id="aprobarId">
+            <input type="hidden" name="id" id="aprobarId">
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" onclick="cerrarModal('modalAprobar')">Cancelar</button>
                 <button type="submit" class="btn-success">
-                    <span class="material-symbols-rounded">check_circle</span>
-                    Sí, aprobar
+                    <span class="material-symbols-rounded">check_circle</span> Sí, aprobar
                 </button>
             </div>
         </form>
@@ -700,7 +619,7 @@ try {
             <p id="rechazarNombre" class="rechazar-nombre"></p>
             <form method="POST" id="formRechazar">
                 <input type="hidden" name="accion" value="rechazar">
-                <input type="hidden" name="id"     id="rechazarId">
+                <input type="hidden" name="id" id="rechazarId">
                 <div class="form-group-modal">
                     <label for="motivoRechazo">Motivo del rechazo <span class="req">*</span></label>
                     <textarea id="motivoRechazo" name="motivo" rows="4"
@@ -709,8 +628,7 @@ try {
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="cerrarModal('modalRechazar')">Cancelar</button>
                     <button type="submit" class="btn-danger">
-                        <span class="material-symbols-rounded">cancel</span>
-                        Confirmar Rechazo
+                        <span class="material-symbols-rounded">cancel</span> Confirmar Rechazo
                     </button>
                 </div>
             </form>
@@ -734,11 +652,6 @@ try {
         <form method="POST" id="formCrear" onsubmit="return validarFormCrear()">
             <input type="hidden" name="accion" value="crear_admin">
             <div class="modal-body">
-
-                <div class="modal-info-box">
-                    <span class="material-symbols-rounded">info</span>
-                    La prematrícula quedará en estado <strong>Pendiente</strong>. Desde el listado podrás aprobarla para crear el usuario y su matrícula.
-                </div>
 
                 <!-- ── 1. Datos personales ─────────────────────── -->
                 <div class="form-seccion">
@@ -795,10 +708,7 @@ try {
                             <label>Ocupación</label>
                             <input type="text" name="ocupacion" placeholder="Ej: Estudiante, Empleado…">
                         </div>
-                        <div class="form-group-modal">
-                            <label>TI del estudiante</label>
-                            <input type="text" name="ti_estudiante" placeholder="Número de TI si aplica">
-                        </div>
+                        <!-- CAMPO TI ELIMINADO: era redundante con "Número de documento" -->
                     </div>
                 </div>
 
@@ -865,31 +775,39 @@ try {
                                    placeholder="Colegio o institución actual">
                         </div>
                     </div>
-                    <div class="form-group-modal" style="margin-top:10px;">
+
+                    <!-- Checkboxes nivel educativo — ESTRUCTURA CORREGIDA -->
+                    <div class="form-group-modal" style="margin-top:14px;">
                         <label>Nivel de estudios alcanzado</label>
                         <div class="checkboxes-grid">
                             <label class="check-item">
                                 <input type="checkbox" name="estudio_primaria" value="1">
-                                <span>Primaria</span>
+                                <span class="check-box"></span>
+                                <span class="check-label">Primaria</span>
                             </label>
                             <label class="check-item">
                                 <input type="checkbox" name="estudio_secundaria" value="1">
-                                <span>Secundaria</span>
+                                <span class="check-box"></span>
+                                <span class="check-label">Secundaria</span>
                             </label>
                             <label class="check-item">
                                 <input type="checkbox" name="estudio_tecnico" value="1">
-                                <span>Técnico</span>
+                                <span class="check-box"></span>
+                                <span class="check-label">Técnico</span>
                             </label>
                             <label class="check-item">
                                 <input type="checkbox" name="estudio_tecnologico" value="1">
-                                <span>Tecnológico</span>
+                                <span class="check-box"></span>
+                                <span class="check-label">Tecnológico</span>
                             </label>
                             <label class="check-item">
                                 <input type="checkbox" name="estudio_universitario" value="1">
-                                <span>Universitario</span>
+                                <span class="check-box"></span>
+                                <span class="check-label">Universitario</span>
                             </label>
                         </div>
                     </div>
+
                     <div class="form-group-modal" style="margin-top:10px;">
                         <label>Otro nivel de estudios</label>
                         <input type="text" name="estudio_otro" placeholder="Especifica si aplica">
@@ -919,8 +837,7 @@ try {
                         </div>
                         <div class="form-group-modal">
                             <label>Taller específico</label>
-                            <input type="text" name="taller"
-                                   placeholder="Ej: Guitarra eléctrica, Saxofón…">
+                            <input type="text" name="taller" placeholder="Ej: Guitarra eléctrica, Saxofón…">
                         </div>
                         <div class="form-group-modal">
                             <label>Fecha de inicio deseada</label>
@@ -928,8 +845,7 @@ try {
                         </div>
                         <div class="form-group-modal">
                             <label>Día(s) de clase preferido</label>
-                            <input type="text" name="dia_clase"
-                                   placeholder="Ej: Lunes y Miércoles">
+                            <input type="text" name="dia_clase" placeholder="Ej: Lunes y Miércoles">
                         </div>
                         <div class="form-group-modal">
                             <label>Hora de clase preferida</label>
@@ -937,8 +853,7 @@ try {
                         </div>
                         <div class="form-group-modal">
                             <label>Número de recibo de pago</label>
-                            <input type="text" name="numero_recibo"
-                                   placeholder="N° del recibo si ya pagó">
+                            <input type="text" name="numero_recibo" placeholder="N° del recibo si ya pagó">
                         </div>
                     </div>
                 </div>
@@ -952,8 +867,7 @@ try {
                     <div class="modal-grid">
                         <div class="form-group-modal">
                             <label>Nombre del acudiente</label>
-                            <input type="text" name="nombre_acudiente"
-                                   placeholder="Nombre completo">
+                            <input type="text" name="nombre_acudiente" placeholder="Nombre completo">
                         </div>
                         <div class="form-group-modal">
                             <label>Parentesco</label>
@@ -970,18 +884,15 @@ try {
                         </div>
                         <div class="form-group-modal">
                             <label>Teléfono del acudiente</label>
-                            <input type="tel" name="telefono_acudiente"
-                                   placeholder="3XX XXX XXXX">
+                            <input type="tel" name="telefono_acudiente" placeholder="3XX XXX XXXX">
                         </div>
                         <div class="form-group-modal">
                             <label>Email del acudiente</label>
-                            <input type="email" name="email_acudiente"
-                                   placeholder="correo@ejemplo.com">
+                            <input type="email" name="email_acudiente" placeholder="correo@ejemplo.com">
                         </div>
                         <div class="form-group-modal">
                             <label>CC del acudiente firmante</label>
-                            <input type="text" name="firma_acudiente_cc"
-                                   placeholder="Número de cédula">
+                            <input type="text" name="firma_acudiente_cc" placeholder="Número de cédula">
                         </div>
                     </div>
                 </div>
@@ -994,9 +905,11 @@ try {
                     </div>
                     <div class="modal-grid">
                         <div class="form-group-modal col-full">
+                            <!-- Checkbox autorización imagen — misma estructura que los educativos -->
                             <label class="check-item check-item--full">
                                 <input type="checkbox" name="autoriza_imagen" value="1">
-                                <span>El acudiente <strong>autoriza el uso de imagen</strong> del estudiante con fines pedagógicos e institucionales</span>
+                                <span class="check-box"></span>
+                                <span class="check-label">El acudiente <strong>autoriza el uso de imagen</strong> del estudiante con fines pedagógicos e institucionales</span>
                             </label>
                         </div>
                         <div class="form-group-modal col-full">
@@ -1010,9 +923,7 @@ try {
             </div><!-- /modal-body -->
 
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="cerrarModal('modalCrear')">
-                    Cancelar
-                </button>
+                <button type="button" class="btn-secondary" onclick="cerrarModal('modalCrear')">Cancelar</button>
                 <button type="submit" class="btn-primary">
                     <span class="material-symbols-rounded">save</span>
                     Registrar Prematrícula
@@ -1025,7 +936,6 @@ try {
 
 <!-- ══ Datos JSON para modal de detalle ══════════════════════ -->
 <script>
-// Normalizar estado vacío a 'pendiente' antes de pasar al JS
 const DATA = <?= json_encode(
     array_map(function($p) {
         if (empty($p['estado'])) $p['estado'] = 'pendiente';
@@ -1059,7 +969,7 @@ document.addEventListener('keydown', e => {
 
 // ── Confirmar aprobar ─────────────────────────────────────────
 function confirmarAprobar(id, nombre) {
-    document.getElementById('aprobarId').value       = id;
+    document.getElementById('aprobarId').value      = id;
     document.getElementById('aprobarTexto').innerHTML =
         `¿Aprobar y matricular a <strong>${nombre}</strong>?`;
     abrirModal('modalAprobar');
@@ -1067,14 +977,14 @@ function confirmarAprobar(id, nombre) {
 
 // ── Abrir modal rechazar ──────────────────────────────────────
 function abrirModalRechazar(id, nombre) {
-    document.getElementById('rechazarId').value          = id;
-    document.getElementById('rechazarNombre').innerHTML  =
+    document.getElementById('rechazarId').value         = id;
+    document.getElementById('rechazarNombre').innerHTML =
         `Rechazando solicitud de: <strong>${nombre}</strong>`;
-    document.getElementById('motivoRechazo').value       = '';
+    document.getElementById('motivoRechazo').value      = '';
     abrirModal('modalRechazar');
 }
 
-// ── Ver detalle con gestión de estado ────────────────────────
+// ── Ver detalle con barra de progreso corregida ───────────────
 function verDetalle(id) {
     const p = DATA[id];
     if (!p) { alert('No se encontraron los datos.'); return; }
@@ -1088,7 +998,8 @@ function verDetalle(id) {
     const stLbl = { matriculado:'Matriculado', rechazado:'Rechazado',
                     contactado:'Contactado',   pendiente:'Pendiente' };
 
-    // ── Barra de progreso del flujo ───────────────────────────
+    // ── Barra de progreso ─────────────────────────────────────
+    // Orden numérico de los estados del flujo principal
     const pasos = [
         { key: 'pendiente',   icon: 'schedule',       lbl: 'Pendiente' },
         { key: 'contactado',  icon: 'contact_phone',  lbl: 'Contactado' },
@@ -1098,6 +1009,7 @@ function verDetalle(id) {
     const posActual = orden[p.estado] ?? -1;
 
     let progresoHtml = '';
+
     if (p.estado === 'rechazado') {
         progresoHtml = `
         <div class="estado-progreso-inner estado-rechazado">
@@ -1107,23 +1019,44 @@ function verDetalle(id) {
         </div>`;
     } else {
         const pasosHtml = pasos.map((paso, i) => {
-            const hecho    = i <= posActual;
-            const activo   = i === posActual;
-            const cls      = activo ? 'paso-activo' : hecho ? 'paso-hecho' : 'paso-pendiente';
+            // Un paso está "hecho" si su índice es MENOR que la posición actual
+            const hecho  = i < posActual;
+            // Un paso es el "actual" si su índice IGUALA la posición actual
+            const activo = i === posActual;
+
+            let cls;
+            if (hecho) {
+                // Pasos ya superados → siempre verde
+                cls = 'paso-hecho';
+            } else if (activo) {
+                // Paso actual:
+                // - Si es 'matriculado' (posición 2, el último) → verde completo
+                // - Si es cualquier otro estado activo → azul en curso
+                cls = (p.estado === 'matriculado') ? 'paso-completo' : 'paso-activo';
+            } else {
+                // Pasos futuros → gris pendiente
+                cls = 'paso-pendiente';
+            }
+
+            // Icono: pasos ya hechos o el matriculado completado muestran check
+            const iconoActual = (hecho || p.estado === 'matriculado') ? 'check' : paso.icon;
+
             return `
             <div class="progreso-paso ${cls}">
                 <div class="progreso-circulo">
-                    <span class="material-symbols-rounded">${hecho ? (activo ? paso.icon : 'check') : paso.icon}</span>
+                    <span class="material-symbols-rounded">${iconoActual}</span>
                 </div>
                 <span class="progreso-lbl">${paso.lbl}</span>
             </div>
-            ${i < pasos.length - 1 ? `<div class="progreso-linea ${i < posActual ? 'linea-hecha' : ''}"></div>` : ''}`;
+            ${i < pasos.length - 1
+                ? `<div class="progreso-linea ${i < posActual ? 'linea-hecha' : (p.estado === 'matriculado' && i === posActual - 1 ? 'linea-hecha' : '')}"></div>`
+                : ''}`;
         }).join('');
         progresoHtml = `<div class="estado-progreso-inner">${pasosHtml}</div>`;
     }
     document.getElementById('estadoProgreso').innerHTML = progresoHtml;
 
-    // ── Contenido de detalle ──────────────────────────────────
+    // ── Contenido detalle ─────────────────────────────────────
     const html = `
     <div class="detalle-grid">
 
@@ -1191,7 +1124,6 @@ function verDetalle(id) {
                     : '<span class="text-danger">No autoriza</span>'}
             </div>
             <div class="det-row"><span>CC acudiente:</span>${val(p.firma_acudiente_cc)}</div>
-            <div class="det-row"><span>TI estudiante:</span>${val(p.ti_estudiante)}</div>
         </div>
 
         ${p.observaciones ? `
@@ -1210,7 +1142,7 @@ function verDetalle(id) {
 
     document.getElementById('detalleContent').innerHTML = html;
 
-    // ── Footer con acciones según estado ─────────────────────
+    // Footer con acciones según estado
     const footer = document.getElementById('detalleFooter');
     const n = p.nombres_apellidos.replace(/'/g, "\\'");
 
@@ -1229,7 +1161,6 @@ function verDetalle(id) {
                     onclick="cerrarModal('modalDetalle');confirmarAprobar(${p.id},'${n}')">
                 <span class="material-symbols-rounded">check_circle</span> Aprobar y matricular
             </button>`;
-
     } else if (p.estado === 'contactado') {
         footer.innerHTML = `
             <button class="btn-secondary" onclick="cerrarModal('modalDetalle')">Cerrar</button>
@@ -1241,9 +1172,7 @@ function verDetalle(id) {
                     onclick="cerrarModal('modalDetalle');confirmarAprobar(${p.id},'${n}')">
                 <span class="material-symbols-rounded">check_circle</span> Aprobar y matricular
             </button>`;
-
     } else {
-        // matriculado o rechazado — solo cerrar
         footer.innerHTML = `
             <button class="btn-secondary" onclick="cerrarModal('modalDetalle')">Cerrar</button>`;
     }
@@ -1251,14 +1180,12 @@ function verDetalle(id) {
     abrirModal('modalDetalle');
 }
 
-// ── Enviar acción directa (contactar) sin modal extra ────────
+// ── Enviar acción directa (contactar) ────────────────────────
 function submitAccion(id, accion) {
     const form = document.createElement('form');
     form.method = 'POST';
     form.style.display = 'none';
-    form.innerHTML = `
-        <input name="accion" value="${accion}">
-        <input name="id"     value="${id}">`;
+    form.innerHTML = `<input name="accion" value="${accion}"><input name="id" value="${id}">`;
     document.body.appendChild(form);
     cerrarModal('modalDetalle');
     form.submit();
@@ -1286,7 +1213,7 @@ function validarFormCrear() {
     return true;
 }
 
-// ── Dropdown personalizado de filtro ─────────────────────────
+// ── Dropdown de filtro ────────────────────────────────────────
 function toggleFdd() {
     const trigger = document.getElementById('fddTrigger');
     const menu    = document.getElementById('fddMenu');
@@ -1294,7 +1221,6 @@ function toggleFdd() {
     trigger.classList.toggle('fdd-open', !isOpen);
     menu.classList.toggle('fdd-menu--open', !isOpen);
 }
-
 document.addEventListener('click', e => {
     const wrap = document.getElementById('fddWrap');
     if (wrap && !wrap.contains(e.target)) {

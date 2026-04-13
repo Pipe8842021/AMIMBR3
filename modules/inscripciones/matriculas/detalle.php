@@ -373,9 +373,21 @@ function nivel_label($n)  { return ['basico'=>'Básico','intermedio'=>'Intermedi
                             </div>
 
                             <div class="action-section">
-                                <button class="btn-outline" onclick="toggleSection('estado-<?= $m['id'] ?>')">
-                                    <span class="material-symbols-rounded">swap_vert</span> Cambiar estado
-                                </button>
+                                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            
+                                    <!-- Botón cambiar estado (ya existía) -->
+                                    <button class="btn-outline" onclick="toggleSection('estado-<?= $m['id'] ?>')">
+                                        <span class="material-symbols-rounded">swap_vert</span> Cambiar estado
+                                    </button>
+                            
+                                    <!-- NUEVO: Botón eliminar matrícula -->
+                                    <button class="btn-outline btn-outline--danger"
+                                            onclick="abrirModalEliminar(<?= $m['id'] ?>, <?= $estudiante_id ?>,
+                                                    '<?= htmlspecialchars(addslashes($m['curso_nombre'] ?? 'Sin curso')) ?>')">
+                                        <span class="material-symbols-rounded">delete</span> Eliminar matrícula
+                                    </button>
+                                </div>
+                            
                                 <div id="estado-<?= $m['id'] ?>" class="collapsible-section" style="display:none;">
                                     <form method="POST" action="acciones.php" class="form-inline-section">
                                         <input type="hidden" name="accion" value="cambiar_estado">
@@ -393,7 +405,7 @@ function nivel_label($n)  { return ['basico'=>'Básico','intermedio'=>'Intermedi
                                         <div class="form-group">
                                             <label class="form-label">Observaciones</label>
                                             <textarea name="observaciones" class="form-control" rows="2"
-                                                      placeholder="Motivo del cambio..."><?= htmlspecialchars($m['observaciones'] ?? '') ?></textarea>
+                                                    placeholder="Motivo del cambio..."><?= htmlspecialchars($m['observaciones'] ?? '') ?></textarea>
                                         </div>
                                         <div class="form-actions">
                                             <button type="button" class="btn-secondary"
@@ -731,6 +743,63 @@ function nivel_label($n)  { return ['basico'=>'Básico','intermedio'=>'Intermedi
     </div>
 </div>
 <?php endforeach; ?>
+<!-- Modal: Eliminar Matrícula -->
+<div class="modal-overlay" id="modalEliminarMatricula">
+    <div class="modal" style="max-width:460px; text-align:left; padding:0;">
+        <!-- Header -->
+        <div style="display:flex; align-items:center; gap:10px; padding:20px 24px;
+                    border-bottom:1px solid var(--border-color); background:var(--hover-bg);
+                    border-radius:18px 18px 0 0;">
+            <div class="modal-icon modal-icon-danger" style="width:40px;height:40px;border-radius:10px;flex-shrink:0;">
+                <span class="material-symbols-rounded">delete_forever</span>
+            </div>
+            <div>
+                <div class="modal-title" style="margin:0; font-size:1rem;">Eliminar matrícula</div>
+                <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:2px;"
+                     id="eliminarModalSubtitulo"></div>
+            </div>
+            <button class="modal-close" style="margin-left:auto;"
+                    onclick="cerrarModalEliminar()">
+                <span class="material-symbols-rounded">close</span>
+            </button>
+        </div>
+ 
+        <!-- Body -->
+        <div style="padding:20px 24px;">
+            <div class="alert alert-danger" style="margin-bottom:16px;">
+                <span class="material-symbols-rounded">warning</span>
+                <span>Esta acción es <strong>irreversible</strong>. Se eliminarán la matrícula y todos sus datos asociados (asistencias, calificaciones). Los pagos quedarán anulados en el historial.</span>
+            </div>
+            <div class="form-group">
+                <label class="form-label">
+                    Para confirmar, escribe <strong style="color:var(--primary-orange)">eliminar</strong> en el campo:
+                </label>
+                <input type="text" id="eliminarConfirmInput" class="form-control"
+                       placeholder="eliminar"
+                       oninput="validarConfirmEliminar(this.value)">
+            </div>
+        </div>
+ 
+        <!-- Footer -->
+        <form method="POST" action="acciones.php" id="formEliminarMatricula">
+            <input type="hidden" name="accion" value="eliminar_matricula">
+            <input type="hidden" name="matricula_id" id="eliminarMatriculaId">
+            <input type="hidden" name="redir_estudiante" id="eliminarEstudianteId">
+            <input type="hidden" name="confirmacion" id="eliminarConfirmHidden">
+            <div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;
+                        padding:16px 24px; border-top:1px solid var(--border-color);
+                        background:var(--hover-bg); border-radius:0 0 18px 18px;">
+                <button type="button" class="btn-secondary" onclick="cerrarModalEliminar()">
+                    Cancelar
+                </button>
+                <button type="submit" class="btn-danger-solid" id="btnConfirmarEliminar" disabled>
+                    <span class="material-symbols-rounded">delete_forever</span>
+                    Sí, eliminar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <!-- ══ MODAL: Editar Pago ════════════════════════════════════ -->
 <div class="modal-overlay" id="modalEditarPago">
@@ -910,6 +979,35 @@ setTimeout(() => {
     const a = document.getElementById('flashAlert');
     if (a) { a.style.transition='opacity .5s'; a.style.opacity='0'; setTimeout(()=>a.remove(),500); }
 }, 5000);
+
+// ── Modal Eliminar Matrícula ─────────────────────────────────
+function abrirModalEliminar(matriculaId, estudianteId, cursoNombre) {
+    document.getElementById('eliminarMatriculaId').value  = matriculaId;
+    document.getElementById('eliminarEstudianteId').value = estudianteId;
+    document.getElementById('eliminarConfirmInput').value = '';
+    document.getElementById('eliminarConfirmHidden').value = '';
+    document.getElementById('btnConfirmarEliminar').disabled = true;
+    document.getElementById('eliminarModalSubtitulo').textContent =
+        'Matrícula #' + matriculaId + ' — ' + cursoNombre;
+    document.getElementById('modalEliminarMatricula').classList.add('active');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => document.getElementById('eliminarConfirmInput').focus(), 200);
+}
+ 
+function cerrarModalEliminar() {
+    document.getElementById('modalEliminarMatricula').classList.remove('active');
+    document.body.style.overflow = '';
+}
+ 
+function validarConfirmEliminar(val) {
+    const ok = val.trim().toLowerCase() === 'eliminar';
+    document.getElementById('btnConfirmarEliminar').disabled = !ok;
+    document.getElementById('eliminarConfirmHidden').value    = val.trim();
+}
+ 
+document.getElementById('modalEliminarMatricula')?.addEventListener('click', e => {
+    if (e.target === e.currentTarget) cerrarModalEliminar();
+});
 </script>
 </body>
 </html>

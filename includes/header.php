@@ -180,7 +180,7 @@
         transform: rotate(180deg);
     }
 
-    .sidebar-nav .dropdown-menu {
+    .sidebar-nav .header-dropdown-menu {
         height: 0;
         overflow-y: hidden;
         list-style: none;
@@ -188,7 +188,7 @@
         transition: height 0.4s ease;
     }
 
-    .sidebar.collapsed .dropdown-menu {
+    .sidebar.collapsed .header-dropdown-menu {
         position: absolute;
         top: -10px;
         left: 100%;
@@ -202,42 +202,42 @@
         transition: 0s;
     }
 
-    .sidebar.collapsed .dropdown-menu:has(.dropdown-link) {
+    .sidebar.collapsed .header-dropdown-menu:has(.dropdown-link) {
         padding: 7px 10px 7px 24px;
     }
 
-    .sidebar.sidebar.collapsed .nav-item:hover>.dropdown-menu {
+    .sidebar.sidebar.collapsed .nav-item:hover>.header-dropdown-menu {
         opacity: 1;
         pointer-events: auto;
         transform: translateY(12px);
         transition: all 0.4s ease;
     }
 
-    .sidebar.sidebar.collapsed .nav-item:hover>.dropdown-menu:has(.dropdown-link) {
+    .sidebar.sidebar.collapsed .nav-item:hover>.header-dropdown-menu:has(.dropdown-link) {
         transform: translateY(10px);
     }
 
-    .dropdown-menu .nav-item .nav-link {
+    .header-dropdown-menu .nav-item .nav-link {
         color: var(--text-primary);
         padding: 9px 15px;
     }
 
-    .sidebar.collapsed .dropdown-menu .nav-link {
+    .sidebar.collapsed .header-dropdown-menu .nav-link {
         padding: 7px 15px;
     }
 
-    .dropdown-menu .nav-item .nav-link.dropdown-title {
+    .header-dropdown-menu .nav-item .nav-link.dropdown-title {
         display: none;
         color: var(--text-primary);
         padding: 9px 15px;
     }
 
-    .dropdown-menu:has(.dropdown-link) .nav-item .dropdown-title {
+    .header-dropdown-menu:has(.dropdown-link) .nav-item .dropdown-title {
         font-weight: 500;
         padding: 7px 15px;
     }
 
-    .sidebar.collapsed .dropdown-menu .nav-item .dropdown-title {
+    .sidebar.collapsed .header-dropdown-menu .nav-item .dropdown-title {
         display: block;
     }
 
@@ -370,7 +370,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                         <span class="material-symbols-rounded">dashboard</span>
                         <span class="nav-label">Dashboard</span>
                     </a>
-                    <ul class="dropdown-menu">
+                    <ul class="header-dropdown-menu">
                         <li class="nav-item"><a class="nav-link dropdown-title">Dashboard</a></li>
                     </ul>
                 </li>
@@ -383,7 +383,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                         <span class="nav-label">Inscripciones</span>
                         <span class="dropdown-icon material-symbols-rounded">keyboard_arrow_down</span>
                     </a>
-                    <ul class="dropdown-menu">
+                    <ul class="header-dropdown-menu">
                         <li class="nav-item"><a class="nav-link dropdown-title">Inscripciones</a></li>
                         <li class="nav-item"><a href="/AMIMBR3/modules/inscripciones/prematriculas/index.php" class="nav-link dropdown-link">Prematrículas</a></li>
                         <li class="nav-item"><a href="/AMIMBR3/modules/inscripciones/matriculas/index.php" class="nav-link dropdown-link">Matrículas</a></li>
@@ -398,7 +398,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                         <span class="material-symbols-rounded">group</span>
                         <span class="nav-label">Usuarios</span>
                     </a>
-                    <ul class="dropdown-menu">
+                    <ul class="header-dropdown-menu">
                         <li class="nav-item"><a class="nav-link dropdown-title">Usuarios</a></li>
                     </ul>
                 </li>
@@ -410,7 +410,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                         <span class="material-symbols-rounded">menu_book</span>
                         <span class="nav-label">Cursos</span>
                     </a>
-                    <ul class="dropdown-menu">
+                    <ul class="header-dropdown-menu">
                         <li class="nav-item"><a class="nav-link dropdown-title">Cursos</a></li>
                     </ul>
                 </li>
@@ -424,7 +424,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                         <span class="nav-label">Documentación</span>
                         <span class="dropdown-icon material-symbols-rounded">keyboard_arrow_down</span>
                     </a>
-                    <ul class="dropdown-menu">
+                    <ul class="header-dropdown-menu">
                         <li class="nav-item"><a class="nav-link dropdown-title">Documentación</a></li>
                         <?php if (has_any_role(['admin', 'profesor'])): ?>
                         <li class="nav-item"><a href="/AMIMBR3/modules/documentos/administrativos/index.php" class="nav-link dropdown-link">Administrativa</a></li>
@@ -440,7 +440,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                         <span class="material-symbols-rounded">group_add</span>
                         <span class="nav-label">Grupos</span>
                     </a>
-                    <ul class="dropdown-menu">
+                    <ul class="header-dropdown-menu">
                         <li class="nav-item"><a class="nav-link dropdown-title">Grupos</a></li>
                     </ul>
                 </li>
@@ -457,7 +457,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                             </span>
                         <?php endif; ?>
                     </a>
-                    <ul class="dropdown-menu">
+                    <ul class="header-dropdown-menu">
                         <li class="nav-item"><a class="nav-link dropdown-title">Notificaciones</a></li>
                     </ul>
                 </li>
@@ -469,7 +469,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                         <span class="material-symbols-rounded">assessment</span>
                         <span class="nav-label">Reportes</span>
                     </a>
-                    <ul class="dropdown-menu">
+                    <ul class="header-dropdown-menu">
                         <li class="nav-item"><a class="nav-link dropdown-title">Reportes</a></li>
                     </ul>
                 </li>
@@ -481,7 +481,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                         <span class="material-symbols-rounded">calendar_today</span>
                         <span class="nav-label">Horario</span>
                     </a>
-                    <ul class="dropdown-menu">
+                    <ul class="header-dropdown-menu">
                         <li class="nav-item"><a class="nav-link dropdown-title">Horario</a></li>
                     </ul>
                 </li>
@@ -493,7 +493,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                         <span class="material-symbols-rounded">settings</span>
                         <span class="nav-label">Configuración</span>
                     </a>
-                    <ul class="dropdown-menu">
+                    <ul class="header-dropdown-menu">
                         <li class="nav-item"><a class="nav-link dropdown-title">Configuración</a></li>
                     </ul>
                 </li>
@@ -508,7 +508,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                         <span class="material-symbols-rounded">help</span>
                         <span class="nav-label">Ayuda</span>
                     </a>
-                    <ul class="dropdown-menu">
+                    <ul class="header-dropdown-menu">
                         <li class="nav-item"><a class="nav-link dropdown-title">Ayuda</a></li>
                     </ul>
                 </li>
@@ -517,7 +517,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                         <span class="material-symbols-rounded">logout</span>
                         <span class="nav-label">Cerrar Sesión</span>
                     </a>
-                    <ul class="dropdown-menu">
+                    <ul class="header-dropdown-menu">
                         <li class="nav-item"><a class="nav-link dropdown-title">Cerrar Sesión</a></li>
                     </ul>
                 </li>
@@ -535,7 +535,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
         // Close all open dropdowns
         const closeAllDropdowns = () => {
             document.querySelectorAll(".dropdown-container.open").forEach((openDropdown) => {
-                toggleDropdown(openDropdown, openDropdown.querySelector(".dropdown-menu"), false);
+                toggleDropdown(openDropdown, openDropdown.querySelector(".header-dropdown-menu"), false);
             });
         };
 
@@ -544,7 +544,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
             dropdownToggle.addEventListener("click", (e) => {
                 e.preventDefault();
                 const dropdown = dropdownToggle.closest(".dropdown-container");
-                const menu = dropdown.querySelector(".dropdown-menu");
+                const menu = dropdown.querySelector(".header-dropdown-menu");
                 const isOpen = dropdown.classList.contains("open");
                 closeAllDropdowns();
                 toggleDropdown(dropdown, menu, !isOpen);
