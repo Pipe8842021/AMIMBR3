@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $login_msg    = 'Error de configuración del servidor. Contacta al administrador (Error: HASH_FORMAT).';
                     } else {
                         $login_status = 'error';
-                        $login_msg    = 'La contraseña ingresada no es correcta. Verifica e inténtalo de nuevo.';
+                        $login_msg    = 'El correo electrónico o la contraseña ingresados no son correctos. Verifica e inténtalo de nuevo.';
                     }
                 }
 
