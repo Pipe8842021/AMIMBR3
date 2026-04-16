@@ -1449,6 +1449,7 @@ const GRID='#334155', TICK='#94a3b8', LEG='#f8fafc';
 
 const baseOpts = (extra={}) => ({
     responsive:true, maintainAspectRatio:false,
+    animation: false,
     plugins:{ legend:{position:'bottom',labels:{color:LEG,padding:14,font:{size:11,family:'Poppins'}}} },
     scales:{
         y:{beginAtZero:true,ticks:{color:TICK},grid:{color:GRID}},
@@ -1457,13 +1458,61 @@ const baseOpts = (extra={}) => ({
 });
 const noScales = () => ({
     responsive:true, maintainAspectRatio:false,
+    animation: false,
     plugins:{legend:{position:'bottom',labels:{color:LEG,padding:12,font:{size:11,family:'Poppins'}}}}
 });
+
+// Registro global de instancias de Chart para forzar update antes de exportar
+const chartRegistry = {};
 
 function mkChart(id, cfg) {
     const el = document.getElementById(id);
     if (!el) return null;
-    return new Chart(el.getContext('2d'), cfg);
+    const instance = new Chart(el.getContext('2d'), cfg);
+    chartRegistry[id] = instance;
+    return instance;
+}
+
+// Captura un chart aunque esté en un tab oculto (display:none).
+// Hace visible el contenedor fuera de pantalla, fuerza re-render, captura y restaura.
+async function captureChart(id, type='image/png') {
+    const el = document.getElementById(id);
+    if (!el) return null;
+
+    // Encontrar todos los ancestros ocultos y guardar su style original
+    const hidden = [];
+    let node = el.parentElement;
+    while (node && node !== document.body) {
+        if (getComputedStyle(node).display === 'none') {
+            hidden.push({ node, prev: node.getAttribute('style') || '' });
+            node.style.setProperty('display', 'block', 'important');
+            node.style.setProperty('position', 'fixed', 'important');
+            node.style.setProperty('top', '-99999px', 'important');
+            node.style.setProperty('left', '-99999px', 'important');
+            node.style.setProperty('visibility', 'hidden', 'important');
+            node.style.setProperty('pointer-events', 'none', 'important');
+        }
+        node = node.parentElement;
+    }
+
+    // Forzar re-render del chart
+    const instance = chartRegistry[id];
+    if (instance) {
+        instance.resize();
+        instance.update('none');
+    }
+
+    // Esperar dos frames para que el navegador pinte el canvas
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    const dataUrl = el.toDataURL(type);
+
+    // Restaurar estado original de todos los ancestros
+    hidden.reverse().forEach(({ node, prev }) => {
+        node.setAttribute('style', prev);
+    });
+
+    return dataUrl;
 }
 
 // Gráficas 
@@ -1685,7 +1734,7 @@ function fmt(n) { return '$'+Number(n).toLocaleString('es-CO'); }
 // ── REPORTES ESPECÍFICOS 
 async function descargarReporte(tipo) {
     showOverlay('Preparando reporte de ' + tipo + '…', 'Esto puede tomar unos segundos');
-    await new Promise(r=>setTimeout(r,200));
+    await new Promise(r=>setTimeout(r,500));
     try {
         const { jsPDF } = window.jspdf;
 
@@ -1728,10 +1777,9 @@ async function reporteFinanciero(jsPDF) {
     });
 
     // Gráfico canvas ingresos
-    const canvas = document.getElementById('ingresosChart');
-    if (canvas) {
-        const img = canvas.toDataURL('image/png');
-        doc.addImage(img,'PNG',14,98,W-28,65);
+    const imgFinanciero = await captureChart('ingresosChart');
+    if (imgFinanciero) {
+        doc.addImage(imgFinanciero,'PNG',14,98,W-28,65);
     }
 
     // Sección ingresos por curso
@@ -1777,12 +1825,12 @@ async function reporteAcademico(jsPDF) {
     doc.setFillColor(4,12,19); doc.rect(0,20,W,H-20,'F');
 
     // Gráfico promedios
-    const c1 = document.getElementById('promediosChart');
-    if (c1) { const img=c1.toDataURL('image/png'); doc.addImage(img,'PNG',14,26,W-28,60); }
+    const imgPromedios = await captureChart('promediosChart');
+    if (imgPromedios) { doc.addImage(imgPromedios,'PNG',14,26,W-28,60); }
 
     // Gráfico asistencia global
-    const c2 = document.getElementById('asistenciaGlobalChart');
-    if (c2) { const img=c2.toDataURL('image/png'); doc.addImage(img,'PNG',14,93,80,60); }
+    const imgAsistGlobal = await captureChart('asistenciaGlobalChart');
+    if (imgAsistGlobal) { doc.addImage(imgAsistGlobal,'PNG',14,93,80,60); }
 
     // Tabla promedios por curso
     if (CURSOS_NOMBRES.length) {
@@ -1839,8 +1887,8 @@ async function reporteInscripciones(jsPDF) {
     const bw=(W-28-9)/4, bh=24;
     estados.forEach((k,i)=>kpiBox(doc,14+i*(bw+3),26,bw,bh,k.l,k.v,k.c));
 
-    const c1=document.getElementById('inscripcionesChart');
-    if(c1){const img=c1.toDataURL('image/png'); doc.addImage(img,'PNG',14,56,W-28,65);}
+    const imgInscr = await captureChart('inscripcionesChart');
+    if(imgInscr){doc.addImage(imgInscr,'PNG',14,56,W-28,65);}
 
     if (CONV_PROGRAMA.length) {
         doc.addPage();
@@ -1910,8 +1958,8 @@ async function reporteAsistencia(jsPDF) {
     const bw=(W-28-9)/4, bh=24;
     kpis.forEach((k,i)=>kpiBox(doc,14+i*(bw+3),26,bw,bh,k.l,k.v,k.c));
 
-    const c1=document.getElementById('asistenciaGruposChart');
-    if(c1){const img=c1.toDataURL('image/png'); doc.addImage(img,'PNG',14,56,W-28,70);}
+    const imgAsistGrupos = await captureChart('asistenciaGruposChart');
+    if(imgAsistGrupos){doc.addImage(imgAsistGrupos,'PNG',14,56,W-28,70);}
 
     if(ASIST_GRUPOS_TBL.length){
         doc.addPage();
@@ -1938,8 +1986,8 @@ async function reporteCursos(jsPDF) {
     pdfHeader(doc,'Cursos y Ocupación de Grupos',[233,233,62]);
     doc.setFillColor(4,12,19); doc.rect(0,20,W,H-20,'F');
 
-    const c1=document.getElementById('estudCursoChart');
-    if(c1){const img=c1.toDataURL('image/png'); doc.addImage(img,'PNG',14,26,W-28,65);}
+    const imgEstudCurso = await captureChart('estudCursoChart');
+    if(imgEstudCurso){doc.addImage(imgEstudCurso,'PNG',14,26,W-28,65);}
 
     if(CURSOS_DETALLE.length){
         doc.addPage();
