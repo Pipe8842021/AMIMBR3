@@ -5,14 +5,14 @@ require_once '../../config/database.php';
 require_once '../../includes/auth_check.php';
 require_role('admin');
 
-
 $success = null;
 $error   = null;
 
+// Manejo de cambio de estado
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cambiar_estado') {
     $id_grupo     = (int)($_POST['id']           ?? 0);
     $nuevo_estado = $_POST['nuevo_estado']        ?? '';
-    $estados_validos = ['planificado','activo','finalizado','cancelado'];
+    $estados_validos = ['planificado', 'activo', 'finalizado', 'cancelado'];
 
     if ($id_grupo && in_array($nuevo_estado, $estados_validos)) {
         try {
@@ -25,7 +25,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cambi
         }
     }
 }
-
 
 try {
     // Filtros GET
@@ -50,7 +49,8 @@ try {
 
     $stmt = $pdo->prepare("
         SELECT
-            g.*,
+            g.id, g.nombre, g.fecha_inicio, g.fecha_fin, g.estado, 
+            g.cupo_actual, g.cupo_maximo, g.aula,
             c.nombre AS curso_nombre,
             c.nivel  AS curso_nivel,
             u.nombre AS profesor_nombre
@@ -63,13 +63,26 @@ try {
     $stmt->execute($params);
     $grupos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+    // --- NUEVA LÓGICA: Obtener horarios para el MODAL ---
+    $horarios_modal = [];
+    if (!empty($grupos)) {
+        $ids = array_column($grupos, 'id');
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmtH = $pdo->prepare("SELECT * FROM horarios WHERE grupo_id IN ($placeholders) ORDER BY dia_semana, hora_inicio");
+        $stmtH->execute($ids);
+        while ($h = $stmtH->fetch(PDO::FETCH_ASSOC)) {
+            $horarios_modal[$h['grupo_id']][] = $h;
+        }
+    }
+    $dias_esp = ['mon' => 'Lunes', 'tue' => 'Martes', 'wed' => 'Miércoles', 'thu' => 'Jueves', 'fri' => 'Viernes', 'sat' => 'Sábado', 'sun' => 'Domingo'];
+    // ----------------------------------------------------
+
     // Totales por estado para los chips
     $totales = [];
     foreach ($pdo->query("SELECT estado, COUNT(*) AS n FROM grupos GROUP BY estado")->fetchAll(PDO::FETCH_ASSOC) as $r) {
         $totales[$r['estado']] = $r['n'];
     }
     $total_general = array_sum($totales);
-
 } catch (PDOException $e) {
     error_log($e->getMessage());
     $grupos = [];
@@ -90,12 +103,13 @@ $nivel_cfg = [
 ];
 
 date_default_timezone_set('America/Bogota');
-$dias  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
-$meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+$dias  = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+$meses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . ' de ' . date('Y');
 ?>
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -106,262 +120,388 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
     <link rel="stylesheet" href="../../assets/css/colores.css">
     <link rel="stylesheet" href="../../assets/css/style-grupos.css">
     <script>
-        (function(){
+        (function() {
             const t = localStorage.getItem('amimbre-theme');
-            if (t === 'light') document.documentElement.setAttribute('data-theme','light');
+            if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
         })();
     </script>
 </head>
+
 <body>
 
-<?php require_once '../../includes/header.php'; ?>
+    <?php require_once '../../includes/header.php'; ?>
 
-<main class="main-content">
+    <main class="main-content">
 
-    <div class="dashboard-header">
-        <div class="dashboard-title">
-            <h1>Gestión de Grupos</h1>
-            <p>Creación y control de secciones académicas</p>
-        </div>
-        <a href="crear.php" class="btn-submit">
-            <span class="material-symbols-rounded">add_circle</span> Nuevo grupo
-        </a>
-    </div>
-
-    <?php if ($success): ?>
-    <div class="alert alert-success">
-        <span class="material-symbols-rounded">check_circle</span>
-        <?php echo $success; ?>
-    </div>
-    <?php endif; ?>
-    <?php if ($error): ?>
-    <div class="alert alert-danger">
-        <span class="material-symbols-rounded">error</span>
-        <?php echo $error; ?>
-    </div>
-    <?php endif; ?>
-
-    <div class="modulo-stats">
-        <div class="modulo-stat-chip total">
-            <span class="material-symbols-rounded">layers</span>
-            <div>
-                <span class="chip-value"><?php echo $total_general; ?></span>
-                <span class="chip-label">Total grupos</span>
+        <div class="dashboard-header">
+            <div class="dashboard-title">
+                <h1>Gestión de Grupos</h1>
+                <p>Creación y control de secciones académicas</p>
             </div>
-        </div>
-        <?php foreach ($estado_cfg as $est => $cfg): ?>
-        <div class="modulo-stat-chip <?php echo $est; ?>">
-            <span class="material-symbols-rounded"><?php echo $cfg['icon']; ?></span>
-            <div>
-                <span class="chip-value"><?php echo $totales[$est] ?? 0; ?></span>
-                <span class="chip-label"><?php echo $cfg['txt']; ?>s</span>
-            </div>
-        </div>
-        <?php endforeach; ?>
-    </div>
-
-    <div class="card">
-
-        <div class="section-header">
-            <div>
-                <h3 class="section-title">Grupos Registrados</h3>
-                <p class="section-subtitle"><?php echo count($grupos); ?> resultado<?php echo count($grupos) != 1 ? 's' : ''; ?></p>
-            </div>
-        </div>
-
-        <form method="GET" class="filtros-bar">
-            <div class="filtros-buscar">
-                <span class="material-symbols-rounded">search</span>
-                <input type="text" name="buscar"
-                       value="<?php echo htmlspecialchars($filtro_buscar); ?>"
-                       placeholder="Buscar por nombre, curso o profesor...">
-            </div>
-            <select name="estado" onchange="this.form.submit()">
-                <option value="">Todos los estados</option>
-                <?php foreach ($estado_cfg as $est => $cfg): ?>
-                <option value="<?php echo $est; ?>" <?php echo $filtro_estado === $est ? 'selected' : ''; ?>>
-                    <?php echo $cfg['txt']; ?>
-                </option>
-                <?php endforeach; ?>
-            </select>
-            <button type="submit" class="btn-filtrar">
-                <span class="material-symbols-rounded">filter_list</span>
-            </button>
-            <?php if ($filtro_estado || $filtro_buscar): ?>
-            <a href="admin.php" class="btn-limpiar" title="Limpiar filtros">
-                <span class="material-symbols-rounded">close</span>
+            <a href="crear.php" class="btn-submit">
+                <span class="material-symbols-rounded">add_circle</span> Nuevo grupo
             </a>
-            <?php endif; ?>
-        </form>
-
-        <?php if (count($grupos) > 0): ?>
-        <div class="table-wrapper">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Grupo</th>
-                        <th>Curso</th>
-                        <th>Profesor</th>
-                        <th>Horario / Aula</th>
-                        <th>Cupos</th>
-                        <th>Estado</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($grupos as $g):
-                        $est = $estado_cfg[$g['estado']] ?? $estado_cfg['planificado'];
-                        $niv = $nivel_cfg[strtolower($g['curso_nivel'])] ?? 'badge-info';
-                        $pct = $g['cupo_maximo'] > 0 ? round(($g['cupo_actual'] / $g['cupo_maximo']) * 100) : 0;
-                        $bar = $pct >= 90 ? 'bar-danger' : ($pct >= 70 ? 'bar-warning' : 'bar-success');
-                    ?>
-                    <tr>
-                        <td style="color:var(--text-secondary); font-size:0.8rem;">#<?php echo $g['id']; ?></td>
-
-                        <td>
-                            <strong><?php echo htmlspecialchars($g['nombre']); ?></strong>
-                            <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:2px;">
-                                Desde <?php echo date('d/m/Y', strtotime($g['fecha_inicio'])); ?>
-                                <?php if ($g['fecha_fin']): ?>
-                                · Hasta <?php echo date('d/m/Y', strtotime($g['fecha_fin'])); ?>
-                                <?php endif; ?>
-                            </div>
-                        </td>
-
-                        <td>
-                            <?php echo htmlspecialchars($g['curso_nombre']); ?>
-                            <div style="margin-top:3px;">
-                                <span class="badge <?php echo $niv; ?>"><?php echo ucfirst($g['curso_nivel']); ?></span>
-                            </div>
-                        </td>
-
-                        <td>
-                            <?php echo $g['profesor_nombre']
-                                ? htmlspecialchars($g['profesor_nombre'])
-                                : '<span style="color:var(--text-secondary);font-size:0.82rem;">Sin asignar</span>'; ?>
-                        </td>
-
-                        <td>
-                            <div style="font-size:0.85rem;"><?php echo htmlspecialchars($g['horario'] ?: '—'); ?></div>
-                            <?php if ($g['aula']): ?>
-                            <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:2px;">
-                                <span class="material-symbols-rounded" style="font-size:13px; vertical-align:middle;">meeting_room</span>
-                                <?php echo htmlspecialchars($g['aula']); ?>
-                            </div>
-                            <?php endif; ?>
-                        </td>
-
-                        <td>
-                            <div class="cupo-cell">
-                                <span><?php echo $g['cupo_actual']; ?>/<?php echo $g['cupo_maximo']; ?></span>
-                                <div class="group-bar" style="width:80px;">
-                                    <div class="group-bar-fill <?php echo $bar; ?>" style="width:<?php echo $pct; ?>%"></div>
-                                </div>
-                            </div>
-                        </td>
-
-                        <td>
-                            <span class="badge <?php echo $est['cls']; ?>"><?php echo $est['txt']; ?></span>
-                        </td>
-
-                        <td>
-                            <div class="table-actions">
-
-                    
-                                <a href="ver.php?id=<?php echo $g['id']; ?>"
-                                   class="tbl-btn view" title="Ver detalle">
-                                    <span class="material-symbols-rounded">visibility</span>
-                                </a>
-
-                     
-                                <a href="editar.php?id=<?php echo $g['id']; ?>"
-                                   class="tbl-btn edit" title="Editar grupo">
-                                    <span class="material-symbols-rounded">edit</span>
-                                </a>
-
-                       
-                                <div class="dropdown-estado">
-                                    <button type="button" class="tbl-btn estado" title="Cambiar estado">
-                                        <span class="material-symbols-rounded">swap_horiz</span>
-                                    </button>
-                                    <div class="dropdown-estado-menu">
-                                        <?php foreach ($estado_cfg as $est_k => $est_v):
-                                            if ($est_k === $g['estado']) continue; ?>
-                                        <form method="POST" style="margin:0;">
-                                            <input type="hidden" name="action"       value="cambiar_estado">
-                                            <input type="hidden" name="id"           value="<?php echo $g['id']; ?>">
-                                            <input type="hidden" name="nuevo_estado" value="<?php echo $est_k; ?>">
-                                            <button type="submit" class="estado-option">
-                                                <span class="material-symbols-rounded"><?php echo $est_v['icon']; ?></span>
-                                                <?php echo $est_v['txt']; ?>
-                                            </button>
-                                        </form>
-                                        <?php endforeach; ?>
-                                    </div>
-                                </div>
-
-                                <a href="eliminar.php?id=<?php echo $g['id']; ?>"
-                                   class="tbl-btn delete" title="Eliminar grupo">
-                                    <span class="material-symbols-rounded">delete</span>
-                                </a>
-
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
         </div>
 
-        <?php else: ?>
-        <div class="empty-state">
-            <span class="material-symbols-rounded">layers</span>
-            <p>
-                <?php echo ($filtro_estado || $filtro_buscar)
-                    ? 'No hay grupos con esos filtros.'
-                    : 'Aún no hay grupos registrados.'; ?>
-            </p>
-            <?php if ($filtro_estado || $filtro_buscar): ?>
-            <a href="admin.php" style="color:var(--primary-green); font-size:0.85rem; margin-top:8px;">Limpiar filtros</a>
-            <?php else: ?>
-            <a href="crear.php" class="btn-submit" style="margin-top:12px;">
-                <span class="material-symbols-rounded">add_circle</span> Crear primer grupo
-            </a>
-            <?php endif; ?>
-        </div>
+        <?php if ($success): ?>
+            <div class="alert alert-success">
+                <span class="material-symbols-rounded">check_circle</span>
+                <?php echo $success; ?>
+            </div>
+        <?php endif; ?>
+        <?php if ($error): ?>
+            <div class="alert alert-danger">
+                <span class="material-symbols-rounded">error</span>
+                <?php echo $error; ?>
+            </div>
         <?php endif; ?>
 
+        <div class="modulo-stats">
+            <div class="modulo-stat-chip total">
+                <span class="material-symbols-rounded">layers</span>
+                <div>
+                    <span class="chip-value"><?php echo $total_general; ?></span>
+                    <span class="chip-label">Total grupos</span>
+                </div>
+            </div>
+            <?php foreach ($estado_cfg as $est => $cfg): ?>
+                <div class="modulo-stat-chip <?php echo $est; ?>">
+                    <span class="material-symbols-rounded"><?php echo $cfg['icon']; ?></span>
+                    <div>
+                        <span class="chip-value"><?php echo $totales[$est] ?? 0; ?></span>
+                        <span class="chip-label"><?php echo $cfg['txt']; ?>s</span>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+
+        <div class="card">
+            <div class="section-header">
+                <div>
+                    <h3 class="section-title">Grupos Registrados</h3>
+                    <p class="section-subtitle"><?php echo count($grupos); ?> resultado<?php echo count($grupos) != 1 ? 's' : ''; ?></p>
+                </div>
+            </div>
+
+            <form method="GET" class="filtros-bar">
+                <div class="filtros-buscar">
+                    <span class="material-symbols-rounded">search</span>
+                    <input type="text" name="buscar"
+                        value="<?php echo htmlspecialchars($filtro_buscar); ?>"
+                        placeholder="Buscar por nombre, curso o profesor...">
+                </div>
+                <select name="estado" onchange="this.form.submit()">
+                    <option value="">Todos los estados</option>
+                    <?php foreach ($estado_cfg as $est => $cfg): ?>
+                        <option value="<?php echo $est; ?>" <?php echo $filtro_estado === $est ? 'selected' : ''; ?>>
+                            <?php echo $cfg['txt']; ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <button type="submit" class="btn-filtrar">
+                    <span class="material-symbols-rounded">filter_list</span>
+                </button>
+                <?php if ($filtro_estado || $filtro_buscar): ?>
+                    <a href="admin.php" class="btn-limpiar" title="Limpiar filtros">
+                        <span class="material-symbols-rounded">close</span>
+                    </a>
+                <?php endif; ?>
+            </form>
+
+            <?php if (count($grupos) > 0): ?>
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Grupo</th>
+                                <th>Curso</th>
+                                <th>Profesor</th>
+                                <th>Horario / Aula</th>
+                                <th>Cupos</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($grupos as $g):
+                                $est = $estado_cfg[$g['estado']] ?? $estado_cfg['planificado'];
+                                $niv = $nivel_cfg[strtolower($g['curso_nivel'])] ?? 'badge-info';
+                                $pct = $g['cupo_maximo'] > 0 ? round(($g['cupo_actual'] / $g['cupo_maximo']) * 100) : 0;
+                                $bar = $pct >= 90 ? 'bar-danger' : ($pct >= 70 ? 'bar-warning' : 'bar-success');
+                            ?>
+                                <tr>
+                                    <td style="color:var(--text-secondary); font-size:0.8rem;">#<?php echo $g['id']; ?></td>
+                                    <td>
+                                        <strong><?php echo htmlspecialchars($g['nombre']); ?></strong>
+                                        <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:2px;">
+                                            Desde <?php echo date('d/m/Y', strtotime($g['fecha_inicio'])); ?>
+                                            <?php if ($g['fecha_fin']): ?>
+                                                · Hasta <?php echo date('d/m/Y', strtotime($g['fecha_fin'])); ?>
+                                            <?php endif; ?>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <?php echo htmlspecialchars($g['curso_nombre']); ?>
+                                        <div style="margin-top:3px;">
+                                            <span class="badge <?php echo $niv; ?>"><?php echo ucfirst($g['curso_nivel']); ?></span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <?php echo $g['profesor_nombre']
+                                            ? htmlspecialchars($g['profesor_nombre'])
+                                            : '<span style="color:var(--text-secondary);font-size:0.82rem;">Sin asignar</span>'; ?>
+                                    </td>
+                                    <td>
+                                        <?php if ($g['aula']): ?>
+                                            <div style="font-size:0.85rem;">
+                                                <span class="material-symbols-rounded" style="font-size:16px; vertical-align:middle;">meeting_room</span>
+                                                <?php echo htmlspecialchars($g['aula']); ?>
+                                            </div>
+                                        <?php else: ?>
+                                            <span style="color:var(--text-secondary); font-size:0.8rem;">Sin aula asignada</span>
+                                        <?php endif; ?>
+
+                                        <div style="margin-top:4px;">
+                                            <a href="../horarios/index.php?grupo_id=<?php echo $g['id']; ?>"
+                                                style="font-size:0.7rem; color:var(--primary-green); text-decoration:none; font-weight:600;"
+                                                onclick="event.preventDefault(); abrirModalHorarios(<?php echo $g['id']; ?>, '<?php echo htmlspecialchars($g['nombre']); ?>')">
+                                                <span class="material-symbols-rounded" style="font-size:12px; vertical-align:middle;">calendar_month</span>
+                                                Ver horarios detallados
+                                            </a>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="cupo-cell">
+                                            <span><?php echo $g['cupo_actual']; ?>/<?php echo $g['cupo_maximo']; ?></span>
+                                            <div class="group-bar" style="width:80px;">
+                                                <div class="group-bar-fill <?php echo $bar; ?>" style="width:<?php echo $pct; ?>%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge <?php echo $est['cls']; ?>"><?php echo $est['txt']; ?></span>
+                                    </td>
+                                    <td>
+                                        <div class="table-actions">
+                                            <a href="ver.php?id=<?php echo $g['id']; ?>" class="tbl-btn view" title="Ver detalle">
+                                                <span class="material-symbols-rounded">visibility</span>
+                                            </a>
+                                            <a href="editar.php?id=<?php echo $g['id']; ?>" class="tbl-btn edit" title="Editar grupo">
+                                                <span class="material-symbols-rounded">edit</span>
+                                            </a>
+                                            <div class="dropdown-estado">
+                                                <button type="button" class="tbl-btn estado" title="Cambiar estado">
+                                                    <span class="material-symbols-rounded">swap_horiz</span>
+                                                </button>
+                                                <div class="dropdown-estado-menu">
+                                                    <?php foreach ($estado_cfg as $est_k => $est_v):
+                                                        if ($est_k === $g['estado']) continue; ?>
+                                                        <form method="POST" style="margin:0;">
+                                                            <input type="hidden" name="action" value="cambiar_estado">
+                                                            <input type="hidden" name="id" value="<?php echo $g['id']; ?>">
+                                                            <input type="hidden" name="nuevo_estado" value="<?php echo $est_k; ?>">
+                                                            <button type="submit" class="estado-option">
+                                                                <span class="material-symbols-rounded"><?php echo $est_v['icon']; ?></span>
+                                                                <?php echo $est_v['txt']; ?>
+                                                            </button>
+                                                        </form>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                            </div>
+                                            <a href="eliminar.php?id=<?php echo $g['id']; ?>" class="tbl-btn delete" title="Eliminar grupo">
+                                                <span class="material-symbols-rounded">delete</span>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php else: ?>
+                <div class="empty-state">
+                    <span class="material-symbols-rounded">layers</span>
+                    <p><?php echo ($filtro_estado || $filtro_buscar) ? 'No hay grupos con esos filtros.' : 'Aún no hay grupos registrados.'; ?></p>
+                </div>
+            <?php endif; ?>
+        </div>
+    </main>
+
+    <div id="modalHorarios" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h3 id="modalTitulo">Horarios del Grupo</h3>
+                    <p id="modalSubtitulo" style="font-size:0.85rem; color:var(--text-secondary);">Sesiones programadas en el sistema</p>
+                </div>
+                <button onclick="cerrarModal()" class="btn-close-modal">
+                    <span class="material-symbols-rounded">close</span>
+                </button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+            <div class="modal-footer" style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
+                <button onclick="cerrarModal()" class="btn-secondary" style="padding:8px 16px; border-radius:8px; border:1px solid var(--border-color); background:none; color:var(--text-main); cursor:pointer;">Cerrar</button>
+                <a href="../horarios/index.php" id="linkGestionar" class="btn-primary" style="padding:8px 16px; border-radius:8px; background:var(--primary-green); color:white; text-decoration:none; font-size:0.9rem;">Gestionar en Calendario</a>
+            </div>
+        </div>
     </div>
 
-</main>
+    <style>
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 2000;
+            backdrop-filter: blur(4px);
+            align-items: center;
+            justify-content: center;
+        }
 
-<script>
-// Dropdown cambiar estado
-document.querySelectorAll('.dropdown-estado').forEach(dd => {
-    const btn  = dd.querySelector('.tbl-btn.estado');
-    const menu = dd.querySelector('.dropdown-estado-menu');
-    btn.addEventListener('click', e => {
-        e.stopPropagation();
-        document.querySelectorAll('.dropdown-estado-menu.open').forEach(m => {
-            if (m !== menu) m.classList.remove('open');
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            width: 90%;
+            max-width: 450px;
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .modal-body ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .modal-body li {
+            padding: 14px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .modal-body li:last-child {
+            border-bottom: none;
+        }
+
+        .btn-close-modal {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: 0.2s;
+        }
+
+        .btn-close-modal:hover {
+            color: var(--primary-green);
+        }
+    </style>
+
+    <script>
+        // Lógica de los Dropdowns de estado
+        document.querySelectorAll('.dropdown-estado').forEach(dd => {
+            const btn = dd.querySelector('.tbl-btn.estado');
+            const menu = dd.querySelector('.dropdown-estado-menu');
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                document.querySelectorAll('.dropdown-estado-menu.open').forEach(m => {
+                    if (m !== menu) m.classList.remove('open');
+                });
+                menu.classList.toggle('open');
+            });
         });
-        menu.classList.toggle('open');
-    });
-});
-document.addEventListener('click', () => {
-    document.querySelectorAll('.dropdown-estado-menu.open').forEach(m => m.classList.remove('open'));
-});
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.dropdown-estado-menu.open').forEach(m => m.classList.remove('open'));
+        });
 
-// Auto-ocultar alertas
-setTimeout(() => {
-    document.querySelectorAll('.alert').forEach(a => {
-        a.style.transition = 'opacity 0.5s ease';
-        a.style.opacity = '0';
-        setTimeout(() => a.remove(), 500);
-    });
-}, 4000);
-</script>
+        // Lógica del Modal de Horarios
+        const horariosData = <?php echo json_encode($horarios_modal); ?>;
+        const diasEsp = <?php echo json_encode($dias_esp); ?>;
 
+        function abrirModalHorarios(grupoId, nombreGrupo) {
+            const modal = document.getElementById('modalHorarios');
+            const body = document.getElementById('modalBody');
+            const titulo = document.getElementById('modalTitulo');
+            const link = document.getElementById('linkGestionar');
+
+            titulo.innerText = nombreGrupo;
+            link.href = "../horarios/index.php?grupo_id=" + grupoId;
+
+            let html = "";
+            if (horariosData[grupoId] && horariosData[grupoId].length > 0) {
+                html = "<ul>";
+                horariosData[grupoId].forEach(h => {
+                    html += `
+                    <li>
+                        <span class="material-symbols-rounded" style="color:var(--primary-green); font-size:20px;">event_available</span>
+                        <div>
+                            <div style="font-weight:600; font-size:0.95rem;">${diasEsp[h.dia_semana] || h.dia_semana}</div>
+                            <div style="font-size:0.85rem; color:var(--text-secondary)">
+                                ${h.hora_inicio.substring(0,5)} - ${h.hora_fin.substring(0,5)} 
+                                ${h.aula ? '· Aula: ' + h.aula : ''}
+                            </div>
+                        </div>
+                    </li>`;
+                });
+                html += "</ul>";
+            } else {
+                html = `<div style="text-align:center; padding:20px; color:var(--text-secondary);">
+                            <span class="material-symbols-rounded" style="font-size:40px; display:block; margin-bottom:10px; opacity:0.5;">calendar_today</span>
+                            Este grupo no tiene horarios registrados.
+                        </div>`;
+            }
+
+            body.innerHTML = html;
+            modal.classList.add('active');
+        }
+
+        function cerrarModal() {
+            document.getElementById('modalHorarios').classList.remove('active');
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('modalHorarios');
+            if (event.target == modal) cerrarModal();
+        }
+
+        // Auto-ocultar alertas
+        setTimeout(() => {
+            document.querySelectorAll('.alert').forEach(a => {
+                a.style.transition = 'opacity 0.5s ease';
+                a.style.opacity = '0';
+                setTimeout(() => a.remove(), 500);
+            });
+        }, 4000);
+    </script>
 </body>
+
 </html>
