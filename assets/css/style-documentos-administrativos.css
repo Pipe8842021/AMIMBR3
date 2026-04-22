@@ -13,7 +13,10 @@ body {
     color: var(--text-primary);
 }
 
-/* Main Content */
+/* ============================================================
+   LAYOUT PRINCIPAL
+   ============================================================ */
+
 .main-content {
     margin-left: 270px;
     padding: 30px;
@@ -25,7 +28,10 @@ body {
     margin-left: 85px;
 }
 
-/* Page Header */
+/* ============================================================
+   PAGE HEADER
+   ============================================================ */
+
 .page-header {
     display: flex;
     justify-content: space-between;
@@ -72,28 +78,86 @@ body {
     font-size: 0.9rem;
 }
 
+/* ============================================================
+   BOTONES GLOBALES
+   ============================================================ */
+
 .btn-primary {
     display: flex;
     align-items: center;
     gap: 8px;
     padding: 12px 24px;
-    background: var(--gradient-primary-orange);
-    color: #f8fafc;
-    border: none;
+    background: transparent;
+    color: var(--primary-orange);
+    border: 1px solid var(--subtle-orange);
     border-radius: 10px;
     font-size: 0.95rem;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 12px rgba(255, 109, 0, 0.3);
 }
 
 .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(255, 109, 0, 0.4);
+    background-color: var(--primary-orange);
+    color: #f8fafc;
 }
 
-/* Stats Grid */
+#newDocBtn:hover {
+    background-color: var(--subtle-orange);
+    color: var(--primary-orange);
+}
+
+.btn-cancel {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-cancel:hover {
+    background: var(--hover-bg);
+    border-color: var(--text-secondary);
+    transform: translateY(-2px);
+}
+
+/* ============================================================
+   ALERTAS
+   ============================================================ */
+
+.alert {
+    padding: 16px;
+    border-radius: 10px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.alert-error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+.alert-success {
+    background: var(--subtle-green);
+    border: 1px solid var(--primary-green);
+    color: var(--primary-green);
+}
+
+/* ============================================================
+   STATS GRID (index.php)
+   ============================================================ */
+
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -144,7 +208,10 @@ body {
     font-weight: 700;
 }
 
-/* Filters Container */
+/* ============================================================
+   FILTROS Y BÚSQUEDA (index.php)
+   ============================================================ */
+
 .filters-container {
     background: var(--dark-bg);
     border-radius: 16px;
@@ -243,7 +310,10 @@ body {
     color: var(--text-primary);
 }
 
-/* Documents Grid */
+/* ============================================================
+   GRID DE DOCUMENTOS (index.php)
+   ============================================================ */
+
 .documents-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -257,7 +327,10 @@ body {
     gap: 16px;
 }
 
-/* Document Card */
+/* ============================================================
+   DOCUMENT CARD (index.php)
+   ============================================================ */
+
 .document-card {
     background: var(--dark-bg);
     border-radius: 16px;
@@ -279,82 +352,6 @@ body {
 
 .document-card:has(.action-menu.active) {
     z-index: 100;
-}
-
-/* List View Specific Styles */
-.documents-grid.list-view .document-card {
-    flex-direction: row;
-    align-items: stretch;
-}
-
-.documents-grid.list-view .document-header {
-    padding: 20px;
-    flex-shrink: 0;
-    width: auto;
-    border-right: 1px solid var(--border-color);
-    border-bottom: none;
-}
-
-.documents-grid.list-view .document-icon {
-    width: 56px;
-    height: 56px;
-}
-
-.documents-grid.list-view .badge-confidencial {
-    position: relative;
-    top: auto;
-    right: auto;
-    margin-left: 12px;
-}
-
-.documents-grid.list-view .document-actions {
-    margin-left: 0;
-}
-
-.documents-grid.list-view .document-body {
-    padding: 20px 24px;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    min-width: 0;
-}
-
-.documents-grid.list-view .document-title {
-    font-size: 1.05rem;
-    margin-bottom: 6px;
-    -webkit-line-clamp: 1;
-}
-
-.documents-grid.list-view .document-description {
-    font-size: 0.85rem;
-    -webkit-line-clamp: 1;
-    margin-bottom: 0;
-}
-
-.documents-grid.list-view .document-footer {
-    padding: 20px 24px;
-    border-top: none;
-    border-left: 1px solid var(--border-color);
-    flex-shrink: 0;
-    min-width: 280px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-
-.documents-grid.list-view .document-meta {
-    margin-bottom: 12px;
-    flex-wrap: nowrap;
-}
-
-.documents-grid.list-view .document-info {
-    gap: 12px;
-}
-
-.documents-grid.list-view .info-item {
-    font-size: 0.8rem;
-    white-space: nowrap;
 }
 
 .document-header {
@@ -413,7 +410,7 @@ body {
 
 .btn-icon:hover {
     background: var(--primary-blue);
-    color: var(--text-primary);
+    color: #f8fafc;
 }
 
 .action-menu {
@@ -511,6 +508,10 @@ body {
     margin-bottom: 12px;
 }
 
+/* ============================================================
+   BADGES
+   ============================================================ */
+
 .badge {
     padding: 4px 12px;
     border-radius: 6px;
@@ -518,13 +519,13 @@ body {
     font-weight: 500;
 }
 
-.badge-primary { background: var(--subtle-blue); color: var(--primary-blue); }
-.badge-success { background: var(--subtle-green); color: var(--primary-green); }
-.badge-warning { background: var(--subtle-yellow); color: var(--primary-yellow); }
-.badge-danger { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
-.badge-info { background: var(--subtle-blue); color: var(--primary-blue); }
-.badge-secondary { background: rgba(148, 163, 184, 0.2); color: var(--text-secondary); }
-.badge-muted { background: var(--hover-bg); color: var(--text-secondary); }
+.badge-primary   { background: var(--subtle-blue);            color: var(--primary-blue); }
+.badge-success   { background: var(--subtle-green);           color: var(--primary-green); }
+.badge-warning   { background: var(--subtle-yellow);          color: var(--primary-yellow); }
+.badge-danger    { background: rgba(239, 68, 68, 0.2);        color: #ef4444; }
+.badge-info      { background: var(--subtle-blue);            color: var(--primary-blue); }
+.badge-secondary { background: rgba(148, 163, 184, 0.2);      color: var(--text-secondary); }
+.badge-muted     { background: var(--hover-bg);               color: var(--text-secondary); }
 
 .meta-item {
     color: var(--text-secondary);
@@ -549,7 +550,10 @@ body {
     font-size: 16px;
 }
 
-/* Empty State */
+/* ============================================================
+   EMPTY STATE (index.php)
+   ============================================================ */
+
 .empty-state {
     grid-column: 1 / -1;
     text-align: center;
@@ -579,7 +583,10 @@ body {
     margin-bottom: 24px;
 }
 
-/* List View Specific Styles */
+/* ============================================================
+   LIST VIEW (index.php)
+   ============================================================ */
+
 .documents-grid.list-view .document-card {
     display: grid;
     grid-template-columns: auto 1fr auto;
@@ -587,6 +594,7 @@ body {
     align-items: center;
     gap: 0;
     padding: 0;
+    flex-direction: row;
 }
 
 .documents-grid.list-view .document-header {
@@ -600,15 +608,19 @@ body {
 }
 
 .documents-grid.list-view .document-icon {
+    width: 56px;
+    height: 56px;
     position: relative;
 }
 
 .documents-grid.list-view .badge-confidencial {
+    position: absolute;
     top: 0;
     right: -8px;
     width: 24px;
     height: 24px;
     font-size: 14px;
+    margin-left: 0;
 }
 
 .documents-grid.list-view .document-actions {
@@ -625,6 +637,9 @@ body {
     padding: 20px 24px;
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .documents-grid.list-view .document-title {
@@ -636,6 +651,7 @@ body {
 .documents-grid.list-view .document-description {
     font-size: 0.85rem;
     -webkit-line-clamp: 1;
+    margin-bottom: 0;
 }
 
 .documents-grid.list-view .document-footer {
@@ -646,6 +662,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    justify-content: center;
 }
 
 .documents-grid.list-view .document-meta {
@@ -657,7 +674,417 @@ body {
     gap: 8px;
 }
 
-/* Responsive */
+.documents-grid.list-view .info-item {
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+/* ============================================================
+   FORMULARIOS — crear.php y editar.php
+   ============================================================ */
+
+.form-container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: var(--dark-bg);
+    border-radius: 16px;
+    padding: 32px;
+    border: 1px solid var(--border-color);
+}
+
+.form-group {
+    margin-bottom: 24px;
+}
+
+.form-label {
+    display: block;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+.form-label.required::after {
+    content: '*';
+    color: #ef4444;
+    margin-left: 4px;
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+    width: 100%;
+    background: var(--hover-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 12px 16px;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+    background: var(--dark-bg);
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+/* Campo de profesor específico — oculto por defecto */
+#profesorField {
+    display: none;
+}
+
+/* Nota informativa — editar.php */
+.form-note {
+    background: var(--subtle-yellow);
+    border: 1px solid var(--primary-yellow);
+    color: var(--primary-yellow);
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+/* Archivo actual — editar.php */
+.current-file-info {
+    background: var(--hover-bg);
+    padding: 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 16px;
+}
+
+.current-file-name {
+    color: var(--text-primary);
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.current-file-meta {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+/* ============================================================
+   FILE UPLOAD — crear.php y editar.php
+   ============================================================ */
+
+.file-upload {
+    position: relative;
+    background: var(--hover-bg);
+    border: 2px dashed var(--border-color);
+    border-radius: 12px;
+    padding: 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.file-upload:hover {
+    border-color: var(--primary-blue);
+    background: var(--dark-bg);
+}
+
+.file-upload input[type="file"] {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    cursor: pointer;
+}
+
+.file-upload-icon {
+    font-size: 48px;
+    color: var(--primary-blue);
+    margin-bottom: 12px;
+}
+
+.file-upload-text {
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+}
+
+.file-upload-hint {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+/* ============================================================
+   FORM ACTIONS — crear.php y editar.php
+   ============================================================ */
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-color);
+}
+
+/* ============================================================
+   VISTA DE DETALLE — ver.php
+   ============================================================ */
+
+.details-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.document-detail-card {
+    background: var(--dark-bg);
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+
+.document-detail-header {
+    padding: 32px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.document-detail-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    margin-bottom: 20px;
+}
+
+.document-detail-title {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+.document-detail-meta {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.meta-item-detail {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.document-detail-body {
+    padding: 32px;
+}
+
+/* Secciones internas de detalle */
+.detail-section {
+    margin-bottom: 32px;
+}
+
+.detail-section:last-child {
+    margin-bottom: 0;
+}
+
+.section-title-detail {
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Info grid */
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.info-item-detail {
+    background: var(--hover-bg);
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.info-label {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin-bottom: 6px;
+}
+
+.info-value {
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+/* Descripción */
+.description-box {
+    background: var(--hover-bg);
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+/* Badge de visibilidad */
+.badge-visibility {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.badge-visibility.admin     { background: var(--subtle-orange); color: var(--primary-orange); }
+.badge-visibility.profesores { background: var(--subtle-blue);   color: var(--primary-blue); }
+.badge-visibility.especifico { background: var(--subtle-yellow); color: var(--primary-yellow); }
+.badge-visibility.todos      { background: var(--subtle-green);  color: var(--primary-green); }
+
+/* ============================================================
+   HISTORIAL DE ACCESOS — ver.php
+   ============================================================ */
+
+.access-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.timeline-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: var(--hover-bg);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.timeline-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.timeline-icon.download { background: var(--subtle-blue);  color: var(--primary-blue); }
+.timeline-icon.view     { background: var(--subtle-green); color: var(--primary-green); }
+
+.timeline-content {
+    flex: 1;
+}
+
+.timeline-action {
+    color: var(--text-primary);
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.timeline-time {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.empty-timeline {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-secondary);
+}
+
+.empty-timeline span {
+    font-size: 48px;
+    display: block;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+
+/* ============================================================
+   BARRA DE ACCIONES — ver.php
+   ============================================================ */
+
+.actions-bar {
+    display: flex;
+    gap: 12px;
+    padding: 24px 32px;
+    border-top: 1px solid var(--border-color);
+    background: var(--hover-bg);
+}
+
+.btn-edit {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-edit:hover {
+    background: var(--primary-blue);
+    border-color: var(--primary-blue);
+    color: #f8fafc;
+    transform: translateY(-2px);
+}
+
+.btn-delete {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: transparent;
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-delete:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: #ef4444;
+    transform: translateY(-2px);
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
 @media (max-width: 768px) {
     .main-content {
         margin-left: 0;
@@ -695,6 +1122,7 @@ body {
         grid-template-columns: 1fr;
     }
 
+    /* List view en móvil: apilado vertical */
     .documents-grid.list-view .document-card {
         grid-template-columns: 1fr;
         grid-template-rows: auto auto auto;
@@ -714,5 +1142,21 @@ body {
         border-left: none;
         width: 100%;
         min-width: auto;
+    }
+
+    /* Formularios en móvil */
+    .form-container {
+        padding: 20px;
+    }
+
+    /* Detalle en móvil */
+    .document-detail-meta {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .actions-bar {
+        flex-wrap: wrap;
+        padding: 16px 20px;
     }
 }

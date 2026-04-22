@@ -84,20 +84,20 @@ body {
     align-items: center;
     gap: 8px;
     padding: 12px 24px;
-    background: var(--gradient-primary-orange);
-    color: #f8fafc;
+    background: var(--subtle-orange);
+    color: var(--primary-orange);
     border: none;
     border-radius: 10px;
     font-size: 0.95rem;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 12px rgba(255, 109, 0, 0.3);
 }
 
 .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(255, 109, 0, 0.4);
+    background-color: var(--primary-orange);
+    color: #f8fafc;
 }
 
 .btn-secondary {
@@ -119,6 +119,7 @@ body {
     background: var(--primary-blue);
     border-color: var(--primary-blue);
     transform: translateY(-2px);
+    color: #f8fafc;
 }
 
 /* Stats Grid */
@@ -454,9 +455,9 @@ body {
     align-items: center;
     gap: 6px;
     padding: 8px 16px;
-    background: var(--primary-blue);
-    color: #f8fafc;
-    border: none;
+    background: transparent;
+    color: var(--primary-blue);
+    border: solid 1px var(--primary-blue);
     border-radius: 8px;
     font-size: 0.85rem;
     font-weight: 500;
@@ -465,7 +466,8 @@ body {
 }
 
 .btn-action:hover {
-    background: var(--primary-green);
+    background: var(--primary-blue);
+    color: #f8fafc;
     transform: translateY(-2px);
 }
 
