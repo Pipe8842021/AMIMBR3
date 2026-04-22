@@ -290,20 +290,19 @@ $icono_data = $iconos[$tipo] ?? ['icono' => 'description', 'color' => 'var(--tex
             align-items: center;
             gap: 8px;
             padding: 14px 28px;
-            background: var(--gradient-primary-orange);
-            color: var(--text-primary);
-            border: none;
+            background: transparent;
+            color: var(--primary-orange);
+            border: var(--primary-orange) 1px solid;
             border-radius: 10px;
             font-size: 1rem;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(255, 109, 0, 0.3);
         }
 
         .btn-download:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(255, 109, 0, 0.4);
+            background-color: var(--subtle-orange);
         }
 
         .btn-edit {

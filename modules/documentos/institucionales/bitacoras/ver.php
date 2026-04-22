@@ -384,6 +384,7 @@ function tiempo_transcurrido($fecha) {
             background: var(--primary-blue);
             border-color: var(--primary-blue);
             transform: translateY(-2px);
+            color: #f8fafc;
         }
 
         .btn-delete {
