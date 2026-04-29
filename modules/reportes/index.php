@@ -16,18 +16,9 @@ try {
 }
 
 $year_selected = isset($_GET['year']) ? (int)$_GET['year'] : date('Y');
-$month_selected = isset($_GET['month']) ? (int)$_GET['month'] : 0; // 0 = todos
-
-// ── Manejo de descarga de reportes específicos 
-$reporte_tipo = $_GET['reporte'] ?? '';
-
-if ($reporte_tipo && isset($_GET['download'])) {
-    // Los reportes de descarga se manejarán vía JS con jsPDF + datos del DOM
-
-}
+$month_selected = isset($_GET['month']) ? (int)$_GET['month'] : 0;
 
 try {
-    //  TARJETAS PRINCIPALES 
     $stmt = $pdo->query("SELECT COUNT(*) as total FROM usuarios WHERE rol='estudiante' AND estado='activo'");
     $total_estudiantes = $stmt->fetch()['total'] ?? 0;
 
@@ -48,7 +39,6 @@ try {
     $stmt = $pdo->query("SELECT COUNT(*) as total FROM grupos WHERE estado='activo'");
     $grupos_activos = $stmt->fetch()['total'] ?? 0;
 
-    // ── FINANCIERO 
     $stmt = $pdo->prepare("
         SELECT 
             SUM(CASE WHEN estado='pagado' THEN monto ELSE 0 END) as ingresos_confirmados,
@@ -65,7 +55,6 @@ try {
     $stmt->execute([$year_selected]);
     $financiero_anio = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // Ingresos por mes
     $stmt = $pdo->prepare("
         SELECT MONTH(fecha_registro) as mes,
                SUM(CASE WHEN estado='pagado' THEN monto ELSE 0 END) as confirmados,
@@ -80,7 +69,6 @@ try {
     $stmt->execute([$year_selected]);
     $ingresos_mes_raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Ingresos por curso
     $stmt = $pdo->prepare("
         SELECT c.nombre as curso,
                SUM(CASE WHEN p.estado='pagado' THEN p.monto ELSE 0 END) as pagado,
@@ -98,7 +86,6 @@ try {
     $stmt->execute([$year_selected]);
     $ingresos_curso = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Pagos vencidos por estudiante
     $stmt = $pdo->query("
         SELECT u.nombre as estudiante, u.email,
                COUNT(p.id) as pagos_vencidos,
@@ -113,7 +100,6 @@ try {
     ");
     $deudores = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Métodos de pago
     $stmt = $pdo->query("
         SELECT metodo_pago, COUNT(*) as cantidad, SUM(monto) as total
         FROM pagos WHERE estado='pagado'
@@ -121,7 +107,6 @@ try {
     ");
     $metodos_pago = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    //  INSCRIPCIONES 
     $stmt = $pdo->prepare("
         SELECT MONTH(fecha_preinscripcion) as mes,
             COUNT(CASE WHEN estado='pendiente' THEN 1 END) as preinscripciones,
@@ -147,7 +132,6 @@ try {
     $estados_preinscripciones = $stmt->fetch(PDO::FETCH_ASSOC);
     $total_preinsc = $estados_preinscripciones['total'] ?: 1;
 
-    // Tasa de conversión por programa
     $stmt = $pdo->query("
         SELECT programa,
                COUNT(*) as solicitudes,
@@ -160,7 +144,6 @@ try {
     ");
     $conversion_programa = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Preinscripciones por municipio
     $stmt = $pdo->query("
         SELECT COALESCE(municipio,'No registra') as municipio, COUNT(*) as total
         FROM preinscripciones
@@ -170,7 +153,6 @@ try {
     ");
     $preinscr_municipio = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Nuevos estudiantes por mes
     $stmt = $pdo->prepare("
         SELECT MONTH(fecha_registro) as mes, COUNT(*) as total
         FROM usuarios
@@ -181,7 +163,6 @@ try {
     $stmt->execute([$year_selected]);
     $nuevos_por_mes_raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    //  ACADÉMICO 
     $stmt = $pdo->query("
         SELECT c.nombre as curso, 
                AVG(cal.calificacion) as promedio,
@@ -197,7 +178,6 @@ try {
     ");
     $promedios_cursos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Rendimiento por estudiante
     $stmt = $pdo->query("
         SELECT u.nombre as estudiante,
                c.nombre as curso,
@@ -218,7 +198,6 @@ try {
     ");
     $rendimiento_estudiantes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Asistencia global
     $stmt = $pdo->query("
         SELECT 
             COUNT(CASE WHEN estado='presente' THEN 1 END) as presentes,
@@ -231,7 +210,6 @@ try {
     $asistencia_global = $stmt->fetch(PDO::FETCH_ASSOC);
     $total_asistencias = $asistencia_global['total'] ?: 1;
 
-    // Asistencia por grupo
     $stmt = $pdo->query("
         SELECT g.nombre as grupo, c.nombre as curso,
                u.nombre as profesor,
@@ -249,7 +227,6 @@ try {
     ");
     $asistencia_grupos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Certificados
     $stmt = $pdo->query("
         SELECT cc.*, u.nombre as estudiante, c.nombre as curso, u2.nombre as aprobado_nombre
         FROM calificaciones_certificados cc
@@ -264,7 +241,6 @@ try {
     $stmt = $pdo->query("SELECT COUNT(*) as t, COUNT(CASE WHEN estado='aprobado' THEN 1 END) as a, COUNT(CASE WHEN estado='reprobado' THEN 1 END) as r FROM calificaciones_certificados");
     $cert_stats = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // Bitácoras por profesor
     $stmt = $pdo->query("
         SELECT u.nombre as profesor, COUNT(b.id) as total_bitacoras,
                MAX(b.fecha_clase) as ultima_clase
@@ -276,7 +252,6 @@ try {
     ");
     $bitacoras_profesor = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    //  CURSOS 
     $stmt = $pdo->query("
         SELECT c.nombre as curso, c.nivel, c.estado as estado_curso,
                c.precio_mensual,
@@ -311,7 +286,6 @@ try {
     ");
     $ocupacion_grupos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    //  ACTIVIDAD 
     $stmt = $pdo->prepare("
         SELECT MONTH(fecha_acceso) as mes, COUNT(*) as total
         FROM logs_acceso
@@ -326,7 +300,6 @@ try {
     $roles_raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $roles = array_column($roles_raw, 'total', 'rol');
 
-    // Profesores con sus grupos
     $stmt = $pdo->query("
         SELECT u.nombre, u.email,
                COUNT(DISTINCT g.id) as grupos_activos,
@@ -360,7 +333,6 @@ try {
     $accesos_mes_raw = $roles = $profesores_detalle = [];
 }
 
-//  Preparar datos para JS 
 $meses_labels = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
 $inscr_data = ['preinscripciones'=>array_fill(0,12,0),'matriculas'=>array_fill(0,12,0),'rechazadas'=>array_fill(0,12,0)];
@@ -405,6 +377,7 @@ $ingreso_curso_vencido = array_map(fn($x) => (float)$x['vencido'], $ingresos_cur
 
 $metodo_labels = array_column($metodos_pago, 'metodo_pago');
 $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
+$metodo_counts = array_map(fn($x) => (int)$x['cantidad'], $metodos_pago);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -416,167 +389,13 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"/>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="../../assets/css/colores.css">
+    <link rel="stylesheet" href="../../assets/css/style-reportes.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
     <script>(function(){const t=localStorage.getItem('amimbre-theme');if(t==='light')document.documentElement.setAttribute('data-theme','light');})();</script>
-    <style>
-        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        body{font-family:'Poppins',sans-serif;background:var(--card-bg);color:var(--text-primary)}
-
-        /* Layout */
-        .main-content{margin-left:270px;padding:28px 32px;transition:margin-left .4s ease;min-height:100vh}
-        .sidebar.collapsed~.main-content{margin-left:85px}
-        @media(max-width:768px){.main-content{margin-left:0;padding:16px}}
-
-        /* Header */
-        .page-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:28px}
-        .header-left h1{font-size:1.6rem;font-weight:700}
-        .header-left p{font-size:.85rem;color:var(--text-secondary);margin-top:2px}
-        .header-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-
-        .year-select{background:var(--dark-bg);color:var(--text-primary);border:1px solid var(--border-color);border-radius:8px;padding:8px 14px;font-size:.875rem;cursor:pointer;font-family:inherit}
-        .year-select:hover{border-color:var(--primary-blue)}
-
-        .btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:8px;font-size:.85rem;font-weight:500;cursor:pointer;border:none;font-family:inherit;transition:opacity .2s,transform .15s;text-decoration:none;white-space:nowrap}
-        .btn:hover{opacity:.88;transform:translateY(-1px)}
-        .btn-ghost{background:var(--dark-bg);color:var(--text-primary);border:1px solid var(--border-color)}
-        .btn-blue{background:var(--primary-blue);color:#fff}
-        .btn-green{background:var(--primary-green);color:#fff}
-        .btn-orange{background:var(--primary-orange);color:#fff}
-        .btn-sm{padding:6px 12px;font-size:.78rem}
-
-        /* Stat Cards */
-        .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:28px}
-        .stat-card{background:var(--dark-bg);border:1px solid var(--border-color);border-radius:14px;padding:20px;position:relative;overflow:hidden;transition:transform .2s}
-        .stat-card:hover{transform:translateY(-2px)}
-        .stat-card::before{content:'';position:absolute;inset:0;opacity:.06;border-radius:14px}
-        .stat-card.blue::before{background:var(--primary-blue)}
-        .stat-card.green::before{background:var(--primary-green)}
-        .stat-card.orange::before{background:var(--primary-orange)}
-        .stat-card.yellow::before{background:var(--primary-yellow)}
-        .stat-card.red::before{background:var(--primary-red)}
-        .stat-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-        .stat-title{font-size:.8rem;color:var(--text-secondary);font-weight:500}
-        .stat-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center}
-        .stat-card.blue .stat-icon{background:var(--subtle-blue);color:var(--primary-blue)}
-        .stat-card.green .stat-icon{background:var(--subtle-green);color:var(--primary-green)}
-        .stat-card.orange .stat-icon{background:var(--subtle-orange);color:var(--primary-orange)}
-        .stat-card.yellow .stat-icon{background:var(--subtle-yellow);color:var(--primary-yellow)}
-        .stat-card.red .stat-icon{background:var(--subtle-red);color:var(--primary-red)}
-        .stat-icon span{font-size:1.25rem}
-        .stat-value{font-size:2rem;font-weight:700;line-height:1;margin-bottom:8px}
-        .stat-change{font-size:.78rem;color:var(--text-secondary);display:flex;align-items:center;gap:4px}
-        .stat-change.pos{color:var(--primary-green)}
-        .stat-change.neg{color:var(--primary-red)}
-        .stat-change span.material-symbols-rounded{font-size:.95rem}
-
-        /* Tabs */
-        .tabs-container{background:var(--dark-bg);border:1px solid var(--border-color);border-radius:16px;overflow:hidden}
-        .tabs-nav{display:flex;gap:4px;padding:14px 16px 0;border-bottom:1px solid var(--border-color);overflow-x:auto}
-        .tab-btn{display:flex;align-items:center;gap:7px;padding:10px 18px;border:none;background:transparent;color:var(--text-secondary);font-size:.875rem;font-weight:500;cursor:pointer;font-family:inherit;border-bottom:2px solid transparent;border-radius:8px 8px 0 0;transition:color .2s,background .2s;white-space:nowrap}
-        .tab-btn:hover{color:var(--text-primary);background:var(--hover-bg)}
-        .tab-btn.active{color:var(--primary-blue);border-bottom-color:var(--primary-blue);background:var(--hover-bg)}
-        .tab-btn span.material-symbols-rounded{font-size:1.1rem}
-        .tab-content{display:none;padding:24px}
-        .tab-content.active{display:block}
-
-        /* Charts grid */
-        .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
-        .charts-grid .chart-card.full{grid-column:1/-1}
-        @media(max-width:900px){.charts-grid{grid-template-columns:1fr}.charts-grid .chart-card.full{grid-column:1}}
-
-        .chart-card{background:var(--card-bg);border:1px solid var(--border-color);border-radius:12px;padding:20px}
-        .chart-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
-        .chart-header-left h3{font-size:.95rem;font-weight:600;display:flex;align-items:center;gap:7px}
-        .chart-header-left h3 span{font-size:1.1rem;color:var(--primary-blue)}
-        .chart-header-left p{font-size:.78rem;color:var(--text-secondary);margin-top:3px}
-        .chart-container{position:relative;height:240px}
-        .chart-container.tall{height:300px}
-        .chart-container.short{height:180px}
-
-        /* Section separators */
-        .section-title{font-size:1rem;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px;color:var(--text-primary)}
-        .section-title span{font-size:1.1rem;color:var(--primary-blue)}
-
-        /* Status row */
-        .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
-        .kpi-card{background:var(--card-bg);border:1px solid var(--border-color);border-radius:12px;padding:16px;display:flex;align-items:center;gap:14px}
-        .kpi-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-        .kpi-icon span{font-size:1.3rem}
-        .kpi-card.success .kpi-icon{background:var(--subtle-green);color:var(--primary-green)}
-        .kpi-card.warning .kpi-icon{background:var(--subtle-yellow);color:var(--primary-yellow)}
-        .kpi-card.danger  .kpi-icon{background:var(--subtle-red);color:var(--primary-red)}
-        .kpi-card.info    .kpi-icon{background:var(--subtle-blue);color:var(--primary-blue)}
-        .kpi-card.orange  .kpi-icon{background:var(--subtle-orange);color:var(--primary-orange)}
-        .kpi-value{font-size:1.5rem;font-weight:700;line-height:1}
-        .kpi-label{font-size:.8rem;font-weight:500;margin-top:2px}
-        .kpi-desc{font-size:.72rem;color:var(--text-secondary);margin-top:2px}
-
-        /* Tables */
-        .table-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--border-color);margin-bottom:18px}
-        .data-table{width:100%;border-collapse:collapse;font-size:.82rem}
-        .data-table th{background:var(--dark-bg);color:var(--text-secondary);font-weight:500;padding:11px 16px;text-align:left;border-bottom:1px solid var(--border-color);white-space:nowrap}
-        .data-table td{padding:11px 16px;border-bottom:1px solid var(--border-color);vertical-align:middle}
-        .data-table tr:last-child td{border-bottom:none}
-        .data-table tr:hover td{background:var(--hover-bg)}
-
-        /* Badges */
-        .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:600}
-        .badge-green{background:var(--subtle-green);color:var(--primary-green)}
-        .badge-blue{background:var(--subtle-blue);color:var(--primary-blue)}
-        .badge-yellow{background:var(--subtle-yellow);color:#a0a000}
-        .badge-orange{background:var(--subtle-orange);color:var(--primary-orange)}
-        .badge-red{background:var(--subtle-red);color:var(--primary-red)}
-        .badge-gray{background:var(--border-color);color:var(--text-secondary)}
-
-        /* Progress */
-        .progress-wrap{background:var(--border-color);border-radius:4px;height:8px;min-width:80px;overflow:hidden}
-        .progress-fill{height:100%;border-radius:4px;transition:width .6s ease}
-        .progress-fill.green{background:var(--primary-green)}
-        .progress-fill.blue{background:var(--primary-blue)}
-        .progress-fill.orange{background:var(--primary-orange)}
-        .progress-fill.red{background:var(--primary-red)}
-
-        /* ── Reporte Card (Descargables) ── */
-        .reportes-descargables{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:28px}
-        .reporte-card{background:var(--dark-bg);border:1px solid var(--border-color);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:14px;transition:transform .2s,border-color .2s}
-        .reporte-card:hover{transform:translateY(-2px);border-color:var(--primary-blue)}
-        .reporte-card-header{display:flex;align-items:center;gap:12px}
-        .reporte-card-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-        .reporte-card-icon span{font-size:1.5rem}
-        .reporte-card-icon.blue{background:var(--subtle-blue);color:var(--primary-blue)}
-        .reporte-card-icon.green{background:var(--subtle-green);color:var(--primary-green)}
-        .reporte-card-icon.orange{background:var(--subtle-orange);color:var(--primary-orange)}
-        .reporte-card-icon.red{background:var(--subtle-red);color:var(--primary-red)}
-        .reporte-card-icon.yellow{background:var(--subtle-yellow);color:var(--primary-yellow)}
-        .reporte-card-icon.teal{background:#14b8a620;color:#14b8a6}
-        .reporte-card-title{font-size:.95rem;font-weight:600}
-        .reporte-card-desc{font-size:.8rem;color:var(--text-secondary);line-height:1.5}
-        .reporte-card-actions{display:flex;gap:8px;flex-wrap:wrap}
-
-        /* PDF overlay */
-        #pdf-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:16px}
-        #pdf-overlay.show{display:flex}
-        #pdf-overlay p{color:#fff;font-size:1rem;font-weight:500}
-        #pdf-overlay small{color:rgba(255,255,255,.6);font-size:.8rem}
-        .pdf-spinner{width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:var(--primary-blue);border-radius:50%;animation:spin .8s linear infinite}
-        @keyframes spin{to{transform:rotate(360deg)}}
-
-        /* Divider */
-        .divider{height:1px;background:var(--border-color);margin:18px 0}
-
-        /* Alert info */
-        .alert-info{background:var(--subtle-blue);border:1px solid var(--primary-blue);border-radius:10px;padding:12px 16px;font-size:.82rem;display:flex;align-items:center;gap:10px;margin-bottom:16px}
-        .alert-info span.material-symbols-rounded{color:var(--primary-blue);font-size:1.1rem}
-
-        @media print{
-            .sidebar,.page-header .header-controls,.tabs-nav,#pdf-overlay{display:none!important}
-            .main-content{margin-left:0!important;padding:0!important}
-            .tab-content{display:block!important;page-break-inside:avoid}
-        }
-    </style>
 </head>
 <body>
 <?php if (file_exists('../../includes/header.php')) require_once '../../includes/header.php'; ?>
@@ -654,7 +473,7 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
         </div>
     </div>
 
-    <!-- ══ TABS ══ -->
+    <!-- TABS -->
     <div class="tabs-container" id="reporte-tabs">
         <div class="tabs-nav">
             <button class="tab-btn active" data-tab="tab-descargables">
@@ -677,18 +496,13 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
             </button>
         </div>
 
-        <!-- 
-             TAB 1: REPORTES DESCARGABLES
-                                             -->
+        <!-- TAB 1: REPORTES DESCARGABLES -->
         <div class="tab-content active" id="tab-descargables">
             <div class="alert-info">
                 <span class="material-symbols-rounded">info</span>
-                Genera y descarga reportes específicos en PDF con datos actualizados al instante. Cada reporte incluye tablas, gráficas y análisis relevantes.
+                Genera y descarga reportes específicos en PDF con datos actualizados al instante. Los PDFs se generan en modo claro para mejor legibilidad al imprimir.
             </div>
-
             <div class="reportes-descargables">
-
-                <!-- Reporte Financiero -->
                 <div class="reporte-card">
                     <div class="reporte-card-header">
                         <div class="reporte-card-icon green"><span class="material-symbols-rounded">account_balance_wallet</span></div>
@@ -707,8 +521,6 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
                         </button>
                     </div>
                 </div>
-
-                <!-- Reporte Académico -->
                 <div class="reporte-card">
                     <div class="reporte-card-header">
                         <div class="reporte-card-icon blue"><span class="material-symbols-rounded">grade</span></div>
@@ -727,8 +539,6 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
                         </button>
                     </div>
                 </div>
-
-                <!-- Reporte Inscripciones -->
                 <div class="reporte-card">
                     <div class="reporte-card-header">
                         <div class="reporte-card-icon orange"><span class="material-symbols-rounded">how_to_reg</span></div>
@@ -747,8 +557,6 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
                         </button>
                     </div>
                 </div>
-
-                <!-- Reporte Cartera Vencida -->
                 <div class="reporte-card">
                     <div class="reporte-card-header">
                         <div class="reporte-card-icon red"><span class="material-symbols-rounded">running_with_errors</span></div>
@@ -764,8 +572,6 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
                         </button>
                     </div>
                 </div>
-
-                <!-- Reporte Asistencia -->
                 <div class="reporte-card">
                     <div class="reporte-card-header">
                         <div class="reporte-card-icon teal"><span class="material-symbols-rounded">event_available</span></div>
@@ -784,8 +590,6 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
                         </button>
                     </div>
                 </div>
-
-                <!-- Reporte Cursos y Grupos -->
                 <div class="reporte-card">
                     <div class="reporte-card-header">
                         <div class="reporte-card-icon yellow"><span class="material-symbols-rounded">library_music</span></div>
@@ -804,13 +608,10 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
                         </button>
                     </div>
                 </div>
-
-            </div><!-- /reportes-descargables -->
+            </div>
         </div>
 
-        <!-- 
-             TAB 2: FINANCIERO
-        -->
+        <!-- TAB 2: FINANCIERO -->
         <div class="tab-content" id="tab-financiero">
             <div class="kpi-row">
                 <div class="kpi-card success">
@@ -865,13 +666,18 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
                     <div class="chart-header">
                         <div class="chart-header-left">
                             <h3><span class="material-symbols-rounded">area_chart</span> Ingresos por Mes — <?= $year_selected ?></h3>
-                            <p>Comparativa de ingresos confirmados, vencidos y pendientes (COP)</p>
+                            <p>Comparativa mensual en COP de pagos confirmados, vencidos y pendientes</p>
                         </div>
                         <button class="btn btn-green btn-sm" onclick="descargarReporte('financiero')">
                             <span class="material-symbols-rounded">download</span> PDF
                         </button>
                     </div>
                     <div class="chart-container"><canvas id="ingresosChart"></canvas></div>
+                    <div class="chart-legend">
+                        <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div><strong>Pagos confirmados</strong> — dinero efectivamente recibido</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div><strong>Cartera vencida</strong> — pagos que no se realizaron a tiempo</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#eab308"></div><strong>Pendientes</strong> — pagos aún dentro del plazo</div>
+                    </div>
                 </div>
 
                 <?php if (!empty($ingresos_curso)): ?>
@@ -879,10 +685,14 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
                     <div class="chart-header">
                         <div class="chart-header-left">
                             <h3><span class="material-symbols-rounded">library_music</span> Ingresos por Curso</h3>
-                            <p>Pagado vs vencido por programa</p>
+                            <p>Monto pagado y vencido por programa en <?= $year_selected ?></p>
                         </div>
                     </div>
                     <div class="chart-container"><canvas id="ingresosCursoChart"></canvas></div>
+                    <div class="chart-legend">
+                        <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div><strong>Pagado</strong> — ingresos confirmados por curso</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div><strong>Vencido</strong> — deuda acumulada por curso</div>
+                    </div>
                 </div>
                 <?php endif; ?>
 
@@ -891,7 +701,7 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
                     <div class="chart-header">
                         <div class="chart-header-left">
                             <h3><span class="material-symbols-rounded">credit_card</span> Métodos de Pago</h3>
-                            <p>Distribución de pagos recibidos</p>
+                            <p>Distribución de pagos recibidos por canal — % del total y monto COP</p>
                         </div>
                     </div>
                     <div class="chart-container"><canvas id="metodosChart"></canvas></div>
@@ -921,9 +731,7 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
             <?php endif; ?>
         </div>
 
-        <!-- 
-             TAB 3: INSCRIPCIONES
-        -->
+        <!-- TAB 3: INSCRIPCIONES -->
         <div class="tab-content" id="tab-inscripciones">
             <div class="kpi-row">
                 <div class="kpi-card success">
@@ -973,13 +781,18 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
                     <div class="chart-header">
                         <div class="chart-header-left">
                             <h3><span class="material-symbols-rounded">bar_chart</span> Inscripciones por Mes — <?= $year_selected ?></h3>
-                            <p>Preinscripciones, matrículas aprobadas y rechazadas</p>
+                            <p>Flujo mensual de solicitudes, aprobaciones y rechazos</p>
                         </div>
                         <button class="btn btn-orange btn-sm" onclick="descargarReporte('inscripciones')">
                             <span class="material-symbols-rounded">download</span> PDF
                         </button>
                     </div>
                     <div class="chart-container"><canvas id="inscripcionesChart"></canvas></div>
+                    <div class="chart-legend">
+                        <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div><strong>Preinscripciones</strong> — solicitudes recibidas en el mes</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div><strong>Matrículas</strong> — preinscripciones que se convirtieron en matrícula</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div><strong>Rechazadas</strong> — solicitudes no aceptadas</div>
+                    </div>
                 </div>
 
                 <?php if (!empty($conversion_programa)): ?>
@@ -987,18 +800,23 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
                     <div class="chart-header">
                         <div class="chart-header-left">
                             <h3><span class="material-symbols-rounded">conversion_path</span> Tasa de Conversión por Programa</h3>
-                            <p>% de preinscripciones que se matricularon</p>
+                            <p>% de preinscripciones que se convirtieron en matrícula activa</p>
                         </div>
                     </div>
                     <div class="chart-container"><canvas id="conversionChart"></canvas></div>
+                    <div class="chart-legend">
+                        <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div><strong>Verde</strong> ≥ 70% conversión — rendimiento alto</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div><strong>Azul</strong> 40–69% — conversión media</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div><strong>Naranja</strong> &lt; 40% — requiere atención</div>
+                    </div>
                 </div>
                 <?php endif; ?>
 
                 <div class="chart-card">
                     <div class="chart-header">
                         <div class="chart-header-left">
-                            <h3><span class="material-symbols-rounded">donut_large</span> Estado General</h3>
-                            <p>Distribución histórica de preinscripciones</p>
+                            <h3><span class="material-symbols-rounded">donut_large</span> Estado General de Preinscripciones</h3>
+                            <p>Distribución histórica de todas las solicitudes recibidas — con porcentaje y cantidad</p>
                         </div>
                     </div>
                     <div class="chart-container"><canvas id="estadosChart"></canvas></div>
@@ -1009,7 +827,7 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
                     <div class="chart-header">
                         <div class="chart-header-left">
                             <h3><span class="material-symbols-rounded">location_on</span> Procedencia Geográfica</h3>
-                            <p>Solicitudes por municipio de residencia</p>
+                            <p>Municipio de residencia declarado en la preinscripción</p>
                         </div>
                     </div>
                     <div class="chart-container"><canvas id="municipioChart"></canvas></div>
@@ -1017,7 +835,6 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
                 <?php endif; ?>
             </div>
 
-            <!-- Tabla conversión por programa -->
             <?php if (!empty($conversion_programa)): ?>
             <h3 class="section-title"><span class="material-symbols-rounded">conversion_path</span> Conversión por Programa</h3>
             <div class="table-wrap">
@@ -1044,9 +861,7 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
             <?php endif; ?>
         </div>
 
-        <!-- 
-             TAB 4: ACADÉMICO
-         -->
+        <!-- TAB 4: ACADÉMICO -->
         <div class="tab-content" id="tab-academico">
             <div class="kpi-row">
                 <div class="kpi-card info">
@@ -1096,13 +911,18 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
                     <div class="chart-header">
                         <div class="chart-header-left">
                             <h3><span class="material-symbols-rounded">timeline</span> Promedio por Curso</h3>
-                            <p>Calificación promedio en cada curso</p>
+                            <p>Calificación promedio (escala 0–5) con mínimo y máximo de cada programa</p>
                         </div>
                         <button class="btn btn-blue btn-sm" onclick="descargarReporte('academico')">
                             <span class="material-symbols-rounded">download</span> PDF
                         </button>
                     </div>
                     <div class="chart-container"><canvas id="promediosChart"></canvas></div>
+                    <div class="chart-legend">
+                        <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div><strong>Verde</strong> — promedio ≥ 4.0 (rendimiento alto)</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div><strong>Azul</strong> — promedio 3.0–3.9 (rendimiento medio)</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div><strong>Naranja</strong> — promedio &lt; 3.0 (requiere atención)</div>
+                    </div>
                 </div>
                 <?php endif; ?>
 
@@ -1110,7 +930,7 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
                     <div class="chart-header">
                         <div class="chart-header-left">
                             <h3><span class="material-symbols-rounded">analytics</span> Asistencia Global</h3>
-                            <p>Distribución de estados de asistencia</p>
+                            <p>Distribución de estados de asistencia de todos los grupos — % y cantidad de registros</p>
                         </div>
                     </div>
                     <div class="chart-container"><canvas id="asistenciaGlobalChart"></canvas></div>
@@ -1121,18 +941,22 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
                     <div class="chart-header">
                         <div class="chart-header-left">
                             <h3><span class="material-symbols-rounded">event_available</span> % Asistencia por Grupo</h3>
-                            <p>Porcentaje de presencia registrado por grupo</p>
+                            <p>Porcentaje de clases con presencia registrada por cada grupo activo</p>
                         </div>
                         <button class="btn btn-sm" style="background:#14b8a6;color:#fff" onclick="descargarReporte('asistencia')">
                             <span class="material-symbols-rounded">download</span> PDF
                         </button>
                     </div>
                     <div class="chart-container tall"><canvas id="asistenciaGruposChart"></canvas></div>
+                    <div class="chart-legend">
+                        <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div><strong>Verde</strong> — asistencia ≥ 80% (óptimo)</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div><strong>Azul</strong> — asistencia 60–79% (aceptable)</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div><strong>Naranja</strong> — asistencia &lt; 60% (preocupante)</div>
+                    </div>
                 </div>
                 <?php endif; ?>
             </div>
 
-            <!-- Rendimiento estudiantes -->
             <?php if (!empty($rendimiento_estudiantes)): ?>
             <h3 class="section-title"><span class="material-symbols-rounded">person_search</span> Rendimiento Individual por Estudiante</h3>
             <div class="table-wrap">
@@ -1169,7 +993,6 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
             </div>
             <?php endif; ?>
 
-            <!-- Certificados -->
             <?php if (!empty($certificados_lista)): ?>
             <h3 class="section-title"><span class="material-symbols-rounded">workspace_premium</span> Últimos Certificados Generados</h3>
             <div class="table-wrap">
@@ -1192,7 +1015,6 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
             </div>
             <?php endif; ?>
 
-            <!-- Bitácoras por profesor -->
             <?php if (!empty($bitacoras_profesor)): ?>
             <h3 class="section-title"><span class="material-symbols-rounded">book</span> Bitácoras por Profesor</h3>
             <div class="table-wrap">
@@ -1212,9 +1034,7 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
             <?php endif; ?>
         </div>
 
-        <!--
-             TAB 5: CURSOS
-        -->
+        <!-- TAB 5: CURSOS -->
         <div class="tab-content" id="tab-cursos">
             <div class="charts-grid">
                 <?php if (!empty($estudiantes_por_curso)): ?>
@@ -1222,7 +1042,7 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
                     <div class="chart-header">
                         <div class="chart-header-left">
                             <h3><span class="material-symbols-rounded">groups</span> Estudiantes por Curso</h3>
-                            <p>Matrículas activas por programa</p>
+                            <p>Número de matrículas activas en cada programa — con cantidad exacta</p>
                         </div>
                         <button class="btn btn-sm" style="background:var(--primary-yellow);color:#000" onclick="descargarReporte('cursos')">
                             <span class="material-symbols-rounded">download</span> PDF
@@ -1235,14 +1055,13 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
                     <div class="chart-header">
                         <div class="chart-header-left">
                             <h3><span class="material-symbols-rounded">donut_large</span> Estado de Grupos</h3>
-                            <p>Grupos por estado actual</p>
+                            <p>Distribución de grupos por estado actual — % y cantidad</p>
                         </div>
                     </div>
                     <div class="chart-container"><canvas id="estadoGruposChart"></canvas></div>
                 </div>
             </div>
 
-            <!-- Tabla grupos con ocupación -->
             <?php if (!empty($ocupacion_grupos)): ?>
             <h3 class="section-title"><span class="material-symbols-rounded">density_medium</span> Ocupación de Grupos Activos</h3>
             <div class="table-wrap">
@@ -1271,7 +1090,6 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
             </div>
             <?php endif; ?>
 
-            <!-- Tabla cursos detalle -->
             <h3 class="section-title"><span class="material-symbols-rounded">menu_book</span> Detalle de Cursos</h3>
             <div class="table-wrap">
                 <table class="data-table">
@@ -1293,9 +1111,7 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
             </div>
         </div>
 
-        <!-- 
-             TAB 6: ACTIVIDAD
-         -->
+        <!-- TAB 6: ACTIVIDAD -->
         <div class="tab-content" id="tab-actividad">
             <div class="kpi-row">
                 <div class="kpi-card info">
@@ -1329,7 +1145,7 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
                     <div class="chart-header">
                         <div class="chart-header-left">
                             <h3><span class="material-symbols-rounded">monitoring</span> Accesos al Sistema — <?= $year_selected ?></h3>
-                            <p>Inicios de sesión por mes</p>
+                            <p>Cantidad de inicios de sesión registrados por mes en el año</p>
                         </div>
                     </div>
                     <div class="chart-container"><canvas id="accesosChart"></canvas></div>
@@ -1338,7 +1154,7 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
                     <div class="chart-header">
                         <div class="chart-header-left">
                             <h3><span class="material-symbols-rounded">manage_accounts</span> Distribución de Roles</h3>
-                            <p>Usuarios activos por tipo</p>
+                            <p>Usuarios activos clasificados por tipo de rol en el sistema</p>
                         </div>
                     </div>
                     <div class="chart-container"><canvas id="rolesChart"></canvas></div>
@@ -1347,14 +1163,13 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
                     <div class="chart-header">
                         <div class="chart-header-left">
                             <h3><span class="material-symbols-rounded">trending_up</span> Nuevos Estudiantes <?= $year_selected ?></h3>
-                            <p>Registros de estudiantes por mes</p>
+                            <p>Registros de nuevos estudiantes activos por mes</p>
                         </div>
                     </div>
                     <div class="chart-container"><canvas id="nuevosChart"></canvas></div>
                 </div>
             </div>
 
-            <!-- Profesores detalle -->
             <?php if (!empty($profesores_detalle)): ?>
             <h3 class="section-title"><span class="material-symbols-rounded">person_4</span> Actividad de Profesores</h3>
             <div class="table-wrap">
@@ -1380,7 +1195,7 @@ $metodo_values = array_map(fn($x) => (float)$x['total'], $metodos_pago);
 </main>
 
 <script>
-// ── PHP → JS 
+// ── PHP → JS
 const YEAR    = <?= $year_selected ?>;
 const MESES   = <?= json_encode($meses_labels) ?>;
 const INSCR   = <?= json_encode($inscr_data) ?>;
@@ -1420,8 +1235,8 @@ const ING_CURSO_PAG    = <?= json_encode($ingreso_curso_pagado) ?>;
 const ING_CURSO_VENC   = <?= json_encode($ingreso_curso_vencido) ?>;
 const METODO_LABELS    = <?= json_encode($metodo_labels) ?>;
 const METODO_VALUES    = <?= json_encode($metodo_values) ?>;
+const METODO_COUNTS    = <?= json_encode($metodo_counts) ?>;
 
-// Datos tablas para PDF
 const DEUDORES         = <?= json_encode($deudores) ?>;
 const ASIST_GRUPOS_TBL = <?= json_encode($asistencia_grupos) ?>;
 const REND_ESTUDIANTES = <?= json_encode($rendimiento_estudiantes) ?>;
@@ -1439,30 +1254,93 @@ const FINANCIERO       = {
 };
 const NOMBRE_ESCUELA = 'Amimbré — Escuela de Música';
 
-//  Paleta 
+// ── Registrar plugin datalabels globalmente ──
+Chart.register(ChartDataLabels);
+
+// ── Paleta ──
 const C = {
-    blue:'#1479b0', green:'#4ec336', orange:'#ff6d00', yellow:'#e9e93e', red:'#ba2626',
-    sBlue:'#1479b03a', sGreen:'#4ec33633', sOrange:'#ff6f003d', sYellow:'#e9e93e38', sRed:'#ba262646',
-    teal:'#14b8a6', purple:'#8b5cf6', sTeal:'#14b8a620'
+    blue:'#3b82f6', green:'#22c55e', orange:'#f97316', yellow:'#eab308', red:'#ef4444',
+    sBlue:'rgba(59,130,246,0.15)', sGreen:'rgba(34,197,94,0.15)',
+    teal:'#14b8a6', purple:'#8b5cf6', sTeal:'rgba(20,184,166,0.15)'
 };
 const GRID='#334155', TICK='#94a3b8', LEG='#f8fafc';
 
-const baseOpts = (extra={}) => ({
-    responsive:true, maintainAspectRatio:false,
+// ── Helpers de formato ──
+const fmtCOP = v => '$' + Number(v).toLocaleString('es-CO');
+const fmtPct = v => v + '%';
+
+// ── Opciones base para gráficas de barras/línea ──
+const baseOpts = (extraScales={}) => ({
+    responsive: true,
+    maintainAspectRatio: false,
     animation: false,
-    plugins:{ legend:{position:'bottom',labels:{color:LEG,padding:14,font:{size:11,family:'Poppins'}}} },
-    scales:{
-        y:{beginAtZero:true,ticks:{color:TICK},grid:{color:GRID}},
-        x:{ticks:{color:TICK},grid:{color:GRID}}
-    }, ...extra
-});
-const noScales = () => ({
-    responsive:true, maintainAspectRatio:false,
-    animation: false,
-    plugins:{legend:{position:'bottom',labels:{color:LEG,padding:12,font:{size:11,family:'Poppins'}}}}
+    plugins: {
+        legend: {
+            position: 'bottom',
+            labels: { color: LEG, padding: 14, font: { size: 11, family: 'Poppins' }, usePointStyle: true, pointStyleWidth: 10 }
+        },
+        datalabels: { display: false }, // desactivar en barras por defecto, activar caso a caso
+        tooltip: {
+            backgroundColor: '#1e293b',
+            titleColor: '#f8fafc',
+            bodyColor: '#94a3b8',
+            borderColor: '#334155',
+            borderWidth: 1,
+            padding: 10,
+            callbacks: {}
+        }
+    },
+    scales: {
+        y: { beginAtZero: true, ticks: { color: TICK }, grid: { color: GRID } },
+        x: { ticks: { color: TICK }, grid: { color: GRID } },
+        ...extraScales
+    }
 });
 
-// Registro global de instancias de Chart para forzar update antes de exportar
+// ── Opciones para donut/pie con datalabels ──
+const pieOpts = (totalFn) => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
+    plugins: {
+        legend: {
+            position: 'bottom',
+            labels: { color: LEG, padding: 12, font: { size: 11, family: 'Poppins' }, usePointStyle: true }
+        },
+        datalabels: {
+            color: '#fff',
+            font: { weight: 'bold', size: 11, family: 'Poppins' },
+            formatter: (value, ctx) => {
+                const total = totalFn ? totalFn(ctx) : ctx.dataset.data.reduce((a, b) => a + b, 0);
+                if (!total || value === 0) return '';
+                const pct = Math.round(value * 100 / total);
+                return pct < 5 ? '' : `${value}\n${pct}%`;
+            },
+            textAlign: 'center',
+            display: ctx => {
+                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                return total > 0 && ctx.dataset.data[ctx.dataIndex] > 0;
+            }
+        },
+        tooltip: {
+            backgroundColor: '#1e293b',
+            titleColor: '#f8fafc',
+            bodyColor: '#94a3b8',
+            borderColor: '#334155',
+            borderWidth: 1,
+            padding: 10,
+            callbacks: {
+                label: ctx => {
+                    const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                    const pct = total > 0 ? Math.round(ctx.parsed * 100 / total) : 0;
+                    return ` ${ctx.label}: ${ctx.parsed.toLocaleString('es-CO')} (${pct}%)`;
+                }
+            }
+        }
+    }
+});
+
+// ── Registro global de charts ──
 const chartRegistry = {};
 
 function mkChart(id, cfg) {
@@ -1473,13 +1351,10 @@ function mkChart(id, cfg) {
     return instance;
 }
 
-// Captura un chart aunque esté en un tab oculto (display:none).
-// Hace visible el contenedor fuera de pantalla, fuerza re-render, captura y restaura.
-async function captureChart(id, type='image/png') {
+// ── Captura de chart aunque esté en tab oculto ──
+async function captureChart(id) {
     const el = document.getElementById(id);
     if (!el) return null;
-
-    // Encontrar todos los ancestros ocultos y guardar su style original
     const hidden = [];
     let node = el.parentElement;
     while (node && node !== document.body) {
@@ -1494,204 +1369,479 @@ async function captureChart(id, type='image/png') {
         }
         node = node.parentElement;
     }
-
-    // Forzar re-render del chart
     const instance = chartRegistry[id];
-    if (instance) {
-        instance.resize();
-        instance.update('none');
-    }
-
-    // Esperar dos frames para que el navegador pinte el canvas
+    if (instance) { instance.resize(); instance.update('none'); }
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
-    const dataUrl = el.toDataURL(type);
-
-    // Restaurar estado original de todos los ancestros
-    hidden.reverse().forEach(({ node, prev }) => {
-        node.setAttribute('style', prev);
-    });
-
+    const dataUrl = el.toDataURL('image/png');
+    hidden.reverse().forEach(({ node, prev }) => node.setAttribute('style', prev));
     return dataUrl;
 }
 
-// Gráficas 
+// ══════════════════════════════════════════════
+//  GRÁFICAS DE PANTALLA (MODO OSCURO)
+// ══════════════════════════════════════════════
 
-// Financiero — ingresos por mes
+// ── FINANCIERO: Ingresos por mes (barras apiladas con datalabels en hover) ──
 mkChart('ingresosChart', {
-    type:'bar',
-    data:{
-        labels:MESES,
-        datasets:[
-            {label:'Confirmados', data:INGRESOS_CONF, backgroundColor:C.green, borderRadius:5},
-            {label:'Vencidos',    data:INGRESOS_VENC, backgroundColor:C.red,   borderRadius:5},
-            {label:'Pendientes',  data:INGRESOS_PEND, backgroundColor:C.yellow,borderRadius:5}
+    type: 'bar',
+    data: {
+        labels: MESES,
+        datasets: [
+            { label: ' Pagos confirmados', data: INGRESOS_CONF, backgroundColor: C.green, borderRadius: 4 },
+            { label: ' Cartera vencida',    data: INGRESOS_VENC, backgroundColor: C.red,   borderRadius: 4 },
+            { label: ' Pendientes',         data: INGRESOS_PEND, backgroundColor: C.yellow, borderRadius: 4 }
         ]
     },
-    options: baseOpts()
+    options: {
+        ...baseOpts(),
+        plugins: {
+            ...baseOpts().plugins,
+            datalabels: { display: false },
+            tooltip: {
+                ...baseOpts().plugins.tooltip,
+                callbacks: {
+                    label: ctx => ` ${ctx.dataset.label.replace(/^.{2}/,'').trim()}: ${fmtCOP(ctx.parsed.y)}`
+                }
+            }
+        }
+    }
 });
 
+// ── Ingresos por curso ──
 if (ING_CURSO_LABELS.length) {
     mkChart('ingresosCursoChart', {
-        type:'bar',
-        data:{
-            labels:ING_CURSO_LABELS,
-            datasets:[
-                {label:'Pagado', data:ING_CURSO_PAG,  backgroundColor:C.green,  borderRadius:5},
-                {label:'Vencido',data:ING_CURSO_VENC, backgroundColor:C.red,    borderRadius:5}
+        type: 'bar',
+        data: {
+            labels: ING_CURSO_LABELS,
+            datasets: [
+                { label: ' Pagado', data: ING_CURSO_PAG,  backgroundColor: C.green, borderRadius: 4 },
+                { label: ' Vencido',data: ING_CURSO_VENC, backgroundColor: C.red,   borderRadius: 4 }
             ]
         },
-        options:baseOpts()
+        options: {
+            ...baseOpts(),
+            plugins: {
+                ...baseOpts().plugins,
+                datalabels: {
+                    display: ctx => ctx.dataset.data[ctx.dataIndex] > 0,
+                    color: '#fff',
+                    font: { size: 9, weight: 'bold' },
+                    anchor: 'end', align: 'end',
+                    formatter: v => fmtCOP(v)
+                },
+                tooltip: {
+                    ...baseOpts().plugins.tooltip,
+                    callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmtCOP(ctx.parsed.y)}` }
+                }
+            }
+        }
     });
 }
 
+// ── Métodos de pago (donut con % y monto) ──
 if (METODO_LABELS.length) {
+    const totalMetodos = METODO_VALUES.reduce((a, b) => a + b, 0);
     mkChart('metodosChart', {
-        type:'doughnut',
-        data:{
-            labels:METODO_LABELS.map(m=>m.charAt(0).toUpperCase()+m.slice(1)),
-            datasets:[{data:METODO_VALUES, backgroundColor:[C.green,C.blue,C.orange,C.teal], borderWidth:0}]
+        type: 'doughnut',
+        data: {
+            labels: METODO_LABELS.map(m => m.charAt(0).toUpperCase() + m.slice(1)),
+            datasets: [{ data: METODO_VALUES, backgroundColor: [C.green, C.blue, C.orange, C.teal, C.purple], borderWidth: 2, borderColor: '#1e293b' }]
         },
-        options:noScales()
+        options: {
+            ...pieOpts(),
+            plugins: {
+                ...pieOpts().plugins,
+                datalabels: {
+                    color: '#fff',
+                    font: { weight: 'bold', size: 10 },
+                    formatter: (value, ctx) => {
+                        const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                        const pct = total > 0 ? Math.round(value * 100 / total) : 0;
+                        if (pct < 5) return '';
+                        return `${pct}%\n${fmtCOP(value)}`;
+                    },
+                    textAlign: 'center'
+                },
+                tooltip: {
+                    ...pieOpts().plugins.tooltip,
+                    callbacks: {
+                        label: ctx => {
+                            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                            const pct = total > 0 ? Math.round(ctx.parsed * 100 / total) : 0;
+                            const transacciones = METODO_COUNTS[ctx.dataIndex] || 0;
+                            return [
+                                ` Monto: ${fmtCOP(ctx.parsed)}`,
+                                ` Participación: ${pct}%`,
+                                ` Transacciones: ${transacciones}`
+                            ];
+                        }
+                    }
+                }
+            }
+        }
     });
 }
 
-// Inscripciones
+// ── INSCRIPCIONES: por mes ──
 mkChart('inscripcionesChart', {
-    type:'bar',
-    data:{
-        labels:MESES,
-        datasets:[
-            {label:'Preinscripciones', data:INSCR.preinscripciones, backgroundColor:C.blue,   borderRadius:5},
-            {label:'Matrículas',       data:INSCR.matriculas,       backgroundColor:C.green,  borderRadius:5},
-            {label:'Rechazadas',       data:INSCR.rechazadas,       backgroundColor:C.orange, borderRadius:5}
+    type: 'bar',
+    data: {
+        labels: MESES,
+        datasets: [
+            { label: ' Preinscripciones recibidas', data: INSCR.preinscripciones, backgroundColor: C.blue,   borderRadius: 4 },
+            { label: ' Matrículas aprobadas',        data: INSCR.matriculas,       backgroundColor: C.green,  borderRadius: 4 },
+            { label: ' Rechazadas',                  data: INSCR.rechazadas,       backgroundColor: C.orange, borderRadius: 4 }
         ]
     },
-    options:baseOpts()
+    options: {
+        ...baseOpts(),
+        plugins: {
+            ...baseOpts().plugins,
+            datalabels: {
+                display: ctx => ctx.dataset.data[ctx.dataIndex] > 0,
+                color: '#fff',
+                font: { size: 9, weight: 'bold' },
+                anchor: 'end', align: 'end',
+                formatter: v => v > 0 ? v : ''
+            },
+            tooltip: { ...baseOpts().plugins.tooltip }
+        }
+    }
 });
 
+// ── Conversión por programa ──
 if (CONV_LABELS.length) {
     mkChart('conversionChart', {
-        type:'bar',
-        data:{
-            labels:CONV_LABELS,
-            datasets:[{label:'Tasa de conversión (%)', data:CONV_TASAS, backgroundColor:CONV_TASAS.map(v=>v>=70?C.green:v>=40?C.blue:C.orange), borderRadius:5}]
+        type: 'bar',
+        data: {
+            labels: CONV_LABELS,
+            datasets: [{
+                label: '% Tasa de conversión',
+                data: CONV_TASAS,
+                backgroundColor: CONV_TASAS.map(v => v >= 70 ? C.green : v >= 40 ? C.blue : C.orange),
+                borderRadius: 4
+            }]
         },
-        options:{...baseOpts(), scales:{...baseOpts().scales, y:{beginAtZero:true,max:100,ticks:{color:TICK,callback:v=>v+'%'},grid:{color:GRID}}}}
+        options: {
+            ...baseOpts({ y: { beginAtZero: true, max: 100, ticks: { color: TICK, callback: v => v + '%' }, grid: { color: GRID } } }),
+            plugins: {
+                ...baseOpts().plugins,
+                datalabels: {
+                    display: true,
+                    color: '#fff',
+                    font: { size: 10, weight: 'bold' },
+                    anchor: 'end', align: 'end',
+                    formatter: v => v + '%'
+                },
+                legend: { display: false },
+                tooltip: {
+                    ...baseOpts().plugins.tooltip,
+                    callbacks: {
+                        label: ctx => {
+                            const d = CONV_PROGRAMA[ctx.dataIndex];
+                            return d ? [` Conversión: ${ctx.parsed.y}%`, ` Solicitudes: ${d.solicitudes}`, ` Convertidas: ${d.convertidas}`] : ` ${ctx.parsed.y}%`;
+                        }
+                    }
+                }
+            }
+        }
     });
 }
 
+// ── Estado general preinscripciones (donut) ──
+const totalPreinsc = ESTADOS_PREINSC.aprobadas + ESTADOS_PREINSC.pendientes + ESTADOS_PREINSC.contactadas + ESTADOS_PREINSC.rechazadas;
 mkChart('estadosChart', {
-    type:'doughnut',
-    data:{
-        labels:['Aprobadas','Pendientes','Contactadas','Rechazadas'],
-        datasets:[{data:[ESTADOS_PREINSC.aprobadas,ESTADOS_PREINSC.pendientes,ESTADOS_PREINSC.contactadas,ESTADOS_PREINSC.rechazadas], backgroundColor:[C.green,C.yellow,C.blue,C.orange], borderWidth:0}]
+    type: 'doughnut',
+    data: {
+        labels: [' Aprobadas / Matriculadas', ' Pendientes de revisión', ' Contactadas (en seguimiento)', ' Rechazadas'],
+        datasets: [{
+            data: [ESTADOS_PREINSC.aprobadas, ESTADOS_PREINSC.pendientes, ESTADOS_PREINSC.contactadas, ESTADOS_PREINSC.rechazadas],
+            backgroundColor: [C.green, C.yellow, C.blue, C.orange],
+            borderWidth: 2, borderColor: '#1e293b'
+        }]
     },
-    options:noScales()
+    options: pieOpts()
 });
 
+// ── Procedencia por municipio (pie) ──
 if (MUN_LABELS.length) {
     mkChart('municipioChart', {
-        type:'pie',
-        data:{
-            labels:MUN_LABELS,
-            datasets:[{data:MUN_VALUES, backgroundColor:[C.blue,C.green,C.orange,C.yellow,C.teal,C.purple], borderWidth:0}]
+        type: 'pie',
+        data: {
+            labels: MUN_LABELS,
+            datasets: [{
+                data: MUN_VALUES,
+                backgroundColor: [C.blue, C.green, C.orange, C.yellow, C.teal, C.purple],
+                borderWidth: 2, borderColor: '#1e293b'
+            }]
         },
-        options:noScales()
+        options: pieOpts()
     });
 }
 
-// Académico
+// ── ACADÉMICO: Promedios por curso ──
 if (CURSOS_NOMBRES.length) {
     mkChart('promediosChart', {
-        type:'bar',
-        data:{
-            labels:CURSOS_NOMBRES,
-            datasets:[{label:'Promedio', data:CURSOS_PROMEDIOS, backgroundColor:[C.blue,C.green,C.orange,C.yellow,C.purple,C.teal,C.red], borderRadius:6}]
+        type: 'bar',
+        data: {
+            labels: CURSOS_NOMBRES,
+            datasets: [{
+                label: 'Promedio (escala 0–5)',
+                data: CURSOS_PROMEDIOS,
+                backgroundColor: CURSOS_PROMEDIOS.map(v => v >= 4.0 ? C.green : v >= 3.0 ? C.blue : C.orange),
+                borderRadius: 6
+            }]
         },
-        options:{...baseOpts(), scales:{y:{beginAtZero:true,max:5,ticks:{color:TICK},grid:{color:GRID}},x:{ticks:{color:TICK},grid:{color:GRID}}}}
+        options: {
+            ...baseOpts({ y: { beginAtZero: true, max: 5, ticks: { color: TICK }, grid: { color: GRID } } }),
+            plugins: {
+                ...baseOpts().plugins,
+                legend: { display: false },
+                datalabels: {
+                    display: true,
+                    color: '#fff',
+                    font: { size: 10, weight: 'bold' },
+                    anchor: 'end', align: 'end',
+                    formatter: v => v.toFixed(1)
+                },
+                tooltip: {
+                    ...baseOpts().plugins.tooltip,
+                    callbacks: {
+                        label: ctx => {
+                            const d = CURSOS_PROMEDIOS[ctx.dataIndex];
+                            const estado = d >= 4.0 ? 'Alto' : d >= 3.0 ? 'Medio' : 'Bajo';
+                            return [` Promedio: ${ctx.parsed.y}/5.0`, ` Rendimiento: ${estado}`];
+                        }
+                    }
+                }
+            }
+        }
     });
 }
 
+// ── Asistencia global (donut) ──
+const totalAsist = ASIST_GLOBAL.presentes + ASIST_GLOBAL.ausentes + ASIST_GLOBAL.justificados + ASIST_GLOBAL.tardanzas;
 mkChart('asistenciaGlobalChart', {
-    type:'doughnut',
-    data:{
-        labels:['Presente','Ausente','Justificado','Tardanza'],
-        datasets:[{data:[ASIST_GLOBAL.presentes,ASIST_GLOBAL.ausentes,ASIST_GLOBAL.justificados,ASIST_GLOBAL.tardanzas], backgroundColor:[C.green,C.red,C.blue,C.yellow], borderWidth:0}]
+    type: 'doughnut',
+    data: {
+        labels: [' Presente', ' Ausente', ' Justificado', ' Tardanza'],
+        datasets: [{
+            data: [ASIST_GLOBAL.presentes, ASIST_GLOBAL.ausentes, ASIST_GLOBAL.justificados, ASIST_GLOBAL.tardanzas],
+            backgroundColor: [C.green, C.red, C.blue, C.yellow],
+            borderWidth: 2, borderColor: '#1e293b'
+        }]
     },
-    options:noScales()
+    options: pieOpts()
 });
 
+// ── Asistencia por grupo (barras horizontales) ──
 if (GRUPOS_NOMBRES.length) {
     mkChart('asistenciaGruposChart', {
-        type:'bar',
-        data:{
-            labels:GRUPOS_NOMBRES,
-            datasets:[{label:'% Asistencia', data:GRUPOS_ASIST, backgroundColor:GRUPOS_ASIST.map(v=>v>=80?C.green:v>=60?C.blue:C.orange), borderRadius:5}]
+        type: 'bar',
+        data: {
+            labels: GRUPOS_NOMBRES,
+            datasets: [{
+                label: '% de asistencia (presencia en clases)',
+                data: GRUPOS_ASIST,
+                backgroundColor: GRUPOS_ASIST.map(v => v >= 80 ? C.green : v >= 60 ? C.blue : C.orange),
+                borderRadius: 4
+            }]
         },
-        options:{...baseOpts(), indexAxis:'y', scales:{x:{beginAtZero:true,max:100,ticks:{color:TICK,callback:v=>v+'%'},grid:{color:GRID}},y:{ticks:{color:TICK},grid:{color:GRID}}}}
+        options: {
+            ...baseOpts(),
+            indexAxis: 'y',
+            plugins: {
+                ...baseOpts().plugins,
+                legend: { display: false },
+                datalabels: {
+                    display: true,
+                    color: '#fff',
+                    font: { size: 10, weight: 'bold' },
+                    anchor: 'end', align: 'end',
+                    formatter: v => v + '%'
+                },
+                tooltip: {
+                    ...baseOpts().plugins.tooltip,
+                    callbacks: {
+                        label: ctx => {
+                            const d = ASIST_GRUPOS_TBL[ctx.dataIndex];
+                            if (!d) return ` ${ctx.parsed.x}%`;
+                            return [` Asistencia: ${ctx.parsed.x}%`, ` Presentes: ${d.presentes} / ${d.total} clases`, ` Profesor: ${d.profesor || '—'}`];
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { beginAtZero: true, max: 100, ticks: { color: TICK, callback: v => v + '%' }, grid: { color: GRID } },
+                y: { ticks: { color: TICK }, grid: { color: GRID } }
+            }
+        }
     });
 }
 
-// Cursos
+// ── CURSOS: Estudiantes por curso ──
 if (EPC_NOMBRES.length) {
     mkChart('estudCursoChart', {
-        type:'bar',
-        data:{labels:EPC_NOMBRES, datasets:[{label:'Estudiantes', data:EPC_VALORES, backgroundColor:C.blue, borderRadius:6}]},
-        options:baseOpts()
+        type: 'bar',
+        data: {
+            labels: EPC_NOMBRES,
+            datasets: [{
+                label: 'Estudiantes matriculados',
+                data: EPC_VALORES,
+                backgroundColor: C.blue,
+                borderRadius: 6
+            }]
+        },
+        options: {
+            ...baseOpts(),
+            plugins: {
+                ...baseOpts().plugins,
+                legend: { display: false },
+                datalabels: {
+                    display: true,
+                    color: '#fff',
+                    font: { size: 11, weight: 'bold' },
+                    anchor: 'end', align: 'end',
+                    formatter: v => v
+                },
+                tooltip: {
+                    ...baseOpts().plugins.tooltip,
+                    callbacks: {
+                        label: ctx => {
+                            const d = CURSOS_DETALLE[ctx.dataIndex];
+                            if (!d) return ` ${ctx.parsed.y} estudiantes`;
+                            return [` Estudiantes: ${ctx.parsed.y}`, ` Grupos: ${d.grupos}`, ` Precio/mes: ${fmtCOP(d.precio_mensual)}`];
+                        }
+                    }
+                }
+            }
+        }
     });
 }
-const eGL = Object.keys(ESTADO_GRUPOS).map(k=>k.charAt(0).toUpperCase()+k.slice(1));
+
+// ── Estado grupos (donut) ──
+const eGL = Object.keys(ESTADO_GRUPOS).map(k => k.charAt(0).toUpperCase() + k.slice(1));
 const eGV = Object.values(ESTADO_GRUPOS);
 mkChart('estadoGruposChart', {
-    type:'doughnut',
-    data:{labels:eGL.length?eGL:['Sin grupos'], datasets:[{data:eGV.length?eGV:[0], backgroundColor:[C.green,C.blue,C.orange,C.red], borderWidth:0}]},
-    options:noScales()
+    type: 'doughnut',
+    data: {
+        labels: eGL.length ? eGL : ['Sin grupos'],
+        datasets: [{ data: eGV.length ? eGV : [0], backgroundColor: [C.green, C.blue, C.orange, C.red], borderWidth: 2, borderColor: '#1e293b' }]
+    },
+    options: pieOpts()
 });
 
-// Actividad
+// ── ACTIVIDAD: Accesos ──
 mkChart('accesosChart', {
-    type:'line',
-    data:{labels:MESES, datasets:[{label:'Accesos', data:ACCESOS, borderColor:C.blue, backgroundColor:C.sBlue, fill:true, tension:0.4, borderWidth:2, pointRadius:4, pointBackgroundColor:C.blue}]},
-    options:baseOpts()
+    type: 'line',
+    data: {
+        labels: MESES,
+        datasets: [{
+            label: 'Inicios de sesión',
+            data: ACCESOS,
+            borderColor: C.blue, backgroundColor: C.sBlue,
+            fill: true, tension: 0.4, borderWidth: 2, pointRadius: 5, pointBackgroundColor: C.blue
+        }]
+    },
+    options: {
+        ...baseOpts(),
+        plugins: {
+            ...baseOpts().plugins,
+            datalabels: {
+                display: ctx => ctx.dataset.data[ctx.dataIndex] > 0,
+                color: '#fff', backgroundColor: C.blue,
+                borderRadius: 4, padding: 3,
+                font: { size: 9, weight: 'bold' },
+                formatter: v => v
+            }
+        }
+    }
 });
 
-const rL = Object.keys(ROLES).map(r=>r.charAt(0).toUpperCase()+r.slice(1));
+// ── Roles (donut) ──
+const rL = Object.keys(ROLES).map(r => ({ admin: ' Administrador', profesor: ' Profesor', estudiante: ' Estudiante' }[r] || r.charAt(0).toUpperCase() + r.slice(1)));
 const rV = Object.values(ROLES);
 mkChart('rolesChart', {
-    type:'doughnut',
-    data:{labels:rL.length?rL:['Sin usuarios'], datasets:[{data:rV.length?rV:[0], backgroundColor:[C.orange,C.blue,C.green], borderWidth:0}]},
-    options:noScales()
+    type: 'doughnut',
+    data: {
+        labels: rL.length ? rL : ['Sin usuarios'],
+        datasets: [{ data: rV.length ? rV : [0], backgroundColor: [C.orange, C.blue, C.green], borderWidth: 2, borderColor: '#1e293b' }]
+    },
+    options: pieOpts()
 });
 
+// ── Nuevos estudiantes ──
 mkChart('nuevosChart', {
-    type:'line',
-    data:{labels:MESES, datasets:[{label:'Nuevos estudiantes', data:NUEVOS, borderColor:C.green, backgroundColor:C.sGreen, fill:true, tension:0.4, borderWidth:2, pointRadius:4, pointBackgroundColor:C.green}]},
-    options:baseOpts()
+    type: 'line',
+    data: {
+        labels: MESES,
+        datasets: [{
+            label: 'Nuevos estudiantes registrados',
+            data: NUEVOS,
+            borderColor: C.green, backgroundColor: C.sGreen,
+            fill: true, tension: 0.4, borderWidth: 2, pointRadius: 5, pointBackgroundColor: C.green
+        }]
+    },
+    options: {
+        ...baseOpts(),
+        plugins: {
+            ...baseOpts().plugins,
+            datalabels: {
+                display: ctx => ctx.dataset.data[ctx.dataIndex] > 0,
+                color: '#fff', backgroundColor: C.green,
+                borderRadius: 4, padding: 3,
+                font: { size: 9, weight: 'bold' },
+                formatter: v => v
+            }
+        }
+    }
 });
 
-//  TABS 
+// ══════════════════════════════════════════════
+//  TABS
+// ══════════════════════════════════════════════
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
         btn.classList.add('active');
         document.getElementById(btn.dataset.tab).classList.add('active');
     });
 });
 
 function switchTab(id) {
-    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     const btn = document.querySelector(`[data-tab="${id}"]`);
     if (btn) btn.classList.add('active');
     const tab = document.getElementById(id);
     if (tab) tab.classList.add('active');
 }
 
-function changeYear(y) { window.location.href='?year='+y; }
+function changeYear(y) { window.location.href = '?year=' + y; }
 
-//  PDF HELPERS 
+// ══════════════════════════════════════════════
+//  PDF HELPERS (MODO CLARO)
+// ══════════════════════════════════════════════
+
+// Paleta CLARO para PDF
+const PDF = {
+    bgPage:    [255, 255, 255],   // fondo blanco
+    bgHeader:  [20,  121, 176],   // azul header
+    bgCard:    [248, 250, 252],   // gris muy claro
+    bgRow:     [241, 245, 249],   // gris alternado
+    bgRowAlt:  [255, 255, 255],
+    border:    [203, 213, 225],   // borde gris
+    text:      [15,  23,  42],    // texto oscuro
+    textSub:   [71,  85,  105],   // texto secundario
+    textHead:  [255, 255, 255],   // texto en header azul
+    green:     [22,  163, 74],
+    red:       [220, 38,  38],
+    orange:    [234, 88,  12],
+    yellow:    [161, 98,  7],
+    blue:      [29,  78,  216],
+};
+
 function showOverlay(msg, sub) {
     document.getElementById('pdf-msg').textContent = msg || 'Generando reporte…';
     document.getElementById('pdf-sub').textContent = sub || 'Por favor espera';
@@ -1701,380 +1851,573 @@ function hideOverlay() { document.getElementById('pdf-overlay').classList.remove
 
 function pdfHeader(doc, titulo, color) {
     const W = doc.internal.pageSize.getWidth();
-    doc.setFillColor(...color); doc.rect(0,0,W,20,'F');
-    doc.setTextColor(255,255,255); doc.setFontSize(13); doc.setFont('helvetica','bold');
-    doc.text(NOMBRE_ESCUELA, 14, 13);
-    doc.setFontSize(9); doc.setFont('helvetica','normal');
-    doc.text(titulo, W-14, 13, {align:'right'});
+    doc.setFillColor(...color);
+    doc.rect(0, 0, W, 22, 'F');
+    // Logo / nombre escuela
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+    doc.text(NOMBRE_ESCUELA, 14, 14);
+    // Título reporte
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+    doc.text(titulo, W - 14, 14, { align: 'right' });
+    // Fecha
+    doc.setFontSize(7.5);
+    doc.text('Generado: ' + new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' }), W - 14, 19.5, { align: 'right' });
+    // Separador
+    doc.setDrawColor(...PDF.border);
+    doc.setLineWidth(0.3);
+    doc.line(0, 22, W, 22);
 }
 
 function pdfFooter(doc) {
-    const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
+    const W = doc.internal.pageSize.getWidth();
+    const H = doc.internal.pageSize.getHeight();
     const n = doc.internal.getNumberOfPages();
-    for (let p=1;p<=n;p++) {
+    for (let p = 1; p <= n; p++) {
         doc.setPage(p);
-        doc.setDrawColor(51,65,85); doc.line(14,H-10,W-14,H-10);
-        doc.setFontSize(7); doc.setTextColor(100,116,139); doc.setFont('helvetica','normal');
-        doc.text(`Generado el ${new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'})} — ${NOMBRE_ESCUELA}`, 14, H-5);
-        doc.text(`Página ${p} de ${n}`, W-14, H-5, {align:'right'});
+        doc.setFillColor(...PDF.bgCard);
+        doc.rect(0, H - 12, W, 12, 'F');
+        doc.setDrawColor(...PDF.border);
+        doc.setLineWidth(0.3);
+        doc.line(0, H - 12, W, H - 12);
+        doc.setFontSize(7); doc.setTextColor(...PDF.textSub); doc.setFont('helvetica', 'normal');
+        doc.text(`${NOMBRE_ESCUELA} — Reporte ${YEAR}`, 14, H - 4);
+        doc.text(`Página ${p} de ${n}`, W - 14, H - 4, { align: 'right' });
     }
 }
 
-function kpiBox(doc, x, y, w, h, label, value, color) {
-    doc.setFillColor(21,24,27); doc.roundedRect(x,y,w,h,3,3,'F');
-    doc.setFillColor(...color); doc.roundedRect(x,y,3,h,1,1,'F');
-    doc.setTextColor(148,163,184); doc.setFontSize(7); doc.setFont('helvetica','normal');
-    doc.text(label, x+7, y+8);
-    doc.setTextColor(248,250,252); doc.setFontSize(12); doc.setFont('helvetica','bold');
-    doc.text(String(value), x+7, y+18);
+// KPI box en modo claro
+function kpiBox(doc, x, y, w, h, label, value, accent) {
+    // Fondo
+    doc.setFillColor(...PDF.bgCard);
+    doc.roundedRect(x, y, w, h, 2, 2, 'F');
+    // Borde izquierdo de color
+    doc.setFillColor(...accent);
+    doc.roundedRect(x, y, 2.5, h, 1, 1, 'F');
+    // Borde exterior sutil
+    doc.setDrawColor(...PDF.border);
+    doc.setLineWidth(0.2);
+    doc.roundedRect(x, y, w, h, 2, 2, 'S');
+    // Label
+    doc.setTextColor(...PDF.textSub);
+    doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+    doc.text(label, x + 6, y + 7.5);
+    // Valor
+    doc.setTextColor(...PDF.text);
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+    doc.text(String(value), x + 6, y + 16);
 }
 
-function fmt(n) { return '$'+Number(n).toLocaleString('es-CO'); }
+// Tabla en modo claro
+function pdfTable(doc, head, body, startY, headerColor) {
+    doc.autoTable({
+        head: [head],
+        body: body,
+        startY: startY,
+        styles: {
+            fontSize: 8,
+            cellPadding: { top: 4, right: 8, bottom: 4, left: 8 },
+            textColor: PDF.text,
+            fillColor: PDF.bgRowAlt,
+            lineColor: PDF.border,
+            lineWidth: 0.2,
+            font: 'helvetica'
+        },
+        headStyles: {
+            fillColor: headerColor || PDF.bgHeader,
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            fontSize: 8.5
+        },
+        alternateRowStyles: { fillColor: PDF.bgRow },
+        margin: { left: 14, right: 14 },
+        tableLineColor: PDF.border,
+        tableLineWidth: 0.2
+    });
+}
 
-// ── REPORTES ESPECÍFICOS 
+function fmtCOPPdf(n) { return '$' + Number(n).toLocaleString('es-CO'); }
+
+// ══════════════════════════════════════════════
+//  REPORTES DESCARGABLES EN MODO CLARO
+// ══════════════════════════════════════════════
+
 async function descargarReporte(tipo) {
-    showOverlay('Preparando reporte de ' + tipo + '…', 'Esto puede tomar unos segundos');
-    await new Promise(r=>setTimeout(r,500));
+    showOverlay('Preparando reporte…', 'Generando PDF en modo claro');
+    await new Promise(r => setTimeout(r, 400));
     try {
         const { jsPDF } = window.jspdf;
-
-        if (tipo === 'financiero') await reporteFinanciero(jsPDF);
-        else if (tipo === 'academico') await reporteAcademico(jsPDF);
-        else if (tipo === 'inscripciones') await reporteInscripciones(jsPDF);
-        else if (tipo === 'cartera') await reporteCartera(jsPDF);
-        else if (tipo === 'asistencia') await reporteAsistencia(jsPDF);
-        else if (tipo === 'cursos') await reporteCursos(jsPDF);
-    } catch(e) {
+        if      (tipo === 'financiero')   await reporteFinanciero(jsPDF);
+        else if (tipo === 'academico')    await reporteAcademico(jsPDF);
+        else if (tipo === 'inscripciones')await reporteInscripciones(jsPDF);
+        else if (tipo === 'cartera')      await reporteCartera(jsPDF);
+        else if (tipo === 'asistencia')   await reporteAsistencia(jsPDF);
+        else if (tipo === 'cursos')       await reporteCursos(jsPDF);
+    } catch (e) {
         console.error(e);
-        alert('Error generando el reporte. Ver consola para detalles.');
+        alert('Error generando el reporte. Ver consola.');
     } finally {
         hideOverlay();
     }
 }
 
-//  REPORTE FINANCIERO
+// ── REPORTE FINANCIERO (CLARO) ──
 async function reporteFinanciero(jsPDF) {
-    const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-    const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
-    pdfHeader(doc, `Reporte Financiero — ${YEAR}`, [20,121,176]);
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const W = doc.internal.pageSize.getWidth();
 
-    // Portada KPIs
-    const tasa = FINANCIERO.facturado > 0 ? Math.round(FINANCIERO.confirmados*100/FINANCIERO.facturado) : 0;
-    doc.setFillColor(4,12,19); doc.rect(0,20,W,H-20,'F');
+    // Fondo blanco
+    doc.setFillColor(...PDF.bgPage);
+    doc.rect(0, 0, W, 297, 'F');
+    pdfHeader(doc, `Reporte Financiero — ${YEAR}`, PDF.bgHeader);
 
+    const tasa = FINANCIERO.facturado > 0 ? Math.round(FINANCIERO.confirmados * 100 / FINANCIERO.facturado) : 0;
+
+    // KPIs
     const kpis = [
-        {l:'Ingresos Confirmados', v:fmt(FINANCIERO.confirmados), c:[78,195,54]},
-        {l:'Cartera Vencida',      v:fmt(FINANCIERO.vencidos),    c:[186,38,38]},
-        {l:'Pendientes',           v:fmt(FINANCIERO.pendientes),  c:[233,233,62]},
-        {l:'Total Facturado',      v:fmt(FINANCIERO.facturado),   c:[20,121,176]},
-        {l:'Tasa de cobro',        v:tasa+'%',                    c:[139,92,246]},
-        {l:'Pagos recibidos',      v:FINANCIERO.pagos_ok,         c:[20,184,166]},
+        { l: 'Ingresos Confirmados', v: fmtCOPPdf(FINANCIERO.confirmados), c: PDF.green },
+        { l: 'Cartera Vencida',      v: fmtCOPPdf(FINANCIERO.vencidos),    c: PDF.red },
+        { l: 'Pendientes por vencer',v: fmtCOPPdf(FINANCIERO.pendientes),  c: [161, 98, 7] },
+        { l: 'Total facturado',      v: fmtCOPPdf(FINANCIERO.facturado),   c: PDF.blue },
+        { l: 'Tasa de cobro',        v: tasa + '%',                         c: [109, 40, 217] },
+        { l: 'Pagos recibidos',      v: FINANCIERO.pagos_ok + ' pagos',    c: [13, 148, 136] },
     ];
-    const bw = (W-28-10)/3, bh = 28;
-    kpis.forEach((k,i) => {
-        const col=i%3, row=Math.floor(i/3);
-        kpiBox(doc, 14+col*(bw+5), 26+row*(bh+6), bw, bh, k.l, k.v, k.c);
+    const bw = (W - 28 - 10) / 3, bh = 26;
+    kpis.forEach((k, i) => {
+        const col = i % 3, row = Math.floor(i / 3);
+        kpiBox(doc, 14 + col * (bw + 5), 28 + row * (bh + 5), bw, bh, k.l, k.v, k.c);
     });
 
-    // Gráfico canvas ingresos
-    const imgFinanciero = await captureChart('ingresosChart');
-    if (imgFinanciero) {
-        doc.addImage(imgFinanciero,'PNG',14,98,W-28,65);
+    // Gráfico ingresos por mes
+    const imgFin = await captureChart('ingresosChart');
+    if (imgFin) {
+        // Título sección
+        doc.setTextColor(...PDF.text);
+        doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+        doc.text('Ingresos por mes', 14, 98);
+        // Leyenda
+        doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
+        const leyFin = [
+            { color: PDF.green,  label: 'Confirmados' },
+            { color: PDF.red,    label: 'Vencidos' },
+            { color: [161,98,7], label: 'Pendientes' }
+        ];
+        leyFin.forEach((l, i) => {
+            doc.setFillColor(...l.color);
+            doc.roundedRect(14 + i * 45, 101, 4, 4, 1, 1, 'F');
+            doc.setTextColor(...PDF.textSub);
+            doc.text(l.label, 20 + i * 45, 104.5);
+        });
+        doc.addImage(imgFin, 'PNG', 14, 107, W - 28, 60);
     }
 
-    // Sección ingresos por curso
+    // Ingresos por curso
     if (ING_CURSO_LABELS.length) {
         doc.addPage();
-        doc.setFillColor(4,12,19); doc.rect(0,0,W,H,'F');
-        pdfHeader(doc, `Ingresos por Curso — ${YEAR}`, [20,121,176]);
-        doc.autoTable({
-            head:[['Curso','Pagado','Vencido','Total cobros','Cobros OK']],
-            body: <?= json_encode(array_map(fn($r)=>[$r['curso'],'$'.number_format((float)$r['pagado'],0,',','.'),'$'.number_format((float)$r['vencido'],0,',','.'),$r['total_cobros'],$r['cobros_ok']], $ingresos_curso)) ?>,
-            startY:28, styles:{fontSize:8,cellPadding:4,textColor:[248,250,252],fillColor:[21,24,27],lineColor:[51,65,85],lineWidth:0.3},
-            headStyles:{fillColor:[20,121,176],textColor:255,fontStyle:'bold'},
-            alternateRowStyles:{fillColor:[24,29,35]},
-            margin:{left:14,right:14}
-        });
+        doc.setFillColor(...PDF.bgPage); doc.rect(0, 0, W, 297, 'F');
+        pdfHeader(doc, `Ingresos por Curso — ${YEAR}`, PDF.bgHeader);
+
+        doc.setTextColor(...PDF.text);
+        doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+        doc.text('Detalle de ingresos y cartera vencida por programa', 14, 30);
+
+        pdfTable(doc,
+            ['Curso', 'Pagado (COP)', 'Vencido (COP)', 'Total cobros', 'Cobros OK'],
+            <?= json_encode(array_map(fn($r) => [
+                $r['curso'],
+                '$'.number_format((float)$r['pagado'],0,',','.'),
+                '$'.number_format((float)$r['vencido'],0,',','.'),
+                $r['total_cobros'],
+                $r['cobros_ok']
+            ], $ingresos_curso)) ?>,
+            36, PDF.bgHeader
+        );
     }
 
     // Deudores
     if (DEUDORES.length) {
         doc.addPage();
-        doc.setFillColor(4,12,19); doc.rect(0,0,W,H,'F');
-        pdfHeader(doc, `Estudiantes con Deuda — ${YEAR}`, [186,38,38]);
-        doc.setFillColor(186,38,38); doc.setFillColor(186,38,38,0.1);
-        doc.autoTable({
-            head:[['Estudiante','Email','Pagos vencidos','Deuda total','Vencimiento antiguo']],
-            body: DEUDORES.map(d=>[d.estudiante, d.email, d.pagos_vencidos+' pago(s)', fmt(d.deuda_total), d.vencimiento_mas_antiguo||'—']),
-            startY:28, styles:{fontSize:8,cellPadding:4,textColor:[248,250,252],fillColor:[21,24,27],lineColor:[51,65,85],lineWidth:0.3},
-            headStyles:{fillColor:[186,38,38],textColor:255,fontStyle:'bold'},
-            alternateRowStyles:{fillColor:[24,29,35]},
-            margin:{left:14,right:14}
-        });
+        doc.setFillColor(...PDF.bgPage); doc.rect(0, 0, W, 297, 'F');
+        pdfHeader(doc, 'Estudiantes con Cartera Vencida', [180, 30, 30]);
+
+        const totalDeuda = DEUDORES.reduce((s, d) => s + Number(d.deuda_total), 0);
+        kpiBox(doc, 14, 28, (W - 28) / 2 - 4, 26, 'Total deuda acumulada', fmtCOPPdf(totalDeuda), PDF.red);
+        kpiBox(doc, 14 + (W - 28) / 2 + 4, 28, (W - 28) / 2 - 4, 26, 'Estudiantes en mora', DEUDORES.length + ' estudiante(s)', PDF.orange);
+
+        pdfTable(doc,
+            ['#', 'Estudiante', 'Email', 'Pagos vencidos', 'Deuda total', 'Vencimiento antiguo'],
+            DEUDORES.map((d, i) => [i + 1, d.estudiante, d.email, d.pagos_vencidos + ' pago(s)', fmtCOPPdf(d.deuda_total), d.vencimiento_mas_antiguo || '—']),
+            60, [180, 30, 30]
+        );
     }
 
     pdfFooter(doc);
     doc.save(`Reporte_Financiero_Amimbre_${YEAR}.pdf`);
 }
 
-//  REPORTE ACADÉMICO 
+// ── REPORTE ACADÉMICO (CLARO) ──
 async function reporteAcademico(jsPDF) {
-    const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-    const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
-    pdfHeader(doc, `Rendimiento Académico`, [20,121,176]);
-    doc.setFillColor(4,12,19); doc.rect(0,20,W,H-20,'F');
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const W = doc.internal.pageSize.getWidth();
+    doc.setFillColor(...PDF.bgPage); doc.rect(0, 0, W, 297, 'F');
+    pdfHeader(doc, 'Rendimiento Académico', PDF.bgHeader);
 
     // Gráfico promedios
-    const imgPromedios = await captureChart('promediosChart');
-    if (imgPromedios) { doc.addImage(imgPromedios,'PNG',14,26,W-28,60); }
-
-    // Gráfico asistencia global
-    const imgAsistGlobal = await captureChart('asistenciaGlobalChart');
-    if (imgAsistGlobal) { doc.addImage(imgAsistGlobal,'PNG',14,93,80,60); }
-
-    // Tabla promedios por curso
-    if (CURSOS_NOMBRES.length) {
-        doc.addPage();
-        doc.setFillColor(4,12,19); doc.rect(0,0,W,H,'F');
-        pdfHeader(doc, 'Promedios por Curso', [20,121,176]);
-        const rows = <?= json_encode(array_map(fn($r)=>[$r['curso'],round((float)$r['promedio'],2).'/5.0',$r['total_evaluaciones'],round((float)$r['minimo'],2),round((float)$r['maximo'],2)], $promedios_cursos)) ?>;
-        doc.autoTable({
-            head:[['Curso','Promedio','Evaluaciones','Mínimo','Máximo']],
-            body: rows,
-            startY:28, styles:{fontSize:8,cellPadding:4,textColor:[248,250,252],fillColor:[21,24,27],lineColor:[51,65,85],lineWidth:0.3},
-            headStyles:{fillColor:[20,121,176],textColor:255,fontStyle:'bold'},
-            alternateRowStyles:{fillColor:[24,29,35]},
-            margin:{left:14,right:14}
+    const imgProm = await captureChart('promediosChart');
+    if (imgProm) {
+        doc.setTextColor(...PDF.text);
+        doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+        doc.text('Promedio por curso (escala 0–5)', 14, 30);
+        const leyProm = [
+            { color: PDF.green,  label: '≥ 4.0 Alto' },
+            { color: PDF.blue,   label: '3.0–3.9 Medio' },
+            { color: PDF.orange, label: '< 3.0 Bajo' }
+        ];
+        doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
+        leyProm.forEach((l, i) => {
+            doc.setFillColor(...l.color);
+            doc.roundedRect(14 + i * 45, 33, 4, 4, 1, 1, 'F');
+            doc.setTextColor(...PDF.textSub);
+            doc.text(l.label, 20 + i * 45, 36.5);
         });
+        doc.addImage(imgProm, 'PNG', 14, 40, W - 28, 55);
     }
 
-    // Tabla rendimiento estudiantes
+    // Gráfico asistencia global
+    const imgAsist = await captureChart('asistenciaGlobalChart');
+    if (imgAsist) {
+        doc.setTextColor(...PDF.text);
+        doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+        doc.text('Asistencia global — distribución de estados', 14, 102);
+        const leyAsist = [
+            { color: PDF.green,  label: 'Presente' },
+            { color: PDF.red,    label: 'Ausente' },
+            { color: PDF.blue,   label: 'Justificado' },
+            { color: [161,98,7], label: 'Tardanza' }
+        ];
+        doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
+        leyAsist.forEach((l, i) => {
+            doc.setFillColor(...l.color);
+            doc.roundedRect(14 + i * 42, 105, 4, 4, 1, 1, 'F');
+            doc.setTextColor(...PDF.textSub);
+            doc.text(l.label, 20 + i * 42, 108.5);
+        });
+        doc.addImage(imgAsist, 'PNG', (W - 75) / 2, 112, 75, 55);
+    }
+
+    // Tabla promedios
+    if (CURSOS_NOMBRES.length) {
+        doc.addPage();
+        doc.setFillColor(...PDF.bgPage); doc.rect(0, 0, W, 297, 'F');
+        pdfHeader(doc, 'Promedios por Curso', PDF.bgHeader);
+        doc.setTextColor(...PDF.text);
+        doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+        doc.text('Estadísticas de calificaciones por programa', 14, 30);
+        pdfTable(doc,
+            ['Curso', 'Promedio', 'Evaluaciones', 'Mínimo', 'Máximo', 'Estado'],
+            <?= json_encode(array_map(fn($r) => [
+                $r['curso'],
+                round((float)$r['promedio'],2).'/5.0',
+                $r['total_evaluaciones'],
+                round((float)$r['minimo'],2),
+                round((float)$r['maximo'],2),
+                (float)$r['promedio'] >= 4.0 ? 'Alto' : ((float)$r['promedio'] >= 3.0 ? 'Medio' : 'Bajo')
+            ], $promedios_cursos)) ?>,
+            36, PDF.bgHeader
+        );
+    }
+
+    // Rendimiento individual
     if (REND_ESTUDIANTES.length) {
         doc.addPage();
-        doc.setFillColor(4,12,19); doc.rect(0,0,W,H,'F');
-        pdfHeader(doc, 'Rendimiento Individual', [78,195,54]);
-        doc.autoTable({
-            head:[['Estudiante','Curso','Promedio','Evaluaciones','% Asistencia','Estado']],
-            body: REND_ESTUDIANTES.map(r=>{
-                const p=Number(r.promedio).toFixed(2);
-                const aP=r.total_clases>0?Math.round(r.presencias*100/r.total_clases):0;
-                return [r.estudiante, r.curso, p+'/5.0', r.evaluaciones, aP+'%', Number(p)>=3?'Aprobando':'En riesgo'];
+        doc.setFillColor(...PDF.bgPage); doc.rect(0, 0, W, 297, 'F');
+        pdfHeader(doc, 'Rendimiento Individual de Estudiantes', [22, 163, 74]);
+        doc.setTextColor(...PDF.text);
+        doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+        doc.text('Promedio, evaluaciones y asistencia por estudiante', 14, 30);
+        pdfTable(doc,
+            ['Estudiante', 'Curso', 'Promedio', 'Evaluaciones', '% Asistencia', 'Estado'],
+            REND_ESTUDIANTES.map(r => {
+                const p = Number(r.promedio).toFixed(2);
+                const aP = r.total_clases > 0 ? Math.round(r.presencias * 100 / r.total_clases) : 0;
+                return [r.estudiante, r.curso, p + '/5.0', r.evaluaciones, aP + '%', Number(p) >= 3 ? 'Aprobando' : 'En riesgo'];
             }),
-            startY:28, styles:{fontSize:8,cellPadding:4,textColor:[248,250,252],fillColor:[21,24,27],lineColor:[51,65,85],lineWidth:0.3},
-            headStyles:{fillColor:[78,195,54],textColor:[4,12,19],fontStyle:'bold'},
-            alternateRowStyles:{fillColor:[24,29,35]},
-            margin:{left:14,right:14}
-        });
+            36, [22, 163, 74]
+        );
     }
 
     pdfFooter(doc);
     doc.save(`Reporte_Academico_Amimbre.pdf`);
 }
 
-//  REPORTE INSCRIPCIONES 
+// ── REPORTE INSCRIPCIONES (CLARO) ──
 async function reporteInscripciones(jsPDF) {
-    const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-    const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
-    pdfHeader(doc, `Inscripciones y Matrículas — ${YEAR}`, [255,109,0]);
-    doc.setFillColor(4,12,19); doc.rect(0,20,W,H-20,'F');
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const W = doc.internal.pageSize.getWidth();
+    doc.setFillColor(...PDF.bgPage); doc.rect(0, 0, W, 297, 'F');
+    pdfHeader(doc, `Inscripciones y Matrículas — ${YEAR}`, [200, 80, 0]);
 
-    const estados = [
-        {l:'Aprobadas',      v:ESTADOS_PREINSC.aprobadas,  c:[78,195,54]},
-        {l:'Pendientes',     v:ESTADOS_PREINSC.pendientes,  c:[233,233,62]},
-        {l:'Contactadas',    v:ESTADOS_PREINSC.contactadas, c:[20,121,176]},
-        {l:'Rechazadas',     v:ESTADOS_PREINSC.rechazadas,  c:[186,38,38]},
-    ];
-    const bw=(W-28-9)/4, bh=24;
-    estados.forEach((k,i)=>kpiBox(doc,14+i*(bw+3),26,bw,bh,k.l,k.v,k.c));
+    const bw = (W - 28 - 9) / 4, bh = 24;
+    [
+        { l: 'Aprobadas / Matriculadas', v: ESTADOS_PREINSC.aprobadas,   c: PDF.green },
+        { l: 'Pendientes de revisión',   v: ESTADOS_PREINSC.pendientes,  c: [161, 98, 7] },
+        { l: 'Contactadas',              v: ESTADOS_PREINSC.contactadas, c: PDF.blue },
+        { l: 'Rechazadas',               v: ESTADOS_PREINSC.rechazadas,  c: PDF.red },
+    ].forEach((k, i) => kpiBox(doc, 14 + i * (bw + 3), 28, bw, bh, k.l, k.v, k.c));
 
+    // Gráfico inscripciones por mes
     const imgInscr = await captureChart('inscripcionesChart');
-    if(imgInscr){doc.addImage(imgInscr,'PNG',14,56,W-28,65);}
+    if (imgInscr) {
+        doc.setTextColor(...PDF.text);
+        doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+        doc.text('Inscripciones por mes', 14, 59);
+        const ley = [
+            { color: PDF.blue,   label: 'Preinscripciones recibidas' },
+            { color: PDF.green,  label: 'Matrículas aprobadas' },
+            { color: PDF.orange, label: 'Rechazadas' }
+        ];
+        doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
+        ley.forEach((l, i) => {
+            doc.setFillColor(...l.color);
+            doc.roundedRect(14 + i * 58, 62, 4, 4, 1, 1, 'F');
+            doc.setTextColor(...PDF.textSub);
+            doc.text(l.label, 20 + i * 58, 65.5);
+        });
+        doc.addImage(imgInscr, 'PNG', 14, 70, W - 28, 60);
+    }
 
+    // Conversión por programa
     if (CONV_PROGRAMA.length) {
         doc.addPage();
-        doc.setFillColor(4,12,19); doc.rect(0,0,W,H,'F');
-        pdfHeader(doc,'Conversión por Programa',[255,109,0]);
-        doc.autoTable({
-            head:[['Programa','Solicitudes','Convertidas','Tasa de conversión']],
-            body: CONV_PROGRAMA.map(r=>[r.programa,r.solicitudes,r.convertidas,r.tasa+'%']),
-            startY:28, styles:{fontSize:8,cellPadding:4,textColor:[248,250,252],fillColor:[21,24,27],lineColor:[51,65,85],lineWidth:0.3},
-            headStyles:{fillColor:[255,109,0],textColor:255,fontStyle:'bold'},
-            alternateRowStyles:{fillColor:[24,29,35]},
-            margin:{left:14,right:14}
+        doc.setFillColor(...PDF.bgPage); doc.rect(0, 0, W, 297, 'F');
+        pdfHeader(doc, 'Tasas de Conversión por Programa', [200, 80, 0]);
+        doc.setTextColor(...PDF.text);
+        doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+        doc.text('Porcentaje de preinscripciones convertidas a matrículas', 14, 30);
+
+        // Barra de referencia de colores
+        doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
+        [
+            { color: PDF.green,  label: '≥ 70% conversión alta' },
+            { color: PDF.blue,   label: '40–69% conversión media' },
+            { color: PDF.orange, label: '< 40% requiere atención' }
+        ].forEach((l, i) => {
+            doc.setFillColor(...l.color);
+            doc.roundedRect(14 + i * 58, 33, 4, 4, 1, 1, 'F');
+            doc.setTextColor(...PDF.textSub);
+            doc.text(l.label, 20 + i * 58, 36.5);
         });
+
+        pdfTable(doc,
+            ['Programa', 'Solicitudes recibidas', 'Convertidas a matrícula', 'Tasa de conversión'],
+            CONV_PROGRAMA.map(r => [r.programa, r.solicitudes, r.convertidas, r.tasa + '%']),
+            42, [200, 80, 0]
+        );
     }
 
     pdfFooter(doc);
     doc.save(`Reporte_Inscripciones_Amimbre_${YEAR}.pdf`);
 }
 
-//  REPORTE CARTERA VENCIDA 
+// ── REPORTE CARTERA VENCIDA (CLARO) ──
 async function reporteCartera(jsPDF) {
-    const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-    const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
-    pdfHeader(doc,'Reporte de Cartera Vencida',[186,38,38]);
-    doc.setFillColor(4,12,19); doc.rect(0,20,W,H-20,'F');
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const W = doc.internal.pageSize.getWidth();
+    doc.setFillColor(...PDF.bgPage); doc.rect(0, 0, W, 297, 'F');
+    pdfHeader(doc, 'Reporte de Cartera Vencida', [180, 30, 30]);
 
-    doc.setTextColor(148,163,184); doc.setFontSize(9); doc.setFont('helvetica','normal');
-    doc.text(`Generado el ${new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'})}`, 14, 30);
-
-    const totalDeuda = DEUDORES.reduce((s,d)=>s+Number(d.deuda_total),0);
-    kpiBox(doc,14,36,(W-28)/2-3,24,'Total cartera vencida',fmt(totalDeuda),[186,38,38]);
-    kpiBox(doc,14+(W-28)/2+3,36,(W-28)/2-3,24,'Estudiantes en mora',DEUDORES.length+' estudiante(s)',[255,109,0]);
+    const totalDeuda = DEUDORES.reduce((s, d) => s + Number(d.deuda_total), 0);
+    kpiBox(doc, 14, 28, (W - 28) / 2 - 4, 26, 'Total cartera vencida', fmtCOPPdf(totalDeuda), PDF.red);
+    kpiBox(doc, 14 + (W - 28) / 2 + 4, 28, (W - 28) / 2 - 4, 26, 'Estudiantes en mora', DEUDORES.length + ' estudiante(s)', PDF.orange);
 
     if (DEUDORES.length) {
-        doc.autoTable({
-            head:[['#','Estudiante','Email','Pagos vencidos','Deuda total','Vencimiento más antiguo']],
-            body: DEUDORES.map((d,i)=>[i+1,d.estudiante,d.email,d.pagos_vencidos+' pago(s)',fmt(d.deuda_total),d.vencimiento_mas_antiguo||'—']),
-            startY:68, styles:{fontSize:8,cellPadding:4,textColor:[248,250,252],fillColor:[21,24,27],lineColor:[51,65,85],lineWidth:0.3},
-            headStyles:{fillColor:[186,38,38],textColor:255,fontStyle:'bold'},
-            alternateRowStyles:{fillColor:[24,29,35]},
-            margin:{left:14,right:14}
-        });
+        doc.setTextColor(...PDF.text);
+        doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+        doc.text('Listado de estudiantes con deuda — ordenado por monto mayor', 14, 61);
+        pdfTable(doc,
+            ['#', 'Nombre estudiante', 'Correo electrónico', 'Pagos vencidos', 'Deuda total (COP)', 'Vcto. más antiguo'],
+            DEUDORES.map((d, i) => [i + 1, d.estudiante, d.email, d.pagos_vencidos + ' pago(s)', fmtCOPPdf(d.deuda_total), d.vencimiento_mas_antiguo || '—']),
+            67, [180, 30, 30]
+        );
     } else {
-        doc.setTextColor(78,195,54); doc.setFontSize(12); doc.setFont('helvetica','bold');
-        doc.text('¡No hay cartera vencida registrada!', W/2, 90, {align:'center'});
+        doc.setFillColor(220, 252, 231);
+        doc.roundedRect(14, 62, W - 28, 20, 3, 3, 'F');
+        doc.setTextColor(...PDF.green);
+        doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+        doc.text('¡No hay cartera vencida registrada actualmente!', W / 2, 75, { align: 'center' });
     }
 
     pdfFooter(doc);
     doc.save(`Cartera_Vencida_Amimbre.pdf`);
 }
 
-//  REPORTE ASISTENCIA 
+// ── REPORTE ASISTENCIA (CLARO) ──
 async function reporteAsistencia(jsPDF) {
-    const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-    const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
-    pdfHeader(doc,'Control de Asistencia',[20,184,166]);
-    doc.setFillColor(4,12,19); doc.rect(0,20,W,H-20,'F');
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const W = doc.internal.pageSize.getWidth();
+    doc.setFillColor(...PDF.bgPage); doc.rect(0, 0, W, 297, 'F');
+    pdfHeader(doc, 'Control de Asistencia', [13, 148, 136]);
 
     const asistData = <?= json_encode($asistencia_global) ?>;
     const total = asistData.total || 1;
-    const kpis=[
-        {l:'Presentes',   v:asistData.presentes+' ('+Math.round(asistData.presentes*100/total)+'%)', c:[78,195,54]},
-        {l:'Ausentes',    v:asistData.ausentes+' ('+Math.round(asistData.ausentes*100/total)+'%)',   c:[186,38,38]},
-        {l:'Justificados',v:asistData.justificados,                                                   c:[20,121,176]},
-        {l:'Tardanzas',   v:asistData.tardanzas,                                                      c:[233,233,62]},
-    ];
-    const bw=(W-28-9)/4, bh=24;
-    kpis.forEach((k,i)=>kpiBox(doc,14+i*(bw+3),26,bw,bh,k.l,k.v,k.c));
+    const bw = (W - 28 - 9) / 4, bh = 24;
+    [
+        { l: 'Presentes',    v: asistData.presentes + ' (' + Math.round(asistData.presentes * 100 / total) + '%)',    c: PDF.green },
+        { l: 'Ausentes',     v: asistData.ausentes + ' (' + Math.round(asistData.ausentes * 100 / total) + '%)',      c: PDF.red },
+        { l: 'Justificados', v: asistData.justificados + ' (' + Math.round(asistData.justificados * 100 / total) + '%)', c: PDF.blue },
+        { l: 'Tardanzas',    v: asistData.tardanzas + ' (' + Math.round(asistData.tardanzas * 100 / total) + '%)',    c: [161, 98, 7] },
+    ].forEach((k, i) => kpiBox(doc, 14 + i * (bw + 3), 28, bw, bh, k.l, k.v, k.c));
 
-    const imgAsistGrupos = await captureChart('asistenciaGruposChart');
-    if(imgAsistGrupos){doc.addImage(imgAsistGrupos,'PNG',14,56,W-28,70);}
-
-    if(ASIST_GRUPOS_TBL.length){
-        doc.addPage();
-        doc.setFillColor(4,12,19); doc.rect(0,0,W,H,'F');
-        pdfHeader(doc,'Asistencia por Grupo',[20,184,166]);
-        doc.autoTable({
-            head:[['Grupo','Curso','Profesor','Presentes','Total clases','% Asistencia']],
-            body: ASIST_GRUPOS_TBL.map(r=>[r.grupo,r.curso,r.profesor||'—',r.presentes,r.total,r.porcentaje+'%']),
-            startY:28, styles:{fontSize:8,cellPadding:4,textColor:[248,250,252],fillColor:[21,24,27],lineColor:[51,65,85],lineWidth:0.3},
-            headStyles:{fillColor:[20,184,166],textColor:[4,12,19],fontStyle:'bold'},
-            alternateRowStyles:{fillColor:[24,29,35]},
-            margin:{left:14,right:14}
+    const imgGrupos = await captureChart('asistenciaGruposChart');
+    if (imgGrupos) {
+        doc.setTextColor(...PDF.text);
+        doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+        doc.text('Porcentaje de asistencia por grupo', 14, 61);
+        const ley = [
+            { color: PDF.green,  label: '≥ 80% Óptimo' },
+            { color: PDF.blue,   label: '60–79% Aceptable' },
+            { color: PDF.orange, label: '< 60% Preocupante' }
+        ];
+        doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
+        ley.forEach((l, i) => {
+            doc.setFillColor(...l.color);
+            doc.roundedRect(14 + i * 48, 64, 4, 4, 1, 1, 'F');
+            doc.setTextColor(...PDF.textSub);
+            doc.text(l.label, 20 + i * 48, 67.5);
         });
+        doc.addImage(imgGrupos, 'PNG', 14, 72, W - 28, 65);
+    }
+
+    if (ASIST_GRUPOS_TBL.length) {
+        doc.addPage();
+        doc.setFillColor(...PDF.bgPage); doc.rect(0, 0, W, 297, 'F');
+        pdfHeader(doc, 'Asistencia Detallada por Grupo', [13, 148, 136]);
+        doc.setTextColor(...PDF.text);
+        doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+        doc.text('Registro de asistencia por grupo activo', 14, 30);
+        pdfTable(doc,
+            ['Grupo', 'Curso', 'Profesor', 'Presentes', 'Total clases', '% Asistencia'],
+            ASIST_GRUPOS_TBL.map(r => [r.grupo, r.curso, r.profesor || '—', r.presentes, r.total, r.porcentaje + '%']),
+            36, [13, 148, 136]
+        );
     }
 
     pdfFooter(doc);
     doc.save(`Control_Asistencia_Amimbre.pdf`);
 }
 
-//  REPORTE CURSOS 
+// ── REPORTE CURSOS (CLARO) ──
 async function reporteCursos(jsPDF) {
-    const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-    const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
-    pdfHeader(doc,'Cursos y Ocupación de Grupos',[233,233,62]);
-    doc.setFillColor(4,12,19); doc.rect(0,20,W,H-20,'F');
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const W = doc.internal.pageSize.getWidth();
+    doc.setFillColor(...PDF.bgPage); doc.rect(0, 0, W, 297, 'F');
+    pdfHeader(doc, 'Cursos y Ocupación de Grupos', [120, 100, 0]);
 
-    const imgEstudCurso = await captureChart('estudCursoChart');
-    if(imgEstudCurso){doc.addImage(imgEstudCurso,'PNG',14,26,W-28,65);}
-
-    if(CURSOS_DETALLE.length){
-        doc.addPage();
-        doc.setFillColor(4,12,19); doc.rect(0,0,W,H,'F');
-        pdfHeader(doc,'Detalle de Cursos',[233,233,62]);
-        doc.autoTable({
-            head:[['Curso','Nivel','Estado','Grupos','Estudiantes','Precio/mes','Ingreso proyectado']],
-            body: CURSOS_DETALLE.map(r=>[r.curso,r.nivel,r.estado_curso,r.grupos,r.estudiantes,fmt(r.precio_mensual),fmt(r.precio_mensual*r.estudiantes)]),
-            startY:28, styles:{fontSize:7.5,cellPadding:4,textColor:[248,250,252],fillColor:[21,24,27],lineColor:[51,65,85],lineWidth:0.3},
-            headStyles:{fillColor:[160,160,0],textColor:[4,12,19],fontStyle:'bold'},
-            alternateRowStyles:{fillColor:[24,29,35]},
-            margin:{left:14,right:14}
-        });
+    const imgEstud = await captureChart('estudCursoChart');
+    if (imgEstud) {
+        doc.setTextColor(...PDF.text);
+        doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+        doc.text('Estudiantes matriculados por programa', 14, 30);
+        doc.addImage(imgEstud, 'PNG', 14, 35, W - 28, 60);
     }
 
-    if(OCUPACION_GRUPOS.length){
+    if (CURSOS_DETALLE.length) {
         doc.addPage();
-        doc.setFillColor(4,12,19); doc.rect(0,0,W,H,'F');
-        pdfHeader(doc,'Ocupación de Grupos Activos',[233,233,62]);
-        doc.autoTable({
-            head:[['Grupo','Curso','Profesor','Cupo actual','Cupo máximo','Bitácoras','Ocupación']],
-            body: OCUPACION_GRUPOS.map(r=>[r.nombre,r.curso,r.profesor||'—',r.cupo_actual,r.cupo_maximo,r.total_bitacoras,r.ocupacion_pct+'%']),
-            startY:28, styles:{fontSize:8,cellPadding:4,textColor:[248,250,252],fillColor:[21,24,27],lineColor:[51,65,85],lineWidth:0.3},
-            headStyles:{fillColor:[160,160,0],textColor:[4,12,19],fontStyle:'bold'},
-            alternateRowStyles:{fillColor:[24,29,35]},
-            margin:{left:14,right:14}
-        });
+        doc.setFillColor(...PDF.bgPage); doc.rect(0, 0, W, 297, 'F');
+        pdfHeader(doc, 'Detalle de Cursos', [120, 100, 0]);
+        doc.setTextColor(...PDF.text);
+        doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+        doc.text('Información completa de cada programa activo', 14, 30);
+        pdfTable(doc,
+            ['Curso', 'Nivel', 'Estado', 'Grupos', 'Estudiantes', 'Precio/mes', 'Ingreso proyectado'],
+            CURSOS_DETALLE.map(r => [r.curso, r.nivel, r.estado_curso, r.grupos, r.estudiantes, fmtCOPPdf(r.precio_mensual), fmtCOPPdf(r.precio_mensual * r.estudiantes)]),
+            36, [120, 100, 0]
+        );
+    }
+
+    if (OCUPACION_GRUPOS.length) {
+        doc.addPage();
+        doc.setFillColor(...PDF.bgPage); doc.rect(0, 0, W, 297, 'F');
+        pdfHeader(doc, 'Ocupación de Grupos Activos', [120, 100, 0]);
+        doc.setTextColor(...PDF.text);
+        doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+        doc.text('Capacidad y ocupación actual de cada grupo', 14, 30);
+        pdfTable(doc,
+            ['Grupo', 'Curso', 'Profesor', 'Cupo actual', 'Cupo máx.', 'Bitácoras', '% Ocupación'],
+            OCUPACION_GRUPOS.map(r => [r.nombre, r.curso, r.profesor || '—', r.cupo_actual, r.cupo_maximo, r.total_bitacoras, r.ocupacion_pct + '%']),
+            36, [120, 100, 0]
+        );
     }
 
     pdfFooter(doc);
     doc.save(`Reporte_Cursos_Amimbre.pdf`);
 }
 
-//  PDF GENERAL 
+// ══════════════════════════════════════════════
+//  PDF GENERAL (modo claro, captura por secciones)
+// ══════════════════════════════════════════════
 async function exportarPDFGeneral() {
-    showOverlay('Generando PDF general…','Capturando todas las secciones');
-    await new Promise(r=>setTimeout(r,200));
+    showOverlay('Generando PDF general…', 'Capturando todas las secciones en modo claro');
+    await new Promise(r => setTimeout(r, 200));
     try {
-        const {jsPDF} = window.jspdf;
-        const doc = new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
-        const W=doc.internal.pageSize.getWidth(), H=doc.internal.pageSize.getHeight();
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+        const W = doc.internal.pageSize.getWidth();
+        const H = doc.internal.pageSize.getHeight();
 
-        // Portada
-        doc.setFillColor(4,12,19); doc.rect(0,0,W,H,'F');
-        pdfHeader(doc,`Reporte General — ${YEAR}`,[20,121,176]);
-        const kpisG=[
-            {l:'Estudiantes activos',    v:<?= $total_estudiantes ?>,                                         c:[20,121,176]},
-            {l:'Ingresos confirmados',   v:fmt(<?= (float)($financiero_anio['ingresos_confirmados']??0) ?>),  c:[78,195,54]},
-            {l:'Cartera vencida',        v:fmt(<?= (float)($financiero_anio['ingresos_vencidos']??0) ?>),     c:[186,38,38]},
-            {l:'Matrículas activas',     v:<?= $matriculas_activas ?>,                                        c:[255,109,0]},
-            {l:'Grupos activos',         v:<?= $grupos_activos ?>,                                            c:[139,92,246]},
-            {l:'Preinscripciones pend.', v:<?= $preinscripciones_pendientes ?>,                               c:[233,233,62]},
+        // Portada en modo claro
+        doc.setFillColor(...PDF.bgPage);
+        doc.rect(0, 0, W, H, 'F');
+        pdfHeader(doc, `Reporte General — ${YEAR}`, PDF.bgHeader);
+
+        const kpisG = [
+            { l: 'Estudiantes activos',    v: <?= $total_estudiantes ?>,                                                       c: PDF.blue },
+            { l: 'Ingresos confirmados',   v: fmtCOPPdf(<?= (float)($financiero_anio['ingresos_confirmados']??0) ?>),          c: PDF.green },
+            { l: 'Cartera vencida',        v: fmtCOPPdf(<?= (float)($financiero_anio['ingresos_vencidos']??0) ?>),             c: PDF.red },
+            { l: 'Matrículas activas',     v: <?= $matriculas_activas ?>,                                                      c: PDF.orange },
+            { l: 'Grupos activos',         v: <?= $grupos_activos ?>,                                                          c: [109, 40, 217] },
+            { l: 'Preinscripciones pend.', v: <?= $preinscripciones_pendientes ?>,                                             c: [161, 98, 7] },
         ];
-        const bw=(W-28-10)/3, bh=28;
-        kpisG.forEach((k,i)=>kpiBox(doc,14+(i%3)*(bw+5),26+Math.floor(i/3)*(bh+6),bw,bh,k.l,k.v,k.c));
+        const bw = (W - 28 - 10) / 3, bh = 26;
+        kpisG.forEach((k, i) => kpiBox(doc, 14 + (i % 3) * (bw + 5), 28 + Math.floor(i / 3) * (bh + 5), bw, bh, k.l, k.v, k.c));
 
-        // Tabs a capturar
-        const tabs=[
-            {id:'tab-inscripciones',titulo:'Inscripciones',  color:[255,109,0]},
-            {id:'tab-financiero',   titulo:'Financiero',     color:[20,121,176]},
-            {id:'tab-academico',    titulo:'Académico',      color:[78,195,54]},
-            {id:'tab-cursos',       titulo:'Cursos',         color:[233,233,62]},
-            {id:'tab-actividad',    titulo:'Actividad',      color:[139,92,246]},
+        // Secciones
+        const tabs = [
+            { id: 'tab-inscripciones', titulo: 'Inscripciones y Matrículas',  color: [200, 80, 0] },
+            { id: 'tab-financiero',    titulo: 'Análisis Financiero',          color: PDF.bgHeader },
+            { id: 'tab-academico',     titulo: 'Rendimiento Académico',        color: [22, 163, 74] },
+            { id: 'tab-cursos',        titulo: 'Cursos y Grupos',              color: [120, 100, 0] },
+            { id: 'tab-actividad',     titulo: 'Actividad del Sistema',        color: [109, 40, 217] },
         ];
 
         for (const t of tabs) {
-            document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             document.getElementById(t.id).classList.add('active');
-            await new Promise(r=>setTimeout(r,350));
+            await new Promise(r => setTimeout(r, 400));
             const el = document.getElementById(t.id);
-            const canvas = await html2canvas(el,{scale:1.2,useCORS:true,backgroundColor:'#15181b',logging:false});
-            const img = canvas.toDataURL('image/jpeg',0.82);
+            const canvas = await html2canvas(el, { scale: 1.2, useCORS: true, backgroundColor: '#ffffff', logging: false });
+            const img = canvas.toDataURL('image/jpeg', 0.85);
             doc.addPage();
-            doc.setFillColor(4,12,19); doc.rect(0,0,W,H,'F');
-            doc.setFillColor(...t.color); doc.rect(0,0,W,14,'F');
-            doc.setTextColor(255,255,255); doc.setFontSize(11); doc.setFont('helvetica','bold');
-            doc.text(t.titulo, 14, 9);
-            doc.addImage(img,'JPEG',14,17,W-28,H-22);
+            doc.setFillColor(...PDF.bgPage);
+            doc.rect(0, 0, W, H, 'F');
+            // Header de sección
+            doc.setFillColor(...t.color);
+            doc.rect(0, 0, W, 14, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+            doc.text(t.titulo, 14, 9.5);
+            doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+            doc.text(NOMBRE_ESCUELA + ' — ' + YEAR, W - 14, 9.5, { align: 'right' });
+            doc.addImage(img, 'JPEG', 14, 17, W - 28, H - 22);
         }
 
-        // Restaurar tab activo
-        document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+        // Restaurar primer tab
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
         document.querySelector('.tab-btn').click();
 
         pdfFooter(doc);
         doc.save(`Reporte_General_Amimbre_${YEAR}.pdf`);
-    } catch(e) {
+    } catch (e) {
         console.error(e);
         alert('Error al generar el PDF general.');
     } finally {
