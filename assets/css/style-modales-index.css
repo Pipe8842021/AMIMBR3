@@ -1,0 +1,410 @@
+/* =============================================
+   MODALES DE DISCIPLINAS + LIGHTBOX GALERÍA
+   Agregar junto a style-index.css
+   ============================================= */
+ 
+/* ---- OVERLAY BASE ---- */
+.modal-overlay,
+.lightbox-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    backdrop-filter: blur(6px);
+}
+ 
+.modal-overlay.active,
+.lightbox-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+ 
+/* =============================================
+   MODAL DISCIPLINAS
+   ============================================= */
+ 
+.discipline-modal {
+    background: var(--dark-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    width: 100%;
+    max-width: 680px;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(24px) scale(0.97);
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+}
+ 
+.modal-overlay.active .discipline-modal {
+    transform: translateY(0) scale(1);
+}
+ 
+/* Imagen de cabecera */
+.discipline-modal-image {
+    width: 100%;
+    height: 220px;
+    object-fit: cover;
+    display: block;
+    flex-shrink: 0;
+}
+ 
+/* Barra de color dinámica encima de la imagen */
+.discipline-modal-accent {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    border-radius: 20px 20px 0 0;
+}
+ 
+/* Botón cerrar */
+.modal-close-btn {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff;
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease, transform 0.2s ease;
+    z-index: 10;
+    line-height: 1;
+}
+ 
+.modal-close-btn:hover {
+    background: rgba(0, 0, 0, 0.8);
+    transform: scale(1.08);
+}
+ 
+/* Contenido scrolleable */
+.discipline-modal-body {
+    padding: 1.75rem 2rem 2rem;
+    overflow-y: auto;
+    flex: 1;
+}
+ 
+.discipline-modal-icon {
+    font-size: 2.2rem;
+    margin-bottom: 0.75rem;
+    line-height: 1;
+}
+ 
+.discipline-modal-icon .material-symbols-outlined,
+.discipline-modal-icon i {
+    font-size: 2.2rem;
+}
+ 
+.discipline-modal-body h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 0.4rem;
+    line-height: 1.2;
+}
+ 
+.discipline-modal-subtitle {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+ 
+.discipline-modal-description {
+    color: var(--text-secondary);
+    line-height: 1.75;
+    margin-bottom: 1.75rem;
+    font-size: 0.97rem;
+}
+ 
+/* Ficha de info */
+.discipline-modal-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+    margin-bottom: 1.75rem;
+}
+ 
+.discipline-info-item {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1rem 1.1rem;
+}
+ 
+.discipline-info-item span {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.3rem;
+    font-weight: 500;
+}
+ 
+.discipline-info-item p {
+    font-size: 0.92rem;
+    font-weight: 600;
+    margin: 0;
+}
+ 
+/* Tags de habilidades */
+.discipline-modal-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+ 
+.discipline-tag {
+    padding: 0.3rem 0.85rem;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+}
+ 
+/* CTA */
+.discipline-modal-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.85rem 1.75rem;
+    background: var(--gradient-primary-orange);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    width: 100%;
+    justify-content: center;
+}
+ 
+.discipline-modal-cta:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+ 
+/* Cursor pointer en las tarjetas de disciplinas */
+.capability-box {
+    cursor: pointer;
+}
+ 
+.capability-box:hover {
+    border-color: var(--primary-yellow);
+}
+ 
+ 
+/* =============================================
+   LIGHTBOX GALERÍA
+   ============================================= */
+ 
+.lightbox-container {
+    position: relative;
+    width: 100%;
+    max-width: 900px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+ 
+.lightbox-img-wrapper {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+ 
+.lightbox-img {
+    max-width: 100%;
+    max-height: 75vh;
+    object-fit: contain;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    display: block;
+    transition: opacity 0.25s ease;
+}
+ 
+.lightbox-img.fading {
+    opacity: 0;
+}
+ 
+/* Botones navegar */
+.lightbox-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff;
+    font-size: 1.3rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease, transform 0.2s ease;
+    z-index: 5;
+    line-height: 1;
+}
+ 
+.lightbox-btn:hover {
+    background: rgba(0, 0, 0, 0.85);
+    transform: translateY(-50%) scale(1.08);
+}
+ 
+.lightbox-btn-prev { left: -22px; }
+.lightbox-btn-next { right: -22px; }
+ 
+/* Botón cerrar lightbox */
+.lightbox-close {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.65);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease, transform 0.2s ease;
+    z-index: 10;
+    line-height: 1;
+}
+ 
+.lightbox-close:hover {
+    background: rgba(0, 0, 0, 0.9);
+    transform: scale(1.08);
+}
+ 
+/* Contador */
+.lightbox-counter {
+    color: rgba(255,255,255,0.7);
+    font-size: 0.85rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+}
+ 
+/* Miniaturas */
+.lightbox-thumbnails {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding: 0.25rem 0.5rem;
+    max-width: 100%;
+    scrollbar-width: none;
+}
+ 
+.lightbox-thumbnails::-webkit-scrollbar { display: none; }
+ 
+.lightbox-thumb {
+    width: 52px;
+    height: 52px;
+    object-fit: cover;
+    border-radius: 7px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    flex-shrink: 0;
+    opacity: 0.55;
+    transition: opacity 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+ 
+.lightbox-thumb.active {
+    border-color: var(--primary-orange);
+    opacity: 1;
+    transform: scale(1.06);
+}
+ 
+.lightbox-thumb:hover:not(.active) {
+    opacity: 0.85;
+    transform: scale(1.04);
+}
+ 
+/* Cursor pointer en imágenes galería */
+.masonry-item {
+    cursor: pointer;
+}
+ 
+/* =============================================
+   RESPONSIVE
+   ============================================= */
+ 
+@media (max-width: 768px) {
+    .discipline-modal {
+        max-width: 100%;
+        border-radius: 16px;
+        max-height: 88vh;
+    }
+ 
+    .discipline-modal-image {
+        height: 180px;
+    }
+ 
+    .discipline-modal-body {
+        padding: 1.4rem 1.4rem 1.75rem;
+    }
+ 
+    .discipline-modal-info {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.65rem;
+    }
+ 
+    .lightbox-btn-prev { left: 4px; }
+    .lightbox-btn-next { right: 4px; }
+ 
+    .lightbox-thumbnails {
+        display: none;
+    }
+}
+ 
+@media (max-width: 480px) {
+    .discipline-modal-body h2 {
+        font-size: 1.35rem;
+    }
+ 
+    .discipline-modal-info {
+        grid-template-columns: 1fr;
+    }
+ 
+    .lightbox-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 1rem;
+    }
+}
+ 
+
