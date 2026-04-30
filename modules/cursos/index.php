@@ -385,8 +385,7 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
                             <div class="curso-actions">
                                 <!-- Ver detalles: todos los roles -->
                                 <a href="ver.php?id=<?php echo $curso['id']; ?>" class="btn-action btn-ver" title="Ver Detalles">
-                                    <span class="material-symbols-rounded">visibility</span>
-                                    Ver Detalles
+                                    <span class="material-symbols-rounded">visibility</span> Ver
                                 </a>
 
                                 <?php if ($es_admin): ?>

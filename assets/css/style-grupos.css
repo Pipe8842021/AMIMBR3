@@ -113,6 +113,7 @@ body { min-height: 100vh; background: var(--hover-bg); color: var(--text-primary
 .btn-action:hover        { background: var(--primary-green);  color: #fff; border-color: var(--primary-green); }
 .btn-action.edit:hover   { background: var(--primary-blue);   color: #fff; border-color: var(--primary-blue); }
 .btn-action.danger:hover { background: var(--primary-orange); color: #fff; border-color: var(--primary-orange); }
+.btn-action.back:hover   { background: transparent; color:var(--text-primary); }
 .btn-action.back         { background: transparent; }
 
 
