@@ -135,7 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="../../assets/css/colores.css">
-    <link rel="stylesheet" href="../../assets/css/style-cursos-form.css">
+    <link rel="stylesheet" href="../../assets/css/style-cursos.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
     <script>
         (function() {
@@ -144,159 +144,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 document.documentElement.setAttribute('data-theme', 'light');
             }
         })();
-    </script>
-    <style>
-        .cropper-modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.85);
-            backdrop-filter: blur(6px);
-            z-index: 2000;
-            align-items: center;
-            justify-content: center;
-        }
-        .cropper-modal-overlay.active { display: flex; }
-        .cropper-modal-box {
-            background: var(--dark-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            width: min(880px, 94vw);
-            max-height: 90vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            box-shadow: 0 25px 60px rgba(0,0,0,0.6);
-        }
-        .cropper-modal-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 18px 24px;
-            border-bottom: 1px solid var(--border-color);
-            flex-shrink: 0;
-        }
-        .cropper-modal-header h3 {
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin: 0;
-        }
-        .cropper-modal-header h3 span { color: var(--primary-blue); }
-        .cropper-close-btn {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            color: var(--text-secondary);
-            border-radius: 8px;
-            padding: 6px 10px;
-            cursor: pointer;
-            font-size: 1.2rem;
-            display: flex;
-            align-items: center;
-            transition: all 0.2s;
-        }
-        .cropper-close-btn:hover { background: #ef4444; color: white; border-color: #ef4444; }
-        .cropper-canvas-wrap {
-            flex: 1;
-            overflow: hidden;
-            background: #000;
-            min-height: 0;
-            height: 430px;
-        }
-        .cropper-canvas-wrap img { display: block; max-width: 100%; }
-        .cropper-modal-footer {
-            padding: 16px 24px;
-            border-top: 1px solid var(--border-color);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            flex-shrink: 0;
-            flex-wrap: wrap;
-        }
-        .cropper-hint {
-            color: var(--text-secondary);
-            font-size: 0.8rem;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .cropper-actions { display: flex; gap: 10px; }
-        .btn-crop-cancel {
-            padding: 10px 22px;
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            color: var(--text-primary);
-            font-size: 0.9rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .btn-crop-cancel:hover { background: var(--hover-bg); }
-        .btn-crop-confirm {
-            padding: 10px 22px;
-            background: var(--gradient-primary-blue);
-            border: none;
-            border-radius: 8px;
-            color: white;
-            font-size: 0.9rem;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            transition: all 0.2s;
-            box-shadow: var(--shadow-md);
-        }
-        .btn-crop-confirm:hover { transform: translateY(-1px); box-shadow: var(--shadow-lg); }
-        .image-preview-cropped {
-            margin-top: 15px;
-            border-radius: 10px;
-            overflow: hidden;
-            border: 1px solid var(--border-color);
-            aspect-ratio: 2 / 1;
-            background: var(--card-bg);
-            display: none;
-        }
-        .image-preview-cropped.visible { display: block; }
-        .image-preview-cropped img { width: 100%; height: 100%; object-fit: cover; display: block; }
-        .file-upload-label { transition: border-color 0.2s, background 0.2s; }
-        .file-upload-label.has-file { border-color: var(--primary-blue); color: var(--primary-blue); }
-        .current-image-wrap {
-            margin-bottom: 14px;
-        }
-        .current-image-wrap p {
-            color: var(--text-secondary);
-            font-size: 0.82rem;
-            margin-bottom: 8px;
-        }
-        .current-image-wrap img {
-            width: 100%;
-            aspect-ratio: 2 / 1;
-            object-fit: cover;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            display: block;
-        }
-    </style>
+    </script>W
 </head>
 <body>
     <?php require_once '../../includes/header.php'; ?>
 
     <main class="main-content">
         <div class="page-header">
-            <div class="header-nav">
+            <div class="header-content">
+                <div class="header-left">
+                    <div class="title-section">
+                        <h1>Editar Curso</h1>
+                        <p>Modifica la información del curso</p>
+                    </div>
+                </div>
+
                 <a href="index.php" class="btn-back">
                     <span class="material-symbols-rounded">arrow_back</span>
-                    Volver
+                    Volver a Cursos
                 </a>
             </div>
-            <h1>Editar Curso</h1>
-            <p>Modifica la información del curso</p>
         </div>
 
         <?php if (!empty($errores)): ?>
@@ -504,7 +371,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             <div class="cropper-modal-footer">
                 <span class="cropper-hint">
-                    <span class="material-symbols-rounded" style="font-size:1rem;color:var(--primary-blue)">info</span>
+                    <span class="material-symbols-rounded">info</span>
                     Ajusta el recuadro · Proporción fija 2:1
                 </span>
                 <div class="cropper-actions">

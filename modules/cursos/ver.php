@@ -9,9 +9,10 @@ require_once '../../config/database.php';
 require_once '../../includes/auth_check.php';
 require_any_role(['admin', 'profesor', 'estudiante']);
 
-$rol        = $_SESSION['rol'] ?? '';
-$user_id    = (int)($_SESSION['user_id'] ?? 0);
-$es_admin   = ($rol === 'admin');
+$rol           = $_SESSION['user_rol'] ?? '';
+$user_id       = (int)($_SESSION['user_id'] ?? 0);
+$es_admin      = ($rol === 'admin');
+$es_profesor   = ($rol === 'profesor');
 $es_estudiante = ($rol === 'estudiante');
 
 // Obtener ID del curso
@@ -61,7 +62,23 @@ try {
             ORDER BY g.nombre
         ");
         $stmt->execute([$user_id, $curso_id]);
+    } elseif ($rol === 'profesor') {
+        $stmt = $pdo->prepare("
+            SELECT 
+                g.*,
+                u.nombre as profesor_nombre,
+                COUNT(DISTINCT m.estudiante_id) as estudiantes_inscritos
+            FROM grupos g
+            LEFT JOIN usuarios u ON g.profesor_id = u.id
+            LEFT JOIN matriculas m ON g.id = m.grupo_id AND m.estado = 'activa'
+            WHERE g.curso_id = ?
+            AND g.profesor_id = ?
+            GROUP BY g.id
+            ORDER BY g.estado DESC, g.nombre
+        ");
+        $stmt->execute([$curso_id, $user_id]);
     } else {
+        // Admin: ve todos los grupos
         $stmt = $pdo->prepare("
             SELECT 
                 g.*,
@@ -136,7 +153,7 @@ function get_nivel_badge($nivel) {
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="../../assets/css/colores.css">
-    <link rel="stylesheet" href="../../assets/css/style-cursos-ver.css">
+    <link rel="stylesheet" href="../../assets/css/style-cursos.css">
     <script>
         (function () {
             const t = localStorage.getItem('amimbre-theme');
