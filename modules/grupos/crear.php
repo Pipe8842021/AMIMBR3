@@ -21,6 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $dia_semana   = $_POST['dia_semana']        ?? '';
     $hora_inicio  = $_POST['hora_inicio']       ?? '';
     $hora_fin     = $_POST['hora_fin']          ?? '';
+    $horario_texto = ucfirst($dia_semana) . ' ' . $hora_inicio . ' - ' . $hora_fin;
 
     if (!$nombre || !$curso_id || !$fecha_inicio || !$dia_semana || !$hora_inicio || !$hora_fin) {
         $error = "Completa los campos obligatorios, incluyendo el horario detallado.";
@@ -61,10 +62,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // 2. Insertar Grupo
             $stmt = $pdo->prepare("
-                INSERT INTO grupos (nombre, curso_id, profesor_id, cupo_maximo, aula, fecha_inicio, fecha_fin, estado)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO grupos (nombre, curso_id, profesor_id, cupo_maximo, aula, fecha_inicio, fecha_fin, estado, horario)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
-            $stmt->execute([$nombre, $curso_id, $profesor_id ?: null, $cupo_maximo, $aula_input ?: null, $fecha_inicio, $fecha_fin, $estado]);
+            $stmt->execute([$nombre, $curso_id, $profesor_id ?: null, $cupo_maximo, $aula_input ?: null, $fecha_inicio, $fecha_fin, $estado, $horario_texto]);
             $nuevo_id = $pdo->lastInsertId();
 
             // 3. Insertar Horario vinculado
