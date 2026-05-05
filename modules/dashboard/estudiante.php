@@ -248,7 +248,7 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi Dashboard – Amimbré</title>
+    <title>Mi menú – Amimbré</title>
     <link rel="shortcut icon" href="../../assets/img/3.png">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
@@ -270,7 +270,7 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
     <!-- ── Encabezado ────────────────────────────────────────────────────── -->
     <div class="dashboard-header">
         <div class="dashboard-title">
-            <h1>Mi Dashboard</h1>
+            <h1>Menú principal</h1>
             <p>Bienvenido, <strong><?php echo htmlspecialchars($user['nombre']); ?></strong></p>
         </div>
         <div class="dashboard-date">
@@ -427,11 +427,20 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
 
             <!-- Perfil del estudiante -->
             <div class="card profile-card">
-                <?php if (!empty($user['foto_perfil']) && file_exists("../../assets/uploads/" . $user['foto_perfil'])): ?>
-                    <img src="../../assets/uploads/<?php echo htmlspecialchars($user['foto_perfil']); ?>"
-                         alt="Foto de perfil" class="profile-avatar">
+                <?php
+                $foto_path = !empty($user['foto_perfil'])
+                    ? "../../assets/img/avatars/" . $user['foto_perfil']
+                    : '';
+                $foto_existe = $foto_path && file_exists($foto_path);
+                ?>
+                <?php if ($foto_existe): ?>
+                    <img src="<?= htmlspecialchars($foto_path) ?>"
+                        alt="Foto de perfil"
+                        class="profile-avatar"
+                        onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                    <div class="profile-avatar-placeholder" style="display:none;"><?= $iniciales ?></div>
                 <?php else: ?>
-                    <div class="profile-avatar-placeholder"><?php echo $iniciales; ?></div>
+                    <div class="profile-avatar-placeholder"><?= $iniciales ?></div>
                 <?php endif; ?>
 
                 <div class="profile-name"><?php echo htmlspecialchars($user['nombre']); ?></div>

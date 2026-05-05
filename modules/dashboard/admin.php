@@ -191,7 +191,7 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Administrador – Amimbré</title>
+    <title>Menú Administrador – Amimbré</title>
     <link rel="shortcut icon" href="../../assets/img/3.png">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
@@ -217,7 +217,7 @@ if (file_exists('../../includes/header.php')) {
     <!-- ── Encabezado ────────────────────────────────────────────────────── -->
     <div class="dashboard-header">
         <div class="dashboard-title">
-            <h1>Dashboard</h1>
+            <h1>Menú principal</h1>
             <p>Bienvenido, <strong><?php echo htmlspecialchars($user['nombre']); ?></strong></p>
         </div>
         <div class="dashboard-date">
@@ -375,7 +375,7 @@ if (file_exists('../../includes/header.php')) {
             </div>
             <div class="quick-actions-grid">
 
-                <a href="../inscripciones/prematriculas/index.php" class="quick-action">
+                <a href="../inscripciones/prematriculas/index.php?estado=pendiente" class="quick-action">
                     <div class="quick-action-icon enrollment">
                         <span class="material-symbols-rounded">person_add</span>
                     </div>

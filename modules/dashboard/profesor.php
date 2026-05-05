@@ -205,7 +205,7 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Profesor – Amimbré</title>
+    <title>Menú Profesor – Amimbré</title>
     <link rel="shortcut icon" href="../../assets/img/3.png">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
@@ -227,7 +227,7 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
     <!-- ── Encabezado ────────────────────────────────────────────────────── -->
     <div class="dashboard-header">
         <div class="dashboard-title">
-            <h1>Dashboard</h1>
+            <h1>Menú principal</h1>
             <p>Bienvenido, <strong><?php echo htmlspecialchars($user['nombre']); ?></strong></p>
         </div>
         <div class="dashboard-date">
@@ -350,14 +350,11 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
                         <span class="group-pct"><?php echo $g['cupo_actual']; ?>/<?php echo $g['cupo_maximo']; ?></span>
                     </div>
                     <div class="group-card-actions">
-                        <a href="../bitacoras/crear.php?grupo=<?php echo $g['id']; ?>" class="group-btn">
-                            <span class="material-symbols-rounded">edit_note</span> Bitácora
-                        </a>
                         <a href="../grupos/ver.php?id=<?php echo $g['id']; ?>" class="group-btn">
                             <span class="material-symbols-rounded">visibility</span> Ver grupo
                         </a>
-                        <a href="../bitacoras/crear.php?grupo=<?php echo $g['id']; ?>" class="group-btn">
-                            <span class="material-symbols-rounded">fact_check</span> Asistencia
+                        <a href="../grupos/asistencia.php?grupo=<?php echo $g['id']; ?>" class="group-btn">
+                            <span class="material-symbols-rounded">fact_check</span> Asistencia y Bitacora
                         </a>
                     </div>
                 </div>
@@ -371,16 +368,25 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
             <?php endif; ?>
         </div>
 
-        <!-- Columna derecha: Perfil + Acciones rápidas -->
+        <!-- Columna derecha: Perfil-->
         <div style="display: flex; flex-direction: column; gap: 20px;">
 
             <!-- Perfil del profesor -->
             <div class="card profile-card">
-                <?php if (!empty($user['foto_perfil']) && file_exists("../../assets/uploads/" . $user['foto_perfil'])): ?>
-                    <img src="../../assets/uploads/<?php echo htmlspecialchars($user['foto_perfil']); ?>"
-                         alt="Foto de perfil" class="profile-avatar">
+                <?php
+                $foto_path = !empty($user['foto_perfil'])
+                    ? "../../assets/img/avatars/" . $user['foto_perfil']
+                    : '';
+                $foto_existe = $foto_path && file_exists($foto_path);
+                ?>
+                <?php if ($foto_existe): ?>
+                    <img src="<?= htmlspecialchars($foto_path) ?>"
+                        alt="Foto de perfil"
+                        class="profile-avatar"
+                        onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                    <div class="profile-avatar-placeholder" style="display:none;"><?= $iniciales ?></div>
                 <?php else: ?>
-                    <div class="profile-avatar-placeholder"><?php echo $iniciales; ?></div>
+                    <div class="profile-avatar-placeholder"><?= $iniciales ?></div>
                 <?php endif; ?>
 
                 <div class="profile-name"><?php echo htmlspecialchars($user['nombre']); ?></div>
@@ -401,53 +407,6 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
                     </div>
                 </div>
             </div>
-
-            <!-- Acciones rápidas -->
-            <div class="card">
-                <div class="section-header">
-                    <div>
-                        <h3 class="section-title">Acciones Rápidas</h3>
-                        <p class="section-subtitle">Tareas frecuentes</p>
-                    </div>
-                </div>
-                <div class="quick-actions-grid">
-
-                    <a href="../documentos/institucionales/bitacoras/crear.php" class="quick-action">
-                        <div class="quick-action-icon schedule">
-                            <span class="material-symbols-rounded">edit_note</span>
-                        </div>
-                        <div class="quick-action-content">
-                            <div class="quick-action-title">Nueva Bitácora</div>
-                            <div class="quick-action-desc">Registrar clase</div>
-                        </div>
-                        <span class="material-symbols-rounded arrow">arrow_forward</span>
-                    </a>
-
-                    <a href="../grupos/index.php" class="quick-action">
-                        <div class="quick-action-icon attendance">
-                            <span class="material-symbols-rounded">fact_check</span>
-                        </div>
-                        <div class="quick-action-content">
-                            <div class="quick-action-title">Ver Asistencias</div>
-                            <div class="quick-action-desc">Desde bitácoras</div>
-                        </div>
-                        <span class="material-symbols-rounded arrow">arrow_forward</span>
-                    </a>
-
-                    <a href="../grupos/index.php" class="quick-action">
-                        <div class="quick-action-icon courses">
-                            <span class="material-symbols-rounded">groups</span>
-                        </div>
-                        <div class="quick-action-content">
-                            <div class="quick-action-title">Mis Grupos</div>
-                            <div class="quick-action-desc"><?php echo $grupos_activos; ?> activos</div>
-                        </div>
-                        <span class="material-symbols-rounded arrow">arrow_forward</span>
-                    </a>
-
-                </div>
-            </div>
-
         </div>
 
     </div><!-- /content-grid -->

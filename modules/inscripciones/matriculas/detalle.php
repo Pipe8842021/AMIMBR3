@@ -9,6 +9,11 @@ require_once '../../../config/database.php';
 require_once '../../../includes/auth_check.php';
 require_role('admin');
 
+function get_foto_url(?string $foto): string {
+    if (empty($foto)) return '';
+    return '../../../assets/img/avatars/' . htmlspecialchars($foto);
+}
+
 $estudiante_id = (int)($_GET['estudiante'] ?? 0);
 $tab_activa    = (int)($_GET['tab'] ?? 0);
 
@@ -178,7 +183,19 @@ function nivel_label($n)  { return ['basico'=>'Básico','intermedio'=>'Intermedi
 
     <!-- Perfil del estudiante (compacto) -->
     <div class="estudiante-perfil-card">
-        <div class="ep-avatar"><?= mb_strtoupper(mb_substr($estudiante['nombre'], 0, 1)) ?></div>
+        <div class="ep-avatar">
+            <?php $foto_url = get_foto_url($estudiante['foto_perfil'] ?? ''); ?>
+            <?php if ($foto_url): ?>
+                <img src="<?= $foto_url ?>"
+                    alt=""
+                    onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                <span style="display:none;">
+                    <?= mb_strtoupper(mb_substr($estudiante['nombre'], 0, 1)) ?>
+                </span>
+            <?php else: ?>
+                <?= mb_strtoupper(mb_substr($estudiante['nombre'], 0, 1)) ?>
+            <?php endif; ?> 
+        </div>
         <div class="ep-info">
             <div class="ep-nombre"><?= htmlspecialchars($estudiante['nombre']) ?></div>
             <div class="ep-meta">

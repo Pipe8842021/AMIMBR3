@@ -81,6 +81,10 @@ function texto_rol($r) {
 function badge_estado($e) {
     return ['activo' => 'badge-activo', 'inactivo' => 'badge-inactivo', 'suspendido' => 'badge-suspendido'][$e] ?? '';
 }
+function get_foto_url(?string $foto): string {
+    if (empty($foto)) return '';
+    return '../../assets/img/avatars/' . htmlspecialchars($foto);
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -209,10 +213,18 @@ function badge_estado($e) {
                         <td>
                             <div class="user-info">
                                 <div class="user-avatar avatar-<?= htmlspecialchars($u['rol']) ?>">
-                                    <?php if (!empty($u['foto_perfil'])): ?>
-                                        <img src="<?= htmlspecialchars($u['foto_perfil']) ?>" alt="">
+                                    <?php $foto_url = get_foto_url($u['foto_perfil']); ?>
+                                    <?php if ($foto_url): ?>
+                                        <img src="<?= $foto_url ?>"
+                                            alt=""
+                                            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                        <div class="avatar-initials" style="display:none;">
+                                            <?= strtoupper(mb_substr($u['nombre'], 0, 2)) ?>
+                                        </div>
                                     <?php else: ?>
-                                        <div class="avatar-initials"><?= strtoupper(mb_substr($u['nombre'], 0, 2)) ?></div>
+                                        <div class="avatar-initials">
+                                            <?= strtoupper(mb_substr($u['nombre'], 0, 2)) ?>
+                                        </div>
                                     <?php endif; ?>
                                 </div>
                                 <div class="user-details">
