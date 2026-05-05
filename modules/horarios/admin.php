@@ -33,13 +33,25 @@ $tipo_feedback    = "success";
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     /* ── Guardar nuevo horario ── */
-    if ($_POST['action'] === 'guardar_horario') {
-        $grupo_id = intval($_POST['grupo_id']);
-        $dia      = $_POST['dia_semana'];
-        $hora_ini = $_POST['hora_inicio'];
-        $hora_fin = $_POST['hora_fin'];
-        $aula     = trim($_POST['aula']);
-        $conflictos = [];
+if ($_POST['action'] === 'guardar_horario') {
+    $grupo_id = intval($_POST['grupo_id']);
+    $dia      = $_POST['dia_semana'];
+    $hora_ini = $_POST['hora_inicio'];
+    $hora_fin = $_POST['hora_fin'];
+    $aula     = trim($_POST['aula']);
+    $conflictos = [];
+
+    // ✅ NUEVO: anti-duplicado
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*) FROM horarios
+        WHERE grupo_id = ? AND dia_semana = ? AND hora_inicio = ? AND hora_fin = ?
+    ");
+    $stmt->execute([$grupo_id, $dia, $hora_ini, $hora_fin]);
+    if ($stmt->fetchColumn() > 0) {
+        $conflictos[] = "Este grupo ya tiene un horario registrado en ese día y franja horaria.";
+    }
+
+    // ... resto de validaciones de aula, profesor, estudiantes ...
 
         if (!empty($aula)) {
             $stmt = $pdo->prepare("
