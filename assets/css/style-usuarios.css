@@ -461,7 +461,7 @@ body {
     justify-content: center;
 }
 
-.user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.user-avatar img { width: 100%; height: 100%; object-fit: cover; display: block;}
 
 .avatar-initials {
     width: 100%;
@@ -471,12 +471,11 @@ body {
     justify-content: center;
     font-weight: 700;
     font-size: 0.85rem;
-    color: #f8fafc;
 }
 
-.avatar-admin    .avatar-initials { background: var(--gradient-primary-orange); }
-.avatar-profesor .avatar-initials { background: var(--gradient-primary-green); }
-.avatar-estudiante .avatar-initials { background: var(--gradient-primary-blue); }
+.avatar-admin    .avatar-initials { background: var(--subtle-orange); color: var(--primary-orange); }
+.avatar-profesor .avatar-initials { background: var(--subtle-green); color: var(--primary-green); }
+.avatar-estudiante .avatar-initials { background: var(--subtle-blue); color: var(--primary-blue); }
 
 .user-details { display: flex; flex-direction: column; gap: 2px; }
 .user-name { font-weight: 600; font-size: 0.9rem; }

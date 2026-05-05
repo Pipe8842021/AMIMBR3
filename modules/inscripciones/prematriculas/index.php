@@ -486,7 +486,15 @@ try {
                 ? date('d/m/Y', strtotime($p['fecha_preinscripcion'])) : '—';
         ?>
         <div class="inscripcion-card" id="card-<?= $p['id'] ?>">
-            <div class="card-avatar">
+            <?php
+            $avatar_color = match($estado_real) {
+                'matriculado' => 'avatar-matriculado',
+                'rechazado'   => 'avatar-rechazado',
+                'contactado'  => 'avatar-contactado',
+                default       => 'avatar-pendiente',
+            };
+            ?>
+            <div class="card-avatar <?= $avatar_color ?>">
                 <?= mb_strtoupper(mb_substr($p['nombres_apellidos'], 0, 1)) ?>
             </div>
             <div class="card-info">

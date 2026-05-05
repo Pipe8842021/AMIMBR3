@@ -228,10 +228,13 @@ body { min-height: 100vh; background: var(--hover-bg); color: var(--text-primary
 }
 .matricula-avatar {
     width: 46px; height: 46px; min-width: 46px; border-radius: 50%;
-    background: var(--subtle-blue); color: var(--primary-blue);
+    background: var(--subtle-blue); overflow: hidden;
     display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; font-weight: 700; color: var(--primary-blue); flex-shrink: 0;
 }
-.matricula-avatar .material-symbols-rounded { font-size: 24px; }
+.matricula-avatar img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+}
 
 .matricula-info { flex: 1; min-width: 0; }
 .matricula-top  { margin-bottom: 6px; }
@@ -285,7 +288,7 @@ body { min-height: 100vh; background: var(--hover-bg); color: var(--text-primary
 .pag-btn:hover { border-color: var(--primary-blue); color: var(--primary-blue); }
 .pag-btn.active { background: var(--gradient-primary-blue); color: #fff; border-color: transparent; }
 
-/* ── Modal confirmación ─────────────────────────────────────── */
+/* ── Modal base ─────────────────────────────────────────────── */
 .modal-overlay {
     position: fixed; inset: 0;
     background: rgba(0,0,0,0.65); backdrop-filter: blur(4px);
@@ -311,11 +314,51 @@ body { min-height: 100vh; background: var(--hover-bg); color: var(--text-primary
 }
 .modal-icon .material-symbols-rounded { font-size: 32px; }
 .modal-icon-danger { background: var(--subtle-orange); color: var(--primary-orange); }
+.modal-icon-blue   { background: var(--subtle-blue);   color: var(--primary-blue); }
 
 .modal-title { font-size: 1.2rem; font-weight: 700; color: var(--text-primary); margin-bottom: 10px; }
 .modal-desc  { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 24px; }
 .modal-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-.modal-footer { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
+.modal-footer  { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
+
+/* ════════════════════════════════════════════════════════════
+   MODAL NUEVA MATRÍCULA
+   ════════════════════════════════════════════════════════════ */
+.modal-nueva-matricula {
+    max-width: 680px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+    text-align: left;
+}
+.modal-nueva-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 24px; border-bottom: 1px solid var(--border-color);
+    background: var(--hover-bg); border-radius: 18px 18px 0 0;
+    flex-shrink: 0; gap: 12px;
+}
+.modal-nueva-body {
+    flex: 1; overflow-y: auto; padding: 24px;
+    display: flex; flex-direction: column; gap: 0;
+}
+.modal-nueva-body .form-nueva-matricula { gap: 14px; }
+.modal-nueva-footer {
+    display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+    padding: 16px 24px; border-top: 1px solid var(--border-color);
+    background: var(--hover-bg); border-radius: 0 0 18px 18px; flex-shrink: 0;
+}
+
+/* Botón cerrar modal */
+.modal-close-btn {
+    width: 32px; height: 32px; border-radius: 8px;
+    border: 1px solid var(--border-color); background: transparent;
+    color: var(--text-secondary); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s; flex-shrink: 0;
+}
+.modal-close-btn:hover { background: var(--hover-bg); color: var(--text-primary); }
+.modal-close-btn .material-symbols-rounded { font-size: 18px; }
 
 /* ════════════════════════════════════════════════════════════
    DETALLE DE MATRÍCULA
@@ -478,9 +521,8 @@ textarea.form-control { resize: vertical; min-height: 70px; }
 .empty-pagos .material-symbols-rounded { font-size: 2.5rem; opacity: 0.3; display: block; margin-bottom: 8px; }
 .empty-pagos p { font-size: 0.85rem; }
 
-/* ── Formulario nueva matrícula ─────────────────────────────── */
+/* ── Formulario nueva matrícula (página independiente) ──────── */
 .form-page-container { max-width: 780px; }
-
 .form-nueva-matricula { display: flex; flex-direction: column; gap: 18px; }
 
 .select-search-wrap { display: flex; flex-direction: column; gap: 6px; }
@@ -501,14 +543,6 @@ select[size] option:checked { background: var(--subtle-blue); color: var(--prima
     margin-bottom: 14px; padding: 0 2px;
 }
 
-/* ── Avatar con inicial en el listado ───────────────────────── */
-.matricula-avatar {
-    width: 46px; height: 46px; min-width: 46px; border-radius: 50%;
-    background: var(--gradient-primary-blue);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.1rem; font-weight: 700; color: #fff; flex-shrink: 0;
-}
-
 /* ── Perfil compacto del estudiante (detalle) ───────────────── */
 .estudiante-perfil-card {
     display: flex; align-items: center; gap: 16px;
@@ -518,10 +552,11 @@ select[size] option:checked { background: var(--subtle-blue); color: var(--prima
 }
 .ep-avatar {
     width: 52px; height: 52px; border-radius: 50%; flex-shrink: 0;
-    background: var(--gradient-primary-blue); color: #fff;
+    background: var(--subtle-blue); color: var(--primary-blue);
     display: flex; align-items: center; justify-content: center;
-    font-size: 1.3rem; font-weight: 700;
+    font-size: 1.3rem; font-weight: 700; overflow: hidden;
 }
+.ep-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .ep-nombre { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; }
 .ep-meta   { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.8rem; color: var(--text-secondary); }
 .ep-meta span { display: inline-flex; align-items: center; gap: 4px; }
@@ -547,50 +582,34 @@ select[size] option:checked { background: var(--subtle-blue); color: var(--prima
 .tab-btn:hover { background: var(--dark-bg); border-color: rgba(20,121,176,0.4); }
 .tab-btn--active {
     background: var(--dark-bg); border-color: var(--primary-blue);
-    border-bottom-color: var(--dark-bg);
-    z-index: 1;
+    border-bottom-color: var(--dark-bg); z-index: 1;
 }
 .tab-btn--active::after {
-    content: '';
-    position: absolute; bottom: -2px; left: 0; right: 0;
+    content: ''; position: absolute; bottom: -2px; left: 0; right: 0;
     height: 2px; background: var(--dark-bg);
 }
 
-.tab-btn-inner {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 14px; text-align: left;
-}
+.tab-btn-inner { display: flex; align-items: center; gap: 10px; padding: 10px 14px; text-align: left; }
 .tab-numero {
     font-size: 0.75rem; font-weight: 700; color: var(--text-secondary);
     background: var(--hover-bg); border-radius: 6px;
     padding: 2px 6px; flex-shrink: 0; border: 1px solid var(--border-color);
 }
-.tab-btn--active .tab-numero {
-    background: var(--subtle-blue); color: var(--primary-blue); border-color: rgba(20,121,176,0.3);
-}
-.tab-info     { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.tab-curso    { font-size: 0.82rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tab-badges   { display: flex; gap: 4px; flex-wrap: wrap; }
+.tab-btn--active .tab-numero { background: var(--subtle-blue); color: var(--primary-blue); border-color: rgba(20,121,176,0.3); }
+.tab-info  { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.tab-curso { font-size: 0.82rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tab-badges { display: flex; gap: 4px; flex-wrap: wrap; }
 
-/* Contenido de pestaña */
 .tab-panel { display: none; }
 .tab-panel--active { display: block; }
 
 /* ── Grupo actual asignado (detalle) ────────────────────────── */
 .grupo-actual {
-    background: var(--hover-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 16px;
-    margin-top: 10px;
+    background: var(--hover-bg); border: 1px solid var(--border-color);
+    border-radius: 12px; padding: 16px; margin-top: 10px;
     transition: border-color 0.2s ease;
 }
-.grupo-actual-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
-}
+.grupo-actual-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
 .grupo-actual-icono {
     width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
     background: var(--subtle-blue); color: var(--primary-blue);
@@ -598,12 +617,12 @@ select[size] option:checked { background: var(--subtle-blue); color: var(--prima
 }
 .grupo-actual-icono .material-symbols-rounded { font-size: 20px; }
 .grupo-actual-nombre { font-size: 1rem; font-weight: 700; color: var(--text-primary); }
-.grupo-actual-prof   {
+.grupo-actual-prof {
     display: inline-flex; align-items: center; gap: 4px;
     font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px;
 }
 .grupo-actual-prof .material-symbols-rounded { font-size: 14px; color: var(--primary-blue); }
-.grupo-actual-meta   { display: flex; gap: 8px; flex-wrap: wrap; }
+.grupo-actual-meta { display: flex; gap: 8px; flex-wrap: wrap; }
 .gam-chip {
     display: inline-flex; align-items: center; gap: 5px;
     padding: 5px 10px; border-radius: 7px;
@@ -616,42 +635,28 @@ select[size] option:checked { background: var(--subtle-blue); color: var(--prima
    MODAL DE ASIGNACIÓN DE GRUPO
    ════════════════════════════════════════════════════════════ */
 .modal-grupo {
-    max-width: 860px;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    max-height: 90vh;
+    max-width: 860px; padding: 0;
+    display: flex; flex-direction: column; max-height: 90vh;
 }
-
 .modal-grupo-header {
     display: flex; justify-content: space-between; align-items: flex-start;
     padding: 20px 24px; border-bottom: 1px solid var(--border-color);
-    background: var(--hover-bg);
-    border-radius: 18px 18px 0 0; flex-shrink: 0;
-    gap: 12px;
+    background: var(--hover-bg); border-radius: 18px 18px 0 0; flex-shrink: 0; gap: 12px;
 }
 .modal-grupo-titulo {
     display: flex; align-items: center; gap: 10px;
     font-size: 1.05rem; font-weight: 700; color: var(--text-primary);
 }
-.modal-grupo-titulo .material-symbols-rounded {
-    font-size: 22px; color: var(--primary-blue);
-}
-.modal-grupo-sub {
-    font-size: 0.82rem; color: var(--text-secondary); margin-top: 4px;
-}
+.modal-grupo-titulo .material-symbols-rounded { font-size: 22px; color: var(--primary-blue); }
+.modal-grupo-sub { font-size: 0.82rem; color: var(--text-secondary); margin-top: 4px; }
 .modal-close {
     width: 32px; height: 32px; border-radius: 8px;
     background: transparent; border: 1px solid var(--border-color);
     color: var(--text-secondary); cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; transition: all 0.2s;
 }
-.modal-close:hover {
-    background: var(--hover-bg); color: var(--text-primary);
-}
+.modal-close:hover { background: var(--hover-bg); color: var(--text-primary); }
 
-/* Filtros del modal */
 .mg-filtros {
     display: flex; gap: 10px; padding: 16px 24px;
     border-bottom: 1px solid var(--border-color);
@@ -677,23 +682,16 @@ select[size] option:checked { background: var(--subtle-blue); color: var(--prima
 }
 .mg-select:focus { border-color: var(--primary-blue); }
 
-/* Cuerpo con scroll */
-.mg-body {
-    flex: 1; overflow-y: auto; padding: 20px 24px;
-}
+.mg-body { flex: 1; overflow-y: auto; padding: 20px 24px; }
 
-/* Grid de tarjetas de grupo */
 .mg-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 14px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px;
 }
 
 .mg-card {
     background: var(--dark-bg); border: 2px solid var(--border-color);
     border-radius: 14px; padding: 16px; cursor: pointer;
-    transition: all 0.2s ease; display: flex; flex-direction: column; gap: 10px;
-    position: relative;
+    transition: all 0.2s ease; display: flex; flex-direction: column; gap: 10px; position: relative;
 }
 .mg-card:hover   { border-color: var(--primary-blue); transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.15); }
 .mg-card.selected { border-color: var(--primary-green); background: var(--subtle-green); box-shadow: 0 0 0 3px rgba(78,195,54,0.15); }
@@ -702,8 +700,7 @@ select[size] option:checked { background: var(--subtle-blue); color: var(--prima
 .mg-card-icono {
     width: 38px; height: 38px; border-radius: 9px; flex-shrink: 0;
     background: var(--subtle-blue); color: var(--primary-blue);
-    display: flex; align-items: center; justify-content: center;
-    transition: all 0.2s ease;
+    display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;
 }
 .mg-card-icono .material-symbols-rounded { font-size: 19px; }
 .mg-card.selected .mg-card-icono { background: var(--subtle-green); color: var(--primary-green); }
@@ -722,33 +719,27 @@ select[size] option:checked { background: var(--subtle-blue); color: var(--prima
 .mg-card.selected .mg-card-check { background: var(--primary-green); border-color: var(--primary-green); }
 .mg-card.selected .mg-card-check .material-symbols-rounded { color: #fff; }
 
-/* Nivel badge dentro de tarjeta */
 .mg-nivel { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 0.68rem; font-weight: 600; }
 .mg-nivel-basico     { background: var(--subtle-blue);   color: var(--primary-blue); }
 .mg-nivel-intermedio { background: var(--subtle-yellow); color: var(--primary-yellow); }
 .mg-nivel-avanzado   { background: var(--subtle-orange); color: var(--primary-orange); }
 
-/* Profesor en tarjeta */
 .mg-card-prof {
     display: inline-flex; align-items: center; gap: 5px;
     font-size: 0.78rem; color: var(--text-secondary); padding: 4px 0;
 }
 .mg-card-prof .material-symbols-rounded { font-size: 14px; color: var(--primary-blue); }
 
-/* Horarios en tarjeta */
 .mg-horarios { display: flex; flex-direction: column; gap: 4px; }
 .mg-horario-chip {
-    display: flex; align-items: center; gap: 8px;
-    padding: 5px 10px; border-radius: 7px;
-    background: var(--hover-bg); border: 1px solid var(--border-color);
-    font-size: 0.75rem;
+    display: flex; align-items: center; gap: 8px; padding: 5px 10px;
+    border-radius: 7px; background: var(--hover-bg); border: 1px solid var(--border-color); font-size: 0.75rem;
 }
 .mg-card.selected .mg-horario-chip { background: rgba(78,195,54,0.08); border-color: rgba(78,195,54,0.2); }
 .mg-dia  { font-weight: 700; color: var(--primary-blue); min-width: 28px; font-size: 0.7rem; text-transform: uppercase; }
 .mg-hora { color: var(--text-primary); font-weight: 500; flex: 1; }
 .mg-aula { color: var(--text-secondary); font-size: 0.7rem; }
 
-/* Cupos en tarjeta */
 .mg-cupos      { display: flex; flex-direction: column; gap: 5px; }
 .mg-cupos-texto {
     display: flex; align-items: center; gap: 5px;
@@ -763,7 +754,6 @@ select[size] option:checked { background: var(--subtle-blue); color: var(--prima
 .bar-warning { background: var(--primary-yellow); }
 .bar-danger  { background: var(--primary-orange); }
 
-/* Sin resultados */
 .mg-empty {
     display: flex; flex-direction: column; align-items: center; gap: 10px;
     padding: 40px 20px; color: var(--text-secondary); text-align: center;
@@ -771,7 +761,6 @@ select[size] option:checked { background: var(--subtle-blue); color: var(--prima
 .mg-empty .material-symbols-rounded { font-size: 40px; opacity: 0.25; }
 .mg-empty p { font-size: 0.875rem; }
 
-/* Footer del modal */
 .mg-footer {
     display: flex; align-items: center; justify-content: space-between;
     padding: 16px 24px; border-top: 1px solid var(--border-color);
@@ -785,10 +774,10 @@ select[size] option:checked { background: var(--subtle-blue); color: var(--prima
 .mg-seleccion-info .material-symbols-rounded { font-size: 18px; flex-shrink: 0; }
 .mg-footer-btns { display: flex; gap: 10px; flex-shrink: 0; }
 
-/* ── Nueva matrícula: info box ──────────────────────────────── */
+/* ── Info box (nueva matrícula) ─────────────────────────────── */
 .nueva-mat-info {
     display: flex; align-items: flex-start; gap: 12px;
-    padding: 14px 16px; border-radius: 12px; margin-bottom: 20px;
+    padding: 14px 16px; border-radius: 12px; margin-bottom: 6px;
     background: var(--subtle-blue); border: 1px solid rgba(20,121,176,0.25);
     color: var(--primary-blue);
 }
@@ -808,12 +797,35 @@ select[size] option:checked { background: var(--subtle-blue); color: var(--prima
 .grupo-preview strong { display: block; font-weight: 700; margin-bottom: 2px; }
 .grupo-preview p { opacity: 0.9; }
 
+.modal-nueva-body {
+    overflow-x: hidden;
+}
+
+.modal-nueva-body .form-row {
+    grid-template-columns: 1fr;
+}
+
+.modal-nueva-body select.form-control,
+.modal-nueva-body input.form-control,
+.modal-nueva-body textarea.form-control,
+.modal-nueva-body .search-input-wrap,
+.modal-nueva-body select[size] {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
 /* ── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 1100px) {
     .detalle-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 768px) {
-    .main-content    { margin-left: 0; padding: 80px 16px 24px; }
+    .main-content     { margin-left: 0; padding: 80px 16px 24px; }
     .sidebar.collapsed ~ .main-content { margin-left: 0; }
     .dashboard-header { flex-direction: column; }
     .stats-grid       { grid-template-columns: 1fr; }
@@ -824,4 +836,8 @@ select[size] option:checked { background: var(--subtle-blue); color: var(--prima
     .matricula-actions{ width: 100%; }
     .filters-form     { flex-direction: column; align-items: stretch; }
     .filters-right    { flex-wrap: wrap; }
+    .modal-nueva-matricula { max-height: 95vh; }
+    .modal-nueva-body { padding: 16px; }
+    .modal-nueva-header,
+    .modal-nueva-footer { padding: 14px 16px; }
 }

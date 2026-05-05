@@ -69,7 +69,7 @@
         right: 20px;
         height: 35px;
         width: 35px;
-        color: var(--text-primary);
+        color: #f8fafc;
         border: none;
         cursor: pointer;
         display: flex;
@@ -309,32 +309,6 @@
 </style>
 
 <?php
-// ──────────────────────────────────────────────────────────────
-//  CONTROL DE ROLES
-//  Usa has_any_role() definida en config/session.php, que lee
-//  $_SESSION['user_rol'] con los valores exactos del enum en BD:
-//    'admin'      → acceso total
-//    'profesor'   → acceso parcial
-//    'estudiante' → acceso básico
-//
-//  Tabla de permisos:
-//  ┌─────────────────┬───────┬──────────┬────────────┐
-//  │ Ítem            │ Admin │ Profesor │ Estudiante │
-//  ├─────────────────┼───────┼──────────┼────────────┤
-//  │ Dashboard       │  ✓   │    ✓     │     ✓      │
-//  │ Inscripciones   │  ✓   │    ✗     │     ✗      │
-//  │ Usuarios        │  ✓   │    ✗     │     ✗      │  ← solo admin
-//  │ Cursos          │  ✓   │    ✓     │     ✓      │
-//  │ Doc. Administ.  │  ✓   │    ✓     │     ✗      │  ← no estudiante
-//  │ Doc. Institucio.│  ✓   │    ✓     │     ✓      │
-//  │ Grupos          │  ✓   │    ✓     │     ✗      │
-//  │ Notificaciones  │  ✓   │    ✓     │     ✓      │
-//  │ Reportes        │  ✓   │    ✗     │     ✗      │
-//  │ Horario         │  ✓   │    ✓     │     ✓      │
-//  │ Configuración   │  ✓   │    ✓     │     ✓      │
-//  └─────────────────┴───────┴──────────┴────────────┘
-// ──────────────────────────────────────────────────────────────
-
 // Badge de notificaciones sin leer
 $badge_sin_leer = 0;
 if (isset($_SESSION['user_id']) && isset($pdo)) {
@@ -368,10 +342,10 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                 <li class="nav-item">
                     <a href="/AMIMBR3/modules/dashboard/" class="nav-link">
                         <span class="material-symbols-rounded">dashboard</span>
-                        <span class="nav-label">Dashboard</span>
+                        <span class="nav-label">Menú principal</span>
                     </a>
                     <ul class="header-dropdown-menu">
-                        <li class="nav-item"><a class="nav-link dropdown-title">Dashboard</a></li>
+                        <li class="nav-item"><a class="nav-link dropdown-title">Menú principal</a></li>
                     </ul>
                 </li>
                 <?php endif; ?>
