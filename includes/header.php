@@ -306,6 +306,429 @@
             transform: translateY(15px);
         }
     }
+
+    /* ═══════════════════════════════════════════════════════════
+       FAB — Botón flotante inferior derecho
+       (tema · notificaciones · ayuda)
+    ═══════════════════════════════════════════════════════════ */
+
+    /* Contenedor principal */
+    .fab-container {
+        position: fixed;
+        bottom: 28px;
+        right: 28px;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column-reverse; /* los items crecen hacia arriba */
+        align-items: flex-end;
+        gap: 10px;
+    }
+
+    /* Botón principal (hamburguesa del FAB) */
+    .fab-main {
+        width: 52px;
+        height: 52px;
+        border-radius: 16px;
+        background: var(--primary-blue);
+        color: #fff;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+        transition: background 0.3s ease, transform 0.3s ease, border-radius 0.3s ease;
+        flex-shrink: 0;
+        position: relative;
+        z-index: 2;
+    }
+
+    .fab-main:hover {
+        background: var(--primary-green);
+        transform: scale(1.07);
+    }
+
+    .fab-main .fab-icon-open,
+    .fab-main .fab-icon-close {
+        position: absolute;
+        font-size: 1.5rem;
+        transition: opacity 0.25s ease, transform 0.3s ease;
+    }
+
+    .fab-main .fab-icon-close {
+        opacity: 0;
+        transform: rotate(-90deg);
+    }
+
+    .fab-container.open .fab-main {
+        background: var(--primary-green);
+        border-radius: 50%;
+    }
+
+    .fab-container.open .fab-main .fab-icon-open {
+        opacity: 0;
+        transform: rotate(90deg);
+    }
+
+    .fab-container.open .fab-main .fab-icon-close {
+        opacity: 1;
+        transform: rotate(0deg);
+    }
+
+    /* Panel de opciones */
+    .fab-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-end;
+        /* Estado cerrado */
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(12px) scale(0.95);
+        transform-origin: bottom right;
+        transition: opacity 0.25s ease, transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .fab-container.open .fab-panel {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0) scale(1);
+    }
+
+    /* Cada ítem del panel */
+    .fab-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        text-decoration: none;
+    }
+
+    /* Etiqueta de texto */
+    .fab-label {
+        background: var(--dark-bg);
+        color: var(--text-primary);
+        font-size: 0.78rem;
+        font-weight: 600;
+        padding: 5px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        white-space: nowrap;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        transition: background 0.2s ease;
+    }
+
+    .fab-item:hover .fab-label {
+        background: var(--hover-bg);
+    }
+
+    /* Botón circular de cada ítem */
+    .fab-btn {
+        width: 44px;
+        height: 44px;
+        border-radius: 13px;
+        border: 1px solid var(--border-color);
+        background: var(--dark-bg);
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+        transition: all 0.22s ease;
+        position: relative;
+    }
+
+    .fab-btn .material-symbols-rounded {
+        font-size: 1.25rem;
+    }
+
+    /* Colores por ítem */
+    .fab-item--theme .fab-btn:hover {
+        background: var(--subtle-yellow);
+        border-color: var(--primary-yellow);
+        color: var(--primary-yellow);
+        transform: translateY(-2px);
+    }
+
+    .fab-item--notif .fab-btn:hover {
+        background: var(--subtle-orange);
+        border-color: var(--primary-orange);
+        color: var(--primary-orange);
+        transform: translateY(-2px);
+    }
+
+    .fab-item--help .fab-btn:hover {
+        background: var(--subtle-blue);
+        border-color: var(--primary-blue);
+        color: var(--primary-blue);
+        transform: translateY(-2px);
+    }
+
+    /* Badge de notificaciones sobre el botón */
+    .fab-notif-badge {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 4px;
+        border-radius: 9px;
+        background: var(--primary-orange);
+        color: #fff;
+        font-size: 0.65rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid var(--dark-bg);
+        animation: pulse-notif 2s infinite;
+    }
+
+    /* ── Modal de notificaciones ────────────────────────── */
+    .fab-notif-modal {
+        position: fixed;
+        bottom: 92px;
+        right: 28px;
+        width: 340px;
+        max-height: 440px;
+        background: var(--dark-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+        z-index: 1001;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        /* Estado cerrado */
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(10px) scale(0.97);
+        transform-origin: bottom right;
+        transition: opacity 0.25s ease, transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .fab-notif-modal.open {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0) scale(1);
+    }
+
+    .fab-notif-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 18px 12px;
+        border-bottom: 1px solid var(--border-color);
+        flex-shrink: 0;
+    }
+
+    .fab-notif-header h4 {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .fab-notif-header a {
+        font-size: 0.75rem;
+        color: var(--primary-blue);
+        text-decoration: none;
+        font-weight: 600;
+        transition: opacity 0.2s;
+    }
+
+    .fab-notif-header a:hover { opacity: 0.75; }
+
+    .fab-notif-list {
+        overflow-y: auto;
+        flex: 1;
+        scrollbar-width: thin;
+        scrollbar-color: var(--border-color) transparent;
+    }
+
+    .fab-notif-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 13px 18px;
+        border-bottom: 1px solid var(--border-color);
+        transition: background 0.2s ease;
+        cursor: pointer;
+    }
+
+    .fab-notif-item:last-child { border-bottom: none; }
+
+    .fab-notif-item:hover { background: var(--hover-bg); }
+
+    .fab-notif-item.unread {
+        background: var(--subtle-blue);
+        border-left: 3px solid var(--primary-blue);
+    }
+
+    .fab-notif-item.unread:hover { background: var(--subtle-blue); filter: brightness(1.05); }
+
+    .fab-notif-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        background: var(--subtle-blue);
+        color: var(--primary-blue);
+    }
+
+    .fab-notif-icon .material-symbols-rounded { font-size: 1.1rem; }
+
+    .fab-notif-body { flex: 1; min-width: 0; }
+
+    .fab-notif-text {
+        font-size: 0.82rem;
+        color: var(--text-primary);
+        font-weight: 500;
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .fab-notif-time {
+        font-size: 0.72rem;
+        color: var(--text-secondary);
+        margin-top: 3px;
+    }
+
+    .fab-notif-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding: 36px 20px;
+        color: var(--text-secondary);
+        text-align: center;
+    }
+
+    .fab-notif-empty .material-symbols-rounded {
+        font-size: 2.5rem;
+        opacity: 0.35;
+    }
+
+    .fab-notif-empty p { font-size: 0.85rem; }
+
+    /* Spinner de carga */
+    .fab-notif-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px;
+        gap: 10px;
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+    }
+
+    .fab-spinner {
+        width: 20px;
+        height: 20px;
+        border: 2px solid var(--border-color);
+        border-top-color: var(--primary-blue);
+        border-radius: 50%;
+        animation: fab-spin 0.7s linear infinite;
+        flex-shrink: 0;
+    }
+
+    @keyframes fab-spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* ── Tooltip de Ayuda ───────────────────────────────── */
+    .fab-help-modal {
+        position: fixed;
+        bottom: 92px;
+        right: 28px;
+        width: 300px;
+        background: var(--dark-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+        z-index: 1001;
+        padding: 20px;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(10px) scale(0.97);
+        transform-origin: bottom right;
+        transition: opacity 0.25s ease, transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .fab-help-modal.open {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0) scale(1);
+    }
+
+    .fab-help-modal h4 {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .fab-help-modal h4 .material-symbols-rounded {
+        font-size: 1.2rem;
+        color: var(--primary-blue);
+    }
+
+    .fab-help-links {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .fab-help-link {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--border-color);
+        background: var(--hover-bg);
+        color: var(--text-primary);
+        text-decoration: none;
+        font-size: 0.83rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .fab-help-link .material-symbols-rounded {
+        font-size: 1.1rem;
+        color: var(--primary-blue);
+        flex-shrink: 0;
+    }
+
+    .fab-help-link:hover {
+        background: var(--subtle-blue);
+        border-color: var(--primary-blue);
+        color: var(--primary-blue);
+        transform: translateX(3px);
+    }
+
+    /* ── Responsive FAB ────────────────────────────────── */
+    @media (max-width: 480px) {
+        .fab-container {
+            bottom: 18px;
+            right: 18px;
+        }
+
+        .fab-notif-modal,
+        .fab-help-modal {
+            right: 18px;
+            width: calc(100vw - 36px);
+        }
+    }
 </style>
 
 <?php
@@ -365,7 +788,6 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                 </li>
                 <?php endif; ?>
 
-                <!-- ✏️ CAMBIO 1: Usuarios — ahora solo visible para admin -->
                 <?php if (has_any_role(['admin'])): ?>
                 <li class="nav-item">
                     <a href="/AMIMBR3/modules/usuarios/index.php" class="nav-link">
@@ -390,7 +812,6 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                 </li>
                 <?php endif; ?>
 
-                <!-- ✏️ CAMBIO 2: Documentación — el item Administrativa se oculta para estudiante -->
                 <?php if (has_any_role(['admin', 'profesor', 'estudiante'])): ?>
                 <li class="nav-item dropdown-container">
                     <a href="#" class="nav-link dropdown-toggle">
@@ -475,7 +896,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
 
             </ul>
 
-            <!-- Secondary Bottom Nav (visible para todos los roles) -->
+            <!-- Secondary Bottom Nav -->
             <ul class="nav-list secondary-nav">
                 <li class="nav-item">
                     <a href="/AMIMBR3/modules/ayuda/ayuda_index.php" class="nav-link">
@@ -499,21 +920,253 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
         </nav>
     </aside>
 
+    <!-- ═══════════════════════════════════════════════════════════
+         FAB — Panel flotante inferior derecho
+    ═══════════════════════════════════════════════════════════ -->
+    <div class="fab-container" id="fabContainer">
+
+        <!-- Botón principal -->
+        <button class="fab-main" id="fabMain" aria-label="Herramientas rápidas">
+            <span class="material-symbols-rounded fab-icon-open">widgets</span>
+            <span class="material-symbols-rounded fab-icon-close">close</span>
+        </button>
+
+        <!-- Panel de ítems (se abre hacia arriba) -->
+        <div class="fab-panel" id="fabPanel">
+
+            <!-- Ayuda -->
+            <a href="/AMIMBR3/modules/ayuda/ayuda_index.php" class="fab-item fab-item--help">
+                <span class="fab-label">Ayuda</span>
+                <div class="fab-btn" aria-label="Ayuda">
+                    <span class="material-symbols-rounded">help</span>
+                </div>
+            </a>
+
+            <!-- Notificaciones -->
+            <div class="fab-item fab-item--notif" id="fabNotifBtn">
+                <span class="fab-label">Notificaciones</span>
+                <button class="fab-btn" aria-label="Notificaciones">
+                    <span class="material-symbols-rounded">notifications</span>
+                    <?php if ($badge_sin_leer > 0): ?>
+                        <span class="fab-notif-badge" id="fabBadge">
+                            <?php echo $badge_sin_leer > 99 ? '99+' : $badge_sin_leer; ?>
+                        </span>
+                    <?php endif; ?>
+                </button>
+            </div>
+
+            <!-- Tema claro / oscuro -->
+            <div class="fab-item fab-item--theme" id="fabThemeBtn">
+                <span class="fab-label" id="fabThemeLabel">Tema claro</span>
+                <button class="fab-btn" aria-label="Cambiar tema">
+                    <span class="material-symbols-rounded" id="fabThemeIcon">light_mode</span>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Modal de notificaciones -->
+    <div class="fab-notif-modal" id="fabNotifModal">
+        <div class="fab-notif-header">
+            <h4>Notificaciones</h4>
+            <a href="/AMIMBR3/modules/notificaciones/index.php">Ver todas</a>
+        </div>
+        <div class="fab-notif-list" id="fabNotifList">
+            <div class="fab-notif-loading">
+                <div class="fab-spinner"></div>
+                Cargando…
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Toggle visibility of a dropdown menu
+        /* ─────────────────────────────────────────────────────────
+           FAB — lógica completa
+        ───────────────────────────────────────────────────────── */
+
+        const fabContainer  = document.getElementById('fabContainer');
+        const fabMain       = document.getElementById('fabMain');
+        const fabPanel      = document.getElementById('fabPanel');
+        const fabThemeBtn   = document.getElementById('fabThemeBtn');
+        const fabThemeIcon  = document.getElementById('fabThemeIcon');
+        const fabThemeLabel = document.getElementById('fabThemeLabel');
+        const fabNotifBtn   = document.getElementById('fabNotifBtn');
+        const fabNotifModal = document.getElementById('fabNotifModal');
+        const fabNotifList  = document.getElementById('fabNotifList');
+
+        /* ── 1. Toggle del panel principal ──────────────────── */
+        let fabOpen = false;
+
+        function toggleFab(force) {
+            fabOpen = force !== undefined ? force : !fabOpen;
+            fabContainer.classList.toggle('open', fabOpen);
+            // Al cerrar el panel, cerrar también los modales hijos
+            if (!fabOpen) {
+                closeAllSubModals();
+            }
+        }
+
+        fabMain.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleFab();
+        });
+
+        /* ── 2. Cerrar al hacer clic fuera ──────────────────── */
+        document.addEventListener('click', (e) => {
+            if (
+                !fabContainer.contains(e.target) &&
+                !fabNotifModal.contains(e.target) &&
+                !fabHelpModal.contains(e.target)
+            ) {
+                toggleFab(false);
+                closeAllSubModals();
+            }
+        });
+
+        function closeAllSubModals() {
+            fabNotifModal.classList.remove('open');
+            fabHelpModal.classList.remove('open');
+            notifOpen = false;
+            helpOpen  = false;
+        }
+
+        /* ── 3. Toggle de tema claro / oscuro ───────────────── */
+        // Aplicar tema guardado en localStorage al cargar
+        (function applyStoredTheme() {
+            const stored = localStorage.getItem('amimbre-theme');
+            if (stored === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+            updateThemeUI();
+        })();
+
+        function updateThemeUI() {
+            const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+            fabThemeIcon.textContent  = isLight ? 'dark_mode'   : 'light_mode';
+            fabThemeLabel.textContent = isLight ? 'Tema oscuro' : 'Tema claro';
+        }
+
+        fabThemeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+            if (isLight) {
+                document.documentElement.removeAttribute('data-theme');
+                localStorage.setItem('amimbre-theme', 'dark');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'light');
+                localStorage.setItem('amimbre-theme', 'light');
+            }
+            updateThemeUI();
+        });
+
+        /* ── 4. Modal de notificaciones ─────────────────────── */
+        let notifOpen    = false;
+        let notifLoaded  = false;
+
+        fabNotifBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            notifOpen = !notifOpen;
+            fabNotifModal.classList.toggle('open', notifOpen);
+            // Cargar notificaciones la primera vez
+            if (notifOpen && !notifLoaded) loadNotificaciones();
+        });
+
+        // Evitar que clics dentro del modal lo cierren
+        fabNotifModal.addEventListener('click', (e) => e.stopPropagation());
+
+        function loadNotificaciones() {
+            fetch('/AMIMBR3/api/notificaciones_recientes.php')
+                .then(r => r.json())
+                .then(data => {
+                    notifLoaded = true;
+                    renderNotificaciones(data);
+                })
+                .catch(() => {
+                    fabNotifList.innerHTML = `
+                        <div class="fab-notif-empty">
+                            <span class="material-symbols-rounded">wifi_off</span>
+                            <p>No se pudo conectar</p>
+                        </div>`;
+                });
+        }
+
+        function renderNotificaciones(notifs) {
+            if (!notifs || notifs.length === 0) {
+                fabNotifList.innerHTML = `
+                    <div class="fab-notif-empty">
+                        <span class="material-symbols-rounded">notifications_off</span>
+                        <p>Sin notificaciones nuevas</p>
+                    </div>`;
+                return;
+            }
+
+            const iconMap = {
+                'info'    : { icon: 'info',             bg: 'var(--subtle-blue)',   color: 'var(--primary-blue)'   },
+                'warning' : { icon: 'warning',           bg: 'var(--subtle-yellow)', color: 'var(--primary-yellow)' },
+                'success' : { icon: 'check_circle',      bg: 'var(--subtle-green)',  color: 'var(--primary-green)'  },
+                'danger'  : { icon: 'error',             bg: 'var(--subtle-orange)', color: 'var(--primary-orange)' },
+            };
+
+            fabNotifList.innerHTML = notifs.map(n => {
+                const t   = iconMap[n.tipo] || iconMap['info'];
+                const url = n.url ? `href="${n.url}"` : '';
+                return `
+                <a ${url} class="fab-notif-item ${n.leida == 0 ? 'unread' : ''}"
+                   style="text-decoration:none;"
+                   data-id="${n.id}">
+                    <div class="fab-notif-icon"
+                         style="background:${t.bg}; color:${t.color};">
+                        <span class="material-symbols-rounded">${t.icon}</span>
+                    </div>
+                    <div class="fab-notif-body">
+                        <div class="fab-notif-text">${escHtml(n.mensaje)}</div>
+                        <div class="fab-notif-time">${escHtml(n.tiempo_transcurrido ?? '')}</div>
+                    </div>
+                </a>`;
+            }).join('');
+
+            // Marcar como leída al hacer clic
+            fabNotifList.querySelectorAll('.fab-notif-item[data-id]').forEach(el => {
+                el.addEventListener('click', () => {
+                    const id = el.dataset.id;
+                    el.classList.remove('unread');
+                    fetch(`/AMIMBR3/api/notificacion_marcar_leida.php?id=${id}`, { method: 'POST' });
+                    // Reducir badge
+                    const badge = document.getElementById('fabBadge');
+                    if (badge) {
+                        let count = parseInt(badge.textContent) || 0;
+                        count = Math.max(0, count - 1);
+                        badge.textContent = count > 99 ? '99+' : count;
+                        if (count === 0) badge.remove();
+                    }
+                });
+            });
+        }
+
+        /* ── Utilidad ────────────────────────────────────────── */
+        function escHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        /* ─────────────────────────────────────────────────────────
+           Sidebar — lógica original (sin cambios)
+        ───────────────────────────────────────────────────────── */
         const toggleDropdown = (dropdown, menu, isOpen) => {
             dropdown.classList.toggle("open", isOpen);
             menu.style.height = isOpen ? `${menu.scrollHeight}px` : 0;
         };
 
-        // Close all open dropdowns
         const closeAllDropdowns = () => {
             document.querySelectorAll(".dropdown-container.open").forEach((openDropdown) => {
                 toggleDropdown(openDropdown, openDropdown.querySelector(".header-dropdown-menu"), false);
             });
         };
 
-        // Click event to all dropdown toggles
         document.querySelectorAll(".dropdown-toggle").forEach((dropdownToggle) => {
             dropdownToggle.addEventListener("click", (e) => {
                 e.preventDefault();
@@ -525,7 +1178,6 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
             });
         });
 
-        // Click event to sidebar toggle buttons
         document.querySelectorAll(".sidebar-toggler, .sidebar-menu-button").forEach((button) => {
             button.addEventListener("click", () => {
                 closeAllDropdowns();
@@ -533,7 +1185,6 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
             });
         });
 
-        // Default Collapse Sidebar for small screens
         if (window.innerWidth <= 1024) document.querySelector(".sidebar").classList.add("collapsed");
     </script>
 </body>

@@ -298,7 +298,7 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
             </div>
             <div class="stat-value"><?php echo $cursos_activos; ?></div>
             <div class="stat-change">
-                <span class="material-symbols-rounded">circle</span>
+                <span class="material-symbols-rounded">check_circle</span>
                 Matrículas activas
             </div>
         </div>
@@ -407,7 +407,7 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
                         <a href="../horarios/index.php?grupo=<?php echo $mc['grupo_id']; ?>" class="group-btn">
                             <span class="material-symbols-rounded">schedule</span> Horario
                         </a>
-                        <a href="../documentos/index.php" class="group-btn">
+                        <a href="../documentos/institucionales/index.php?search=&tipo=bitacora&categoria=todas" class="group-btn">
                             <span class="material-symbols-rounded">folder_open</span> Documentos
                         </a>
                     </div>
@@ -461,55 +461,6 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
                     </div>
                 </div>
             </div>
-
-            <!-- Acciones rápidas -->
-            <div class="card">
-                <div class="section-header">
-                    <div>
-                        <h3 class="section-title">Acciones Rápidas</h3>
-                        <p class="section-subtitle">Acceso directo</p>
-                    </div>
-                </div>
-                <div class="quick-actions-grid">
-
-                    <a href="../horarios/index.php" class="quick-action">
-                        <div class="quick-action-icon schedule">
-                            <span class="material-symbols-rounded">schedule</span>
-                        </div>
-                        <div class="quick-action-content">
-                            <div class="quick-action-title">Mis Horarios</div>
-                            <div class="quick-action-desc">Ver clases</div>
-                        </div>
-                        <span class="material-symbols-rounded arrow">arrow_forward</span>
-                    </a>
-
-                    <a href="../notificaciones/index.php" class="quick-action">
-                        <div class="quick-action-icon <?php echo $notif_no_leidas > 0 ? 'income' : 'students'; ?>">
-                            <span class="material-symbols-rounded">notifications</span>
-                        </div>
-                        <div class="quick-action-content">
-                            <div class="quick-action-title">Notificaciones</div>
-                            <div class="quick-action-desc">
-                                <?php echo $notif_no_leidas > 0 ? "$notif_no_leidas sin leer" : "Al día"; ?>
-                            </div>
-                        </div>
-                        <span class="material-symbols-rounded arrow">arrow_forward</span>
-                    </a>
-
-                    <a href="../documentos/institucionales/index.php" class="quick-action">
-                        <div class="quick-action-icon documents">
-                            <span class="material-symbols-rounded">folder_open</span>
-                        </div>
-                        <div class="quick-action-content">
-                            <div class="quick-action-title">Documentos</div>
-                            <div class="quick-action-desc">Comunicados</div>
-                        </div>
-                        <span class="material-symbols-rounded arrow">arrow_forward</span>
-                    </a>
-
-                </div>
-            </div>
-
         </div>
     </div><!-- /content-grid -->
 
