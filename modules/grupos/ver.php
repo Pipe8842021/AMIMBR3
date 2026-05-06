@@ -91,8 +91,7 @@ try {
     $pct_asist = $stats_asist['total'] > 0
         ? round(($stats_asist['presentes'] / $stats_asist['total']) * 100) : 0;
 
-    // ─── Tabla de asistencia: filas=estudiantes, columnas=bitácoras ───────────
-    // Solo las últimas 10 bitácoras para que la tabla no sea demasiado ancha
+
     $stmt = $pdo->prepare("
         SELECT id, titulo, fecha_clase
         FROM bitacoras
