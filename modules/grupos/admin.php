@@ -7,7 +7,93 @@ require_role('admin');
 
 $success = null;
 $error   = null;
+// En la sección de manejo de POST de admin.php
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'crear_grupo') {
+    // Datos del Grupo
+    $nombre       = trim($_POST['nombre']       ?? '');
+    $curso_id     = (int)($_POST['curso_id']    ?? 0);
+    $profesor_id  = (int)($_POST['profesor_id'] ?? 0);
+    $cupo_maximo  = (int)($_POST['cupo_maximo'] ?? 20);
+    $aula_input   = trim($_POST['aula']         ?? '');
+    $fecha_inicio = $_POST['fecha_inicio']      ?? '';
+    $fecha_fin    = $_POST['fecha_fin']         ?: null;
+    $estado       = $_POST['estado']            ?? 'planificado';
 
+    // Datos del Horario (Nuevos campos)
+    $dia_semana   = $_POST['dia_semana']        ?? '';
+    $hora_inicio  = $_POST['hora_inicio']       ?? '';
+    $hora_fin     = $_POST['hora_fin']          ?? '';
+    $horario_texto = ucfirst($dia_semana) . ' ' . $hora_inicio . ' - ' . $hora_fin;
+    if (!$nombre || !$curso_id || !$fecha_inicio || !$dia_semana || !$hora_inicio || !$hora_fin) {
+        $error = "Completa los campos obligatorios, incluyendo el horario detallado.";
+    } else {
+        try {
+            $pdo->beginTransaction();
+
+            // 1. Validar conflictos de Horario/Aula/Profesor antes de insertar
+            $conflictos = [];
+
+            // Conflicto de AULA
+            if (!empty($aula_input)) {
+                $stmt = $pdo->prepare("
+                    SELECT g.nombre FROM horarios h 
+                    JOIN grupos g ON h.grupo_id = g.id 
+                    WHERE h.aula = ? AND h.dia_semana = ? 
+                    AND h.hora_inicio < ? AND h.hora_fin > ?
+                ");
+                $stmt->execute([$aula_input, $dia_semana, $hora_fin, $hora_inicio]);
+                if ($stmt->fetch()) $conflictos[] = "El aula ya está ocupada en ese horario.";
+            }
+
+            // Conflicto de PROFESOR
+            if ($profesor_id) {
+                $stmt = $pdo->prepare("
+                    SELECT g.nombre FROM horarios h 
+                    JOIN grupos g ON h.grupo_id = g.id 
+                    WHERE g.profesor_id = ? AND h.dia_semana = ? 
+                    AND h.hora_inicio < ? AND h.hora_fin > ?
+                ");
+                $stmt->execute([$profesor_id, $dia_semana, $hora_fin, $hora_inicio]);
+                if ($stmt->fetch()) $conflictos[] = "El profesor ya tiene otra clase asignada en este horario.";
+            }
+
+            if (!empty($conflictos)) {
+                throw new Exception(implode(" ", $conflictos));
+            }
+
+            // 2. Insertar Grupo
+            $stmt = $pdo->prepare("
+                INSERT INTO grupos (nombre, curso_id, profesor_id, cupo_maximo, aula, fecha_inicio, fecha_fin, estado, horario)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->execute([$nombre, $curso_id, $profesor_id ?: null, $cupo_maximo, $aula_input ?: null, $fecha_inicio, $fecha_fin, $estado, $horario_texto]);
+            $nuevo_id = $pdo->lastInsertId();
+
+            // 3. Insertar Horario vinculado
+            $stmtHorario = $pdo->prepare("
+                INSERT INTO horarios (grupo_id, dia_semana, hora_inicio, hora_fin, aula) 
+                VALUES (?, ?, ?, ?, ?)
+            ");
+            $stmtHorario->execute([$nuevo_id, $dia_semana, $hora_inicio, $hora_fin, $aula_input]);
+
+            $pdo->commit();
+            header("Location: ver.php?id=$nuevo_id&msg=creado");
+            exit;
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            error_log($e->getMessage());
+            $error = "Error: " . $e->getMessage();
+        }
+    }
+
+    $cursos = $pdo->query("SELECT id, nombre, nivel FROM cursos WHERE estado='activo' ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
+    $profesores = $pdo->query("SELECT id, nombre FROM usuarios WHERE rol='profesor' AND estado='activo' ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
+    date_default_timezone_set('America/Bogota');
+    // ... Copia aquí la lógica de validación y el try-catch de crear.php ...
+    // Asegúrate de que al final, en lugar de redirigir a ver.php, 
+    // puedas asignar el mensaje a $success y dejar que la página se recargue.
+    $success = "Grupo creado exitosamente.";
+}
 // Manejo de cambio de estado
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cambiar_estado') {
     $id_grupo     = (int)($_POST['id']           ?? 0);
@@ -138,9 +224,9 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
                 <h1>Gestión de Grupos</h1>
                 <p>Creación y control de secciones académicas</p>
             </div>
-            <a href="crear.php" class="btn-submit">
+            <button type="button" class="btn-submit" onclick="abrirModalCrear()">
                 <span class="material-symbols-rounded">add_circle</span> Nuevo grupo
-            </a>
+            </button>
         </div>
 
         <?php if ($success): ?>
@@ -287,9 +373,10 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
                                             <a href="ver.php?id=<?php echo $g['id']; ?>" class="tbl-btn view" title="Ver detalle">
                                                 <span class="material-symbols-rounded">visibility</span>
                                             </a>
-                                            <a href="editar.php?id=<?php echo $g['id']; ?>" class="tbl-btn edit" title="Editar grupo">
+
+                                            <button class="tbl-btn edit" onclick='abrirModalEditar(<?php echo json_encode($g); ?>)' class="btn-edit" title="Editar">
                                                 <span class="material-symbols-rounded">edit</span>
-                                            </a>
+                                            </button>
                                             <div class="dropdown-estado">
                                                 <button type="button" class="tbl-btn estado" title="Cambiar estado">
                                                     <span class="material-symbols-rounded">swap_horiz</span>
@@ -327,7 +414,6 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
             <?php endif; ?>
         </div>
     </main>
-
     <div id="modalHorarios" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
@@ -425,6 +511,191 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
             color: var(--primary-green);
         }
     </style>
+    <!-- Modal para Crear Nuevo Grupo -->
+    <div id="modalCrearGrupo" class="modal-overlay">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <div>
+                    <h3>Nuevo Grupo</h3>
+                    <p style="font-size:0.85rem; color:var(--text-secondary);">Registrar sección académica</p>
+                </div>
+                <button onclick="cerrarModalCrear()" class="btn-close-modal">
+                    <span class="material-symbols-rounded">close</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" id="formCrearGrupo">
+                    <div class="form-row form-row--2">
+                        <div class="input-group">
+                            <label>Fecha de Inicio <span class="req">*</span></label>
+                            <input type="date" name="fecha_inicio" required value="<?php echo date('Y-m-d'); ?>">
+                        </div>
+                        <div class="input-group">
+                            <label>Cupo Máximo</label>
+                            <input type="number" name="cupo_maximo" value="20" min="1">
+                        </div>
+                    </div>
+                    <input type="hidden" name="estado" value="planificado">
+
+                    <input type="hidden" name="action" value="crear_grupo">
+
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label>Nombre del grupo <span class="req">*</span></label>
+                            <input type="text" name="nombre" required placeholder="Ej: Piano Básico A">
+                        </div>
+                    </div>
+
+                    <div class="form-row form-row--2">
+                        <div class="input-group">
+                            <label>Curso <span class="req">*</span></label>
+                            <select name="curso_id" required>
+                                <option value="">Seleccionar...</option>
+                                <?php foreach ($cursos as $c): ?>
+                                    <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['nombre']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Profesor</label>
+                            <select name="profesor_id">
+                                <option value="">Sin asignar</option>
+                                <?php foreach ($profesores as $p): ?>
+                                    <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['nombre']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row form-row--2">
+                        <div class="input-group">
+                            <label>Día <span class="req">*</span></label>
+                            <select name="dia_semana" required>
+                                <option value="lunes">Lunes</option>
+                                <option value="martes">Martes</option>
+                                <option value="wed">Miércoles</option>
+                                <option value="thu">Jueves</option>
+                                <option value="fri">Viernes</option>
+                                <option value="sat">Sábado</option>
+                                <option value="sun">Domingo</option>
+                                <!-- ... otros días ... -->
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Aula</label>
+                            <input type="text" name="aula" placeholder="Ej: Salón 1">
+                        </div>
+                    </div>
+
+                    <div class="form-row form-row--2">
+                        <div class="input-group">
+                            <label>Hora Inicio <span class="req">*</span></label>
+                            <input type="time" name="hora_inicio" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Hora Fin <span class="req">*</span></label>
+                            <input type="time" name="hora_fin" required>
+                        </div>
+                    </div>
+
+                    <div class="form-actions" style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
+                        <button type="button" class="btn-cancel" onclick="cerrarModalCrear()" class="btn-cancel">Cancelar</button>
+                        <button type="submit" class="btn-submit">Guardar Grupo</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <!-- Modal para Editar Grupo -->
+    <div id="modalEditarGrupo" class="modal-overlay">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <div>
+                    <h3>Editar Grupo</h3>
+                    <p id="edit-grupo-id-label" style="font-size:0.85rem; color:var(--text-secondary);"></p>
+                </div>
+                <button onclick="cerrarModalEditar()" class="btn-close-modal">
+                    <span class="material-symbols-rounded">close</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" id="formEditarGrupo">
+                    <input type="hidden" name="action" value="editar">
+                    <input type="hidden" name="id" id="edit-id">
+
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label>Nombre del grupo <span class="req">*</span></label>
+                            <input type="text" name="nombre" id="edit-nombre" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row form-row--2">
+                        <div class="input-group">
+                            <label>Curso <span class="req">*</span></label>
+                            <select name="curso_id" id="edit-curso_id" required>
+                                <?php foreach ($cursos as $c): ?>
+                                    <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['nombre']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Profesor</label>
+                            <select name="profesor_id" id="edit-profesor_id">
+                                <option value="">Sin asignar</option>
+                                <?php foreach ($profesores as $p): ?>
+                                    <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['nombre']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row form-row--3">
+                        <div class="input-group">
+                            <label>Cupo Máximo</label>
+                            <input type="number" name="cupo_maximo" id="edit-cupo" min="1">
+                        </div>
+                        <div class="input-group">
+                            <label>Fecha Inicio <span class="req">*</span></label>
+                            <input type="date" name="fecha_inicio" id="edit-fecha_inicio" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Fecha Fin</label>
+                            <input type="date" name="fecha_fin" id="edit-fecha_fin">
+                        </div>
+                    </div>
+
+                    <div class="form-row form-row--2">
+                        <div class="input-group">
+                            <label>Horario (Texto)</label>
+                            <input type="text" name="horario" id="edit-horario" placeholder="Ej: Lun y Mar 08:00 - 10:00">
+                        </div>
+                        <div class="input-group">
+                            <label>Aula</label>
+                            <input type="text" name="aula" id="edit-aula">
+                        </div>
+                    </div>
+
+                    <div class="form-row" style="max-width: 200px;">
+                        <div class="input-group">
+                            <label>Estado</label>
+                            <select name="estado" id="edit-estado">
+                                <option value="planificado">Planificado</option>
+                                <option value="activo">Activo</option>
+                                <option value="finalizado">Finalizado</option>
+                                <option value="cancelado">Cancelado</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-actions" style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
+                        <button type="button" onclick="cerrarModalEditar()" class="btn-cancel">Cancelar</button>
+                        <button type="submit" class="btn-submit">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <script>
         // Lógica de los Dropdowns de estado
@@ -501,6 +772,38 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
                 setTimeout(() => a.remove(), 500);
             });
         }, 4000);
+
+        function abrirModalCrear() {
+            document.getElementById('modalCrearGrupo').classList.add('active');
+        }
+
+        function cerrarModalCrear() {
+            document.getElementById('modalCrearGrupo').classList.remove('active');
+        }
+
+        function abrirModalEditar(datos) {
+            // Rellenar campos ocultos e informativos
+            document.getElementById('edit-id').value = datos.id;
+            document.getElementById('edit-grupo-id-label').innerText = 'Editando ID #' + datos.id;
+
+            // Rellenar inputs de texto y select
+            document.getElementById('edit-nombre').value = datos.nombre;
+            document.getElementById('edit-curso_id').value = datos.curso_id;
+            document.getElementById('edit-profesor_id').value = datos.profesor_id || '';
+            document.getElementById('edit-cupo').value = datos.cupo_maximo;
+            document.getElementById('edit-horario').value = datos.horario || '';
+            document.getElementById('edit-aula').value = datos.aula || '';
+            document.getElementById('edit-fecha_inicio').value = datos.fecha_inicio;
+            document.getElementById('edit-fecha_fin').value = datos.fecha_fin || '';
+            document.getElementById('edit-estado').value = datos.estado;
+
+            // Mostrar modal
+            document.getElementById('modalEditarGrupo').classList.add('active');
+        }
+
+        function cerrarModalEditar() {
+            document.getElementById('modalEditarGrupo').classList.remove('active');
+        }
     </script>
 </body>
 

@@ -19,12 +19,24 @@ body {
 
 /* ── Layout principal ────────────────────────────────────── */
 .main-content {
-    margin-left: 270px;
+    margin-left: 270px; /* Ancho fijo del sidebar */
     padding: 30px;
-    transition: margin-left 0.4s ease;
     min-height: 100vh;
+    transition: margin-left 0.3s ease; /* Transición suave */
+    position: relative;
+    width: calc(100% - 270px);
 }
 
+/* En tablets/móviles el contenido ocupa todo el ancho */
+@media (max-width: 1024px) {
+    .main-content {
+        margin-left: 0 !important;
+        width: 100%;
+    }
+}
+.sidebar-menu-button{
+    z-index: 2;
+}
 /* Sidebar colapsado — clase aplicada por el header de Amimbré */
 body.sidebar-collapsed .main-content,
 .sidebar.collapsed ~ .main-content,
@@ -624,36 +636,43 @@ body.sidebar-collapsed .main-content,
         grid-template-columns: 1fr;
     }
 }
-
-@media (max-width: 640px) {
+/* REEMPLAZAR AL FINAL DEL ARCHIVO: Sección Responsive */
+@media (max-width: 768px) {
     .main-content {
-        padding: 16px;
+        padding: 15px;
     }
 
     .calendar-grid {
-        gap: 4px;
+
+        gap: 1px; /* Líneas finas como Google Calendar */
+        background-color: var( --hover-bg);
+        border: 1px solid var( --hover-bg);
+        border-radius: 6px;
     }
 
     .day {
-        height: 80px;
-        padding: 6px;
+        height: 70px !important; /* Celdas más compactas */
+        padding: 7px !important;
+        border-radius: 10px; 
+        background: var(--dark-bg);
+    }
+
+    .day-name {
+        font-size: 0.6rem;
+        padding: 5px 0;
     }
 
     .day-number {
-        font-size: 0.72rem;
+        font-size: 0.75rem;
+        width: 100%;
+        text-align: right;
     }
 
     .event-tag-single {
-        font-size: 0.6rem;
-        padding: 2px 5px;
-    }
-
-    .modal-content {
-        margin: 10% auto;
-        padding: 20px;
-    }
-
-    .form-row-2 {
-        grid-template-columns: 1fr;
+        font-size: 0.55rem !important;
+        padding: 1px 3px;
+        border-left-width: 2px;
+        white-space: nowrap;
+        text-overflow: ellipsis;
     }
 }
