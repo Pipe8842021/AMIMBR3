@@ -187,6 +187,7 @@ body {
 .btn-cancel {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     padding: 13px 22px;
     background: var(--card-bg);

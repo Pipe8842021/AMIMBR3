@@ -441,8 +441,8 @@ $open_modal = isset($_GET['open_modal']) && $_GET['open_modal'] === '1';
                     <div class="search-input-wrap" style="margin-bottom:8px;">
                         <span class="material-symbols-rounded search-icon">search</span>
                         <input type="text" id="buscarEstudianteModal" class="search-input"
-                               placeholder="Buscar por nombre, email o documento…"
-                               autocomplete="off">
+                                placeholder="Buscar por nombre, email o documento…"
+                                autocomplete="off">
                     </div>
                     <select name="estudiante_id" id="selectEstudianteModal"
                         class="form-control" required
