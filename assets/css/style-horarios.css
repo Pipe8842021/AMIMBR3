@@ -30,6 +30,7 @@ body {
 /* En tablets/móviles el contenido ocupa todo el ancho */
 @media (max-width: 1024px) {
     .main-content {
+        grid-template-columns: 1fr;
         margin-left: 0 !important;
         width: 100%;
     }
@@ -140,13 +141,14 @@ body.sidebar-collapsed .main-content,
 /* ── Content grid ────────────────────────────────────────── */
 .content-grid {
     display: grid;
-    grid-template-columns: 2fr 1fr;
+    grid-template-columns: 2fr 1fr; /* Por defecto 2 columnas */
     gap: 20px;
     align-items: start;
 }
 
 /* ── Calendar card ───────────────────────────────────────── */
 .calendar-card {
+    order:1;
     background: var(--dark-bg);
     border-radius: 16px;
     padding: 25px;
@@ -292,6 +294,7 @@ body.sidebar-collapsed .main-content,
 
 /* ── Cuadro de Ayuda ─────────────────────────────────────── */
 .help-card {
+    order:2;
     background: var(--dark-bg);
     border-radius: 16px;
     padding: 25px;
