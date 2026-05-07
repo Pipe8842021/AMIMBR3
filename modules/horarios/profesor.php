@@ -8,7 +8,7 @@ date_default_timezone_set('America/Bogota');
 $meses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 $dias_semana_nombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
-
+// Mapa explícito date('N') → clave exacta del ENUM en BD (sin tildes)
 $dia_bd_map = [
     1 => 'lunes',
     2 => 'martes',
@@ -25,6 +25,7 @@ $hoy         = date('j');
 $user_id     = $_SESSION['user_id'];
 
 try {
+    // Total sesiones semanales del profesor
     $stmt = $pdo->prepare("
         SELECT COUNT(h.id) AS total
         FROM horarios h
@@ -34,7 +35,7 @@ try {
     $stmt->execute([$user_id]);
     $clases_semana = $stmt->fetch()['total'] ?? 0;
 
-
+    // Total de grupos distintos
     $stmt = $pdo->prepare("
         SELECT COUNT(DISTINCT g.id) AS total
         FROM grupos g
@@ -43,7 +44,7 @@ try {
     $stmt->execute([$user_id]);
     $total_grupos = $stmt->fetch()['total'] ?? 0;
 
-
+    // Próxima clase hoy (con hora >= ahora)
     $hoy_key = $dia_bd_map[(int)date('N')];
     $stmt = $pdo->prepare("
         SELECT c.nombre AS nombre_curso, h.hora_inicio, h.aula, g.nombre AS nombre_grupo
@@ -57,7 +58,7 @@ try {
     $stmt->execute([$user_id, $hoy_key]);
     $proxima_clase = $stmt->fetch();
 
-
+    // Todos los horarios del profesor para el calendario
     $stmt = $pdo->prepare("
         SELECT h.id, h.dia_semana, h.hora_inicio, h.hora_fin,
                c.nombre AS nombre_curso, h.aula, g.nombre AS nombre_grupo
@@ -70,6 +71,7 @@ try {
     $stmt->execute([$user_id]);
     $eventos_db = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+    // Agrupar por día (BD devuelve claves sin tildes)
     $mapa_eventos = [];
     foreach ($eventos_db as $ev) {
         $mapa_eventos[$ev['dia_semana']][] = $ev;
@@ -90,7 +92,9 @@ $dias_en_mes    = date('t',  strtotime("$anio_actual-$mes_actual-01"));
 $hoy_dia_key = $dia_bd_map[(int)date('N')];
 $hoy_label   = $dias_semana_nombres[date('N') - 1] . ', ' . $hoy . ' de ' . $meses[$mes_actual];
 $dias_en_mes = date('t', strtotime("$anio_actual-$mes_actual-01"));
-
+/**
+ * Convierte una hora en formato militar (HH:MM:SS) a formato humano (12h AM/PM)
+ */
 function formatearHora($hora)
 {
     if (!$hora) return 'N/A';
@@ -108,7 +112,7 @@ function formatearHora($hora)
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="../../assets/css/colores.css">
-
+    <!-- CSS unificado del módulo de horarios -->
     <link rel="stylesheet" href="../../assets/css/style-horarios.css">
     <script>
         (function() {
@@ -123,7 +127,7 @@ function formatearHora($hora)
 
     <main class="main-content">
 
-
+        <!-- ── Encabezado ── -->
         <div class="dashboard-header">
             <div class="dashboard-title">
                 <h1>Mi Agenda Docente</h1>
@@ -135,7 +139,7 @@ function formatearHora($hora)
             </div>
         </div>
 
-
+        <!-- ── Stats ── -->
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-header">
@@ -175,10 +179,10 @@ function formatearHora($hora)
             </div>
         </div>
 
-
+        <!-- ── Contenido principal ── -->
         <div class="content-grid">
 
-
+            <!-- Calendario -->
             <div class="calendar-card">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
                     <h3>Agenda Mensual</h3>
@@ -188,16 +192,17 @@ function formatearHora($hora)
                 </div>
 
                 <div class="calendar-grid">
-
+                    <!-- Nombres de días -->
                     <?php foreach ($dias_semana_nombres as $d): ?>
                         <div class="day-name"><?php echo mb_substr($d, 0, 3); ?></div>
                     <?php endforeach; ?>
 
+                    <!-- Celdas vacías al inicio -->
                     <?php for ($i = 1; $i < $primer_dia_mes; $i++): ?>
                         <div class="day empty"></div>
                     <?php endfor; ?>
 
-
+                    <!-- Días del mes -->
                     <?php for ($dia = 1; $dia <= $dias_en_mes; $dia++):
                         $ts              = strtotime("$anio_actual-$mes_actual-$dia");
                         $dow             = (int)date('N', $ts);
@@ -231,7 +236,7 @@ function formatearHora($hora)
                 </div>
             </div>
 
-
+            <!-- Panel informativo -->
             <div class="help-card">
                 <h3>Información de Soporte</h3>
                 <div class="help-items">
@@ -248,7 +253,7 @@ function formatearHora($hora)
                         <span>El aula aparece como "Por asignar" si aún no ha sido configurada por el administrador.</span>
                     </div>
 
-
+                    <!-- Leyenda día actual -->
                     <div class="help-legend" onclick="irHoy()" title="Ver mis clases de hoy"
                         style="border-color: var(--primary-orange);">
                         <div class="legend-box" style="border-color: var(--primary-orange);"></div>
@@ -260,6 +265,9 @@ function formatearHora($hora)
 
     </main>
 
+    <!-- ══════════════════════════════════════════════════════════
+     Modal: Detalle del día (solo lectura para profesor)
+     ══════════════════════════════════════════════════════════ -->
     <div id="modalDetalleDia" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -273,7 +281,9 @@ function formatearHora($hora)
         </div>
     </div>
 
-
+    <!-- ══════════════════════════════════════════════════════════
+     JavaScript
+     ══════════════════════════════════════════════════════════ -->
     <script>
         const todosLosEventos = <?php echo $eventos_json; ?>;
         const HOY_KEY = '<?php echo $hoy_dia_key; ?>';
@@ -283,7 +293,7 @@ function formatearHora($hora)
             return h ? h.substring(0, 5) : '--:--';
         }
 
-
+        /* ── Modal detalle del día ── */
         function abrirDetalleDia(diaKey, etiqueta) {
             const eventos = todosLosEventos[diaKey] || [];
             document.getElementById('detalle-titulo').textContent = 'Mis Clases';
@@ -322,18 +332,18 @@ function formatearHora($hora)
             document.getElementById('modalDetalleDia').style.display = 'none';
         }
 
-
+        /* ── Ir al día de hoy desde la leyenda ── */
         function irHoy() {
             abrirDetalleDia(HOY_KEY, HOY_LABEL);
         }
 
-
+        /* ── Cerrar modal al hacer clic fuera ── */
         window.addEventListener('click', e => {
             const m = document.getElementById('modalDetalleDia');
             if (e.target === m) m.style.display = 'none';
         });
 
-
+        /* ── Sincronizar margin-left con el sidebar colapsable ── */
         (function() {
             const main = document.querySelector('.main-content');
             const EXPANDED = '270px';

@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
     }
 
-
+    /* ── Editar horario existente ── */
     if ($_POST['action'] === 'editar_horario') {
         $horario_id = intval($_POST['horario_id']);
         $dia        = $_POST['dia_semana'];
@@ -151,7 +151,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 }
 
-
+/* ══════════════════════════════════════════════════════════
+   Consultas de datos
+   ══════════════════════════════════════════════════════════ */
 $mapa_eventos = [];
 try {
     $clases_semana = $pdo->query("SELECT COUNT(*) FROM horarios")->fetchColumn();
@@ -221,6 +223,7 @@ $hoy_label   = $dias_semana_nombres[date('N') - 1] . ', ' . $hoy . ' de ' . $mes
 
     <main class="main-content">
 
+        <!-- ── Encabezado ── -->
         <div class="dashboard-header">
             <div class="dashboard-title">
                 <h1>Calendario Académico</h1>
@@ -232,7 +235,7 @@ $hoy_label   = $dias_semana_nombres[date('N') - 1] . ', ' . $hoy . ' de ' . $mes
             </div>
         </div>
 
-
+        <!-- ── Feedback ── -->
         <?php if ($mensaje_feedback): ?>
             <div class="feedback-banner feedback-<?php echo $tipo_feedback; ?>">
                 <i class="fas <?php echo $tipo_feedback === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'; ?>"></i>
@@ -272,28 +275,32 @@ $hoy_label   = $dias_semana_nombres[date('N') - 1] . ', ' . $hoy . ' de ' . $mes
             </div>
         </div>
 
+        <!-- ── Contenido principal ── -->
         <div class="content-grid">
 
+            <!-- Calendario -->
             <div class="calendar-card">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
                     <h3>Horario Mensual</h3>
-  
+                    <!-- FIX: botón correctamente cerrado, sin contenido anidado -->
                     <button onclick="abrirModal()" class="btn-submit-modal" style="width:auto; padding:8px 16px; margin:0;">
                         <i class="fas fa-plus"></i> Nuevo Horario
                     </button>
                 </div>
 
+                <!-- Cuadrícula del calendario -->
                 <div class="calendar-grid">
-              
+                    <!-- Nombres de días -->
                     <?php foreach ($dias_semana_nombres as $d): ?>
                         <div class="day-name"><?php echo mb_substr($d, 0, 3); ?></div>
                     <?php endforeach; ?>
 
-                 
+                    <!-- Celdas vacías al inicio -->
                     <?php for ($i = 1; $i < $primer_dia_mes; $i++): ?>
                         <div class="day empty"></div>
                     <?php endfor; ?>
 
+                    <!-- Días del mes -->
                     <?php for ($dia = 1; $dia <= $dias_en_mes; $dia++):
                         $ts              = strtotime("$anio_actual-$mes_actual-$dia");
                         $dow             = (int)date('N', $ts);
@@ -326,10 +333,10 @@ $hoy_label   = $dias_semana_nombres[date('N') - 1] . ', ' . $hoy . ' de ' . $mes
                             <?php endif; ?>
                         </div>
                     <?php endfor; ?>
-                </div>
-            </div>
+                </div><!-- /calendar-grid -->
+            </div><!-- /calendar-card -->
 
-       
+            <!-- Ayuda -->
             <div class="help-card">
                 <h3>Ayuda</h3>
                 <div class="help-items">
@@ -350,13 +357,15 @@ $hoy_label   = $dias_semana_nombres[date('N') - 1] . ', ' . $hoy . ' de ' . $mes
                         <span>Día actual — click para ver hoy</span>
                     </div>
                 </div>
-            </div>
+            </div><!-- /help-card -->
 
-        </div>
+        </div><!-- /content-grid -->
 
     </main>
 
-
+    <!-- ══════════════════════════════════════════════════════════
+         Modal: Nuevo Horario
+         ══════════════════════════════════════════════════════════ -->
     <div id="modalHorario" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -413,7 +422,9 @@ $hoy_label   = $dias_semana_nombres[date('N') - 1] . ', ' . $hoy . ' de ' . $mes
         </div>
     </div>
 
-
+    <!-- ══════════════════════════════════════════════════════════
+         Modal: Detalle del día
+         ══════════════════════════════════════════════════════════ -->
     <div id="modalDetalleDia" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -427,7 +438,9 @@ $hoy_label   = $dias_semana_nombres[date('N') - 1] . ', ' . $hoy . ' de ' . $mes
         </div>
     </div>
 
-
+    <!-- ══════════════════════════════════════════════════════════
+         Modal: Editar Horario
+         ══════════════════════════════════════════════════════════ -->
     <div id="modalEditarHorario" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -473,17 +486,20 @@ $hoy_label   = $dias_semana_nombres[date('N') - 1] . ', ' . $hoy . ' de ' . $mes
         </div>
     </div>
 
-
+    <!-- ══════════════════════════════════════════════════════════
+         JavaScript
+         ══════════════════════════════════════════════════════════ -->
     <script>
         const todosLosEventos = <?php echo $eventos_json; ?>;
         const HOY_KEY = '<?php echo $hoy_dia_key; ?>';
         const HOY_LABEL = '<?php echo $hoy_label; ?>';
 
+        /* ── Helpers ── */
         function fmtHora(h) {
             return h ? h.substring(0, 5) : '--:--';
         }
 
-
+        /* ── Modal Nuevo Horario ── */
         function abrirModal(diaPreseleccionado) {
             if (diaPreseleccionado) document.getElementById('nuevo_dia').value = diaPreseleccionado;
             document.getElementById('modalHorario').style.display = 'block';
@@ -493,7 +509,7 @@ $hoy_label   = $dias_semana_nombres[date('N') - 1] . ', ' . $hoy . ' de ' . $mes
             document.getElementById('modalHorario').style.display = 'none';
         }
 
-  
+        /* ── Modal Detalle del día ── */
         function abrirDetalleDia(diaKey, etiqueta) {
             const eventos = todosLosEventos[diaKey] || [];
             document.getElementById('detalle-titulo').textContent = 'Horarios del día';
@@ -535,7 +551,7 @@ $hoy_label   = $dias_semana_nombres[date('N') - 1] . ', ' . $hoy . ' de ' . $mes
             document.getElementById('modalDetalleDia').style.display = 'none';
         }
 
-      
+        /* ── Ir al día de hoy desde la leyenda de Ayuda ── */
         function irHoy() {
             const eventos = todosLosEventos[HOY_KEY] || [];
             if (eventos.length > 0) {
@@ -545,7 +561,7 @@ $hoy_label   = $dias_semana_nombres[date('N') - 1] . ', ' . $hoy . ' de ' . $mes
             }
         }
 
-
+        /* ── Modal Editar Horario ── */
         function abrirModalEdit(datos) {
             if (typeof datos === 'string') datos = JSON.parse(datos.replace(/&quot;/g, '"'));
 
@@ -564,7 +580,7 @@ $hoy_label   = $dias_semana_nombres[date('N') - 1] . ', ' . $hoy . ' de ' . $mes
             document.getElementById('modalEditarHorario').style.display = 'none';
         }
 
-   
+        /* ── Cerrar modales al hacer clic fuera ── */
         window.addEventListener('click', e => {
             ['modalHorario', 'modalDetalleDia', 'modalEditarHorario'].forEach(id => {
                 const m = document.getElementById(id);
@@ -572,7 +588,7 @@ $hoy_label   = $dias_semana_nombres[date('N') - 1] . ', ' . $hoy . ' de ' . $mes
             });
         });
 
-
+        /* ── Sincronizar margin-left con el sidebar colapsable ── */
         (function() {
             const main = document.querySelector('.main-content');
             const EXPANDED = '270px';
@@ -600,4 +616,5 @@ $hoy_label   = $dias_semana_nombres[date('N') - 1] . ', ' . $hoy . ' de ' . $mes
         })();
     </script>
 </body>
+
 </html>
