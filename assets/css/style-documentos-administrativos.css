@@ -87,19 +87,19 @@ body {
     align-items: center;
     gap: 8px;
     padding: 12px 24px;
-    background: transparent;
-    color: var(--primary-orange);
-    border: 1px solid var(--subtle-orange);
+    background: var(--subtle-blue);
+    color: var(--primary-blue);
     border-radius: 10px;
     font-size: 0.95rem;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.3s ease;
+    border: none;
 }
 
 .btn-primary:hover {
     transform: translateY(-2px);
-    background-color: var(--primary-orange);
+    background-color: var(--primary-blue);
     color: #f8fafc;
 }
 
@@ -226,7 +226,7 @@ body {
 
 .search-box {
     flex: 1;
-    min-width: 300px;
+    min-width: 200px;
     position: relative;
     display: flex;
     align-items: center;
@@ -1043,9 +1043,9 @@ body {
     align-items: center;
     gap: 8px;
     padding: 12px 24px;
-    background: transparent;
-    color: var(--text-primary);
-    border: 1px solid var(--border-color);
+    background: var(--subtle-orange);
+    color: var(--primary-orange);
+    border: none;
     border-radius: 10px;
     font-size: 0.95rem;
     font-weight: 500;
@@ -1054,9 +1054,8 @@ body {
 }
 
 .btn-edit:hover {
-    background: var(--primary-blue);
-    border-color: var(--primary-blue);
-    color: #f8fafc;
+    background: var(--primary-orange);
+    color: #fff;
     transform: translateY(-2px);
 }
 
@@ -1082,6 +1081,198 @@ body {
 }
 
 /* ============================================================
+   MODAL
+   ============================================================ */
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(5px);
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: var(--dark-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    max-width: 560px;
+    width: 95%;
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+    animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+    from { opacity: 0; transform: translateY(-30px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.modal-header-crear {
+    padding: 24px 28px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-shrink: 0;
+}
+
+.modal-header-crear h2 {
+    font-size: 1.25rem;
+    color: var(--text-primary);
+    margin: 0 0 4px;
+}
+
+.modal-header-crear p {
+    font-size: 0.87rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.modal-close-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 6px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    transition: color 0.2s ease, background 0.2s ease;
+    flex-shrink: 0;
+}
+
+.modal-close-btn:hover {
+    color: var(--text-primary);
+    background: var(--hover-bg);
+}
+
+.modal-close-btn .material-symbols-rounded {
+    font-size: 1.5rem;
+}
+
+.modal-body-scroll {
+    overflow-y: auto;
+    flex: 1;
+    padding: 24px 28px;
+}
+
+.modal-footer-crear {
+    padding: 16px 28px;
+    border-top: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.btn-cancelar {
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.93rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    background: var(--card-bg);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.btn-cancelar:hover {
+    background: var(--hover-bg);
+}
+
+.btn-primario {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.93rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    border: none;
+    background: var(--subtle-orange);
+    color: var(--primary-orange);
+}
+
+.btn-primario:hover:not(:disabled) {
+    background: var(--primary-orange);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.btn-primario:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+#btnConfirmarEliminar {
+    display: flex; align-items: center; 
+    gap: 8px; padding: 10px 24px;
+    border-radius: 8px; font-family: 'Poppins',sans-serif;
+    font-size: 0.93rem; font-weight: 600; cursor: pointer;
+    transition: all 0.25s ease; border: none;
+    background: var(--subtle-red); color: var(--primary-red);
+}
+#btnConfirmarEliminar:hover {
+    background: var(--primary-red);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+#mvd_btn_editar {
+    display: none; align-items: center;
+    gap: 8px; padding: 10px 20px; border-radius: 8px;
+    font-family: 'Poppins',sans-serif;
+    font-size: 0.9rem; font-weight: 600; cursor: pointer;
+    background: var(--subtle-orange); color: var(--primary-orange);
+    border: none; transition: all 0.25s ease
+}
+#mvd_btn_editar:hover {
+    background: var(--primary-orange);
+    color: #fff;
+    transform:translateY(-1px)
+}
+
+#mvd_btn_eliminar {
+    display: none; align-items: center;
+    gap: 8px; padding: 10px 20px; border-radius: 8px;
+    font-family: 'Poppins',sans-serif;
+    font-size: 0.9rem; font-weight: 600; cursor: pointer;
+    background: var(--subtle-red); color: var(--primary-red);
+    border: none; transition: all 0.25s ease
+}
+
+#mvd_btn_eliminar:hover {
+    background: var(--primary-red);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+/* ============================================================
+   MODAL VER DOCUMENTO
+   ============================================================ */
+
+.modal-ver-doc-content {
+    max-width: 720px;
+    width: 95%;
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+}
+
+@keyframes mvSpin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+/* ============================================================
    RESPONSIVE
    ============================================================ */
 
@@ -1104,18 +1295,24 @@ body {
     .filters-container {
         flex-direction: column;
         align-items: stretch;
+        min-width: 0;
+        width: 100%;
     }
 
     .search-box {
-        min-width: 100%;
+        min-width: 0;
+        width: 100%;
     }
 
     .filter-group {
         flex-direction: column;
+        min-width: 0;
+        width: 100%;
     }
 
     .filter-select {
         width: 100%;
+        min-width: 0;
     }
 
     .documents-grid {

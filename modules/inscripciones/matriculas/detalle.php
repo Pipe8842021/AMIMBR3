@@ -26,7 +26,7 @@ try {
     $estudiante = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$estudiante) { header("Location: index.php"); exit; }
 
-    // Todas las matrículas del estudiante (activas y no retiradas primero)
+    // Todas las matrículas del estudiante
     $stmt = $pdo->prepare("
         SELECT m.*,
                g.id as grupo_id, g.nombre as grupo_nombre, g.horario as grupo_horario,
@@ -49,7 +49,6 @@ try {
 
     if (empty($matriculas)) { header("Location: index.php"); exit; }
 
-    // Si no se especificó tab, abrir la primera matrícula activa o la primera en general
     if (!$tab_activa) {
         foreach ($matriculas as $m) {
             if ($m['estado'] === 'activa') { $tab_activa = $m['id']; break; }
@@ -57,13 +56,11 @@ try {
         if (!$tab_activa) $tab_activa = $matriculas[0]['id'];
     }
 
-    // Cargar pagos y grupos disponibles para cada matrícula
-    $pagos_por_mat           = [];
-    $grupos_disponibles_mat  = [];
-    $cursos_grupos_mat       = [];
+    $pagos_por_mat          = [];
+    $grupos_disponibles_mat = [];
+    $cursos_grupos_mat      = [];
 
     foreach ($matriculas as $m) {
-        // Pagos
         $stmt = $pdo->prepare("
             SELECT p.*, u.nombre as registrado_por_nombre
             FROM pagos p LEFT JOIN usuarios u ON p.registrado_por = u.id
@@ -73,7 +70,6 @@ try {
         $stmt->execute([$m['id']]);
         $pagos_por_mat[$m['id']] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Grupos disponibles (todos los activos con cupo)
         $stmt = $pdo->prepare("
             SELECT g.id, g.nombre, g.horario, g.aula, g.cupo_actual, g.cupo_maximo,
                    g.fecha_inicio, c.id as curso_id, c.nombre as curso_nombre, c.nivel as curso_nivel,
@@ -97,7 +93,6 @@ try {
         $stmt->execute([$m['grupo_id'] ?? 0]);
         $gds = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Parsear horarios y agrupar cursos
         $cursos_grupos_mat[$m['id']] = [];
         foreach ($gds as &$gd) {
             $gd['horarios_lista'] = [];
@@ -113,7 +108,6 @@ try {
         $grupos_disponibles_mat[$m['id']] = $gds;
     }
 
-    // Resumen de pagos por matrícula
     $resumen_pagos = [];
     foreach ($matriculas as $m) {
         $rp = ['monto_total'=>0,'monto_pagado'=>0,'monto_pendiente'=>0,'pendientes'=>0,'vencidos'=>0];
@@ -126,8 +120,32 @@ try {
         $resumen_pagos[$m['id']] = $rp;
     }
 
+    // ── Datos para el modal de nueva matrícula ──────────────────
+    $estudiantes_modal = $pdo->query("
+        SELECT id, nombre, email, documento
+        FROM usuarios
+        WHERE rol = 'estudiante' AND estado = 'activo'
+        ORDER BY nombre
+    ")->fetchAll(PDO::FETCH_ASSOC);
+
+    $grupos_raw_modal = $pdo->query("
+        SELECT g.id, g.nombre, g.horario, g.cupo_actual, g.cupo_maximo,
+               c.nombre as curso_nombre, c.precio_mensual, c.duracion_meses,
+               u.nombre as profesor_nombre
+        FROM grupos g
+        INNER JOIN cursos c ON g.curso_id = c.id
+        LEFT JOIN usuarios u ON g.profesor_id = u.id
+        WHERE g.estado IN ('activo','planificado')
+          AND g.cupo_actual < g.cupo_maximo
+        ORDER BY c.nombre, g.nombre
+    ")->fetchAll(PDO::FETCH_ASSOC);
+
+    $grupos_por_curso_modal = [];
+    foreach ($grupos_raw_modal as $g) $grupos_por_curso_modal[$g['curso_nombre']][] = $g;
+
     $flash_msg  = $_GET['msg']  ?? '';
     $flash_type = $_GET['type'] ?? '';
+    $open_modal = isset($_GET['open_modal']) && $_GET['open_modal'] === '1';
 
 } catch (PDOException $e) {
     error_log($e->getMessage());
@@ -168,9 +186,10 @@ function nivel_label($n)  { return ['basico'=>'Básico','intermedio'=>'Intermedi
                · <?= count($matriculas) ?> matrícula<?= count($matriculas) != 1 ? 's' : '' ?>
             </p>
         </div>
-        <a href="nueva.php?estudiante_id=<?= $estudiante_id ?>" class="btn-primary">
+        <!-- Botón abre modal en lugar de ir a nueva.php -->
+        <button type="button" class="btn-primary" onclick="abrirModalNuevaMatricula()">
             <span class="material-symbols-rounded">add</span> Nueva matrícula
-        </a>
+        </button>
     </div>
 
     <!-- Flash -->
@@ -194,7 +213,7 @@ function nivel_label($n)  { return ['basico'=>'Básico','intermedio'=>'Intermedi
                 </span>
             <?php else: ?>
                 <?= mb_strtoupper(mb_substr($estudiante['nombre'], 0, 1)) ?>
-            <?php endif; ?> 
+            <?php endif; ?>
         </div>
         <div class="ep-info">
             <div class="ep-nombre"><?= htmlspecialchars($estudiante['nombre']) ?></div>
@@ -391,20 +410,16 @@ function nivel_label($n)  { return ['basico'=>'Básico','intermedio'=>'Intermedi
 
                             <div class="action-section">
                                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                            
-                                    <!-- Botón cambiar estado (ya existía) -->
                                     <button class="btn-outline" onclick="toggleSection('estado-<?= $m['id'] ?>')">
                                         <span class="material-symbols-rounded">swap_vert</span> Cambiar estado
                                     </button>
-                            
-                                    <!-- NUEVO: Botón eliminar matrícula -->
                                     <button class="btn-outline btn-outline--danger"
                                             onclick="abrirModalEliminar(<?= $m['id'] ?>, <?= $estudiante_id ?>,
                                                     '<?= htmlspecialchars(addslashes($m['curso_nombre'] ?? 'Sin curso')) ?>')">
                                         <span class="material-symbols-rounded">delete</span> Eliminar matrícula
                                     </button>
                                 </div>
-                            
+
                                 <div id="estado-<?= $m['id'] ?>" class="collapsible-section" style="display:none;">
                                     <form method="POST" action="acciones.php" class="form-inline-section">
                                         <input type="hidden" name="accion" value="cambiar_estado">
@@ -584,24 +599,7 @@ function nivel_label($n)  { return ['basico'=>'Básico','intermedio'=>'Intermedi
                                         <div class="pago-monto"><?= fmt_money($p['monto']) ?></div>
                                         <span class="badge <?= $bp['class'] ?>"><?= $bp['label'] ?></span>
 
-                                        <?php if ($p['estado'] === 'pendiente'): ?>
-                                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                                            <form method="POST" action="acciones.php">
-                                                <input type="hidden" name="accion" value="marcar_pagado">
-                                                <input type="hidden" name="pago_id" value="<?= $p['id'] ?>">
-                                                <input type="hidden" name="matricula_id" value="<?= $m['id'] ?>">
-                                                <input type="hidden" name="redir_estudiante" value="<?= $estudiante_id ?>">
-                                                <button type="submit" class="btn-xs btn-success">
-                                                    <span class="material-symbols-rounded">check</span> Marcar pagado
-                                                </button>
-                                            </form>
-                                            <button class="btn-xs btn-edit-pago"
-                                                    onclick="abrirEditarPago(<?= htmlspecialchars(json_encode($p)) ?>, <?= $m['id'] ?>, <?= $estudiante_id ?>)">
-                                                <span class="material-symbols-rounded">edit</span> Editar
-                                            </button>
-                                        </div>
-
-                                        <?php elseif ($p['estado'] === 'vencido'): ?>
+                                        <?php if (in_array($p['estado'], ['pendiente', 'vencido'])): ?>
                                         <div style="display:flex; gap:6px; flex-wrap:wrap;">
                                             <form method="POST" action="acciones.php">
                                                 <input type="hidden" name="accion" value="marcar_pagado">
@@ -618,7 +616,6 @@ function nivel_label($n)  { return ['basico'=>'Básico','intermedio'=>'Intermedi
                                             </button>
                                         </div>
                                         <?php endif; ?>
-
                                     </div>
                                 </div>
                                 <?php endforeach; ?>
@@ -632,7 +629,7 @@ function nivel_label($n)  { return ['basico'=>'Básico','intermedio'=>'Intermedi
             </div><!-- /detalle-grid -->
         </div><!-- /tab-panel -->
 
-        <?php endforeach; /* fin foreach matrículas */ ?>
+        <?php endforeach; ?>
     </div><!-- /tabs-wrap -->
 
 </main>
@@ -760,10 +757,10 @@ function nivel_label($n)  { return ['basico'=>'Básico','intermedio'=>'Intermedi
     </div>
 </div>
 <?php endforeach; ?>
-<!-- Modal: Eliminar Matrícula -->
+
+<!-- ══ Modal: Eliminar Matrícula ════════════════════════════ -->
 <div class="modal-overlay" id="modalEliminarMatricula">
     <div class="modal" style="max-width:460px; text-align:left; padding:0;">
-        <!-- Header -->
         <div style="display:flex; align-items:center; gap:10px; padding:20px 24px;
                     border-bottom:1px solid var(--border-color); background:var(--hover-bg);
                     border-radius:18px 18px 0 0;">
@@ -775,13 +772,10 @@ function nivel_label($n)  { return ['basico'=>'Básico','intermedio'=>'Intermedi
                 <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:2px;"
                      id="eliminarModalSubtitulo"></div>
             </div>
-            <button class="modal-close" style="margin-left:auto;"
-                    onclick="cerrarModalEliminar()">
+            <button class="modal-close" style="margin-left:auto;" onclick="cerrarModalEliminar()">
                 <span class="material-symbols-rounded">close</span>
             </button>
         </div>
- 
-        <!-- Body -->
         <div style="padding:20px 24px;">
             <div class="alert alert-danger" style="margin-bottom:16px;">
                 <span class="material-symbols-rounded">warning</span>
@@ -796,8 +790,6 @@ function nivel_label($n)  { return ['basico'=>'Básico','intermedio'=>'Intermedi
                        oninput="validarConfirmEliminar(this.value)">
             </div>
         </div>
- 
-        <!-- Footer -->
         <form method="POST" action="acciones.php" id="formEliminarMatricula">
             <input type="hidden" name="accion" value="eliminar_matricula">
             <input type="hidden" name="matricula_id" id="eliminarMatriculaId">
@@ -806,19 +798,16 @@ function nivel_label($n)  { return ['basico'=>'Básico','intermedio'=>'Intermedi
             <div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;
                         padding:16px 24px; border-top:1px solid var(--border-color);
                         background:var(--hover-bg); border-radius:0 0 18px 18px;">
-                <button type="button" class="btn-secondary" onclick="cerrarModalEliminar()">
-                    Cancelar
-                </button>
+                <button type="button" class="btn-secondary" onclick="cerrarModalEliminar()">Cancelar</button>
                 <button type="submit" class="btn-danger-solid" id="btnConfirmarEliminar" disabled>
-                    <span class="material-symbols-rounded">delete_forever</span>
-                    Sí, eliminar
+                    <span class="material-symbols-rounded">delete_forever</span> Sí, eliminar
                 </button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- ══ MODAL: Editar Pago ════════════════════════════════════ -->
+<!-- ══ Modal: Editar Pago ═══════════════════════════════════ -->
 <div class="modal-overlay" id="modalEditarPago">
     <div class="modal modal--sm">
         <div class="modal-header modal-header--primary">
@@ -891,6 +880,125 @@ function nivel_label($n)  { return ['basico'=>'Básico','intermedio'=>'Intermedi
                 </button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- ══ Modal: Nueva Matrícula ═══════════════════════════════ -->
+<div class="modal-overlay" id="modalNuevaMatricula">
+    <div class="modal modal-nueva-matricula">
+
+        <div class="modal-nueva-header">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div class="modal-icon modal-icon-blue" style="margin:0; width:40px; height:40px; border-radius:10px; flex-shrink:0;">
+                    <span class="material-symbols-rounded">person_add</span>
+                </div>
+                <div>
+                    <h3 class="modal-title" style="margin:0; text-align:left; font-size:1.05rem;">Nueva Matrícula</h3>
+                    <p style="font-size:0.8rem; color:var(--text-secondary); margin:0;">
+                        Para: <strong><?= htmlspecialchars($estudiante['nombre']) ?></strong>
+                    </p>
+                </div>
+            </div>
+            <button class="modal-close-btn" onclick="cerrarModalNuevaMatricula()" type="button">
+                <span class="material-symbols-rounded">close</span>
+            </button>
+        </div>
+
+        <div class="modal-nueva-body">
+
+            <div class="nueva-mat-info">
+                <span class="material-symbols-rounded">auto_awesome</span>
+                <div>
+                    <strong>Generación automática de pagos</strong>
+                    <p>Al seleccionar un grupo se generará la cuota del mes actual, con vencimiento el mismo día de hoy.</p>
+                </div>
+            </div>
+
+            <form method="POST" action="nueva.php" class="form-nueva-matricula" id="formNuevaModal">
+
+                <!-- El estudiante viene pre-seleccionado desde el contexto del detalle -->
+                <input type="hidden" name="estudiante_id" value="<?= $estudiante_id ?>">
+
+                <!-- Info del estudiante pre-seleccionado -->
+                <div class="form-group">
+                    <label class="form-label">Estudiante</label>
+                    <div style="display:flex; align-items:center; gap:10px; padding:10px 12px;
+                                border-radius:9px; background:var(--hover-bg);
+                                border:1.5px solid var(--border-color);">
+                        <div class="ep-avatar" style="width:32px; height:32px; font-size:0.9rem; flex-shrink:0;">
+                            <?= mb_strtoupper(mb_substr($estudiante['nombre'], 0, 1)) ?>
+                        </div>
+                        <div>
+                            <div style="font-size:0.88rem; font-weight:600; color:var(--text-primary);">
+                                <?= htmlspecialchars($estudiante['nombre']) ?>
+                            </div>
+                            <div style="font-size:0.78rem; color:var(--text-secondary);">
+                                <?= htmlspecialchars($estudiante['email']) ?>
+                                <?php if ($estudiante['documento']): ?>
+                                · <?= htmlspecialchars($estudiante['documento']) ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <span class="badge badge-success-soft" style="margin-left:auto;">
+                            <span class="material-symbols-rounded" style="font-size:12px;">check_circle</span>
+                            Seleccionado
+                        </span>
+                    </div>
+                    <span class="form-hint">El estudiante se asigna automáticamente desde este perfil</span>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">
+                        Grupo
+                        <span class="form-hint" style="display:inline; text-transform:none; font-size:0.72rem;">(opcional)</span>
+                    </label>
+                    <select name="grupo_id" id="selectGrupoModalDetalle" class="form-control"
+                            style="width:100%; min-width:0;"
+                            onchange="mostrarInfoGrupoModalDetalle(this)">
+                        <option value="">— Sin grupo asignado —</option>
+                        <?php foreach ($grupos_por_curso_modal as $curso_nombre => $gs): ?>
+                        <optgroup label="<?= htmlspecialchars($curso_nombre) ?>">
+                            <?php foreach ($gs as $g): ?>
+                            <option value="<?= $g['id'] ?>"
+                                    data-precio="<?= $g['precio_mensual'] ?>"
+                                    data-meses="<?= $g['duracion_meses'] ?>"
+                                    data-curso="<?= htmlspecialchars($g['curso_nombre']) ?>">
+                                <?= htmlspecialchars($g['nombre']) ?>
+                                · <?= htmlspecialchars($g['horario'] ?? '—') ?>
+                                (<?= $g['cupo_actual'] ?>/<?= $g['cupo_maximo'] ?> cupos)
+                                <?= $g['profesor_nombre'] ? '· '.$g['profesor_nombre'] : '' ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </optgroup>
+                        <?php endforeach; ?>
+                    </select>
+                    <div id="infoGrupoModalDetalle" class="grupo-preview" style="display:none;"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Fecha de inicio</label>
+                    <input type="date" name="fecha_inicio" class="form-control"
+                           style="width:100%; min-width:0;"
+                           value="<?= date('Y-m-d') ?>">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Observaciones</label>
+                    <textarea name="observaciones" class="form-control" rows="2"
+                              style="width:100%; min-width:0;"
+                              placeholder="Información adicional sobre la matrícula…"></textarea>
+                </div>
+
+            </form>
+        </div>
+
+        <div class="modal-nueva-footer">
+            <button type="button" class="btn-secondary" onclick="cerrarModalNuevaMatricula()">Cancelar</button>
+            <button type="submit" form="formNuevaModal" class="btn-primary">
+                <span class="material-symbols-rounded">save</span> Crear matrícula
+            </button>
+        </div>
+
     </div>
 </div>
 
@@ -991,13 +1099,7 @@ function filtrarGrupos(matId) {
     document.getElementById('mgEmpty-' + matId).style.display = vis === 0 ? 'flex' : 'none';
 }
 
-// Auto-ocultar flash
-setTimeout(() => {
-    const a = document.getElementById('flashAlert');
-    if (a) { a.style.transition='opacity .5s'; a.style.opacity='0'; setTimeout(()=>a.remove(),500); }
-}, 5000);
-
-// ── Modal Eliminar Matrícula ─────────────────────────────────
+// ── Modal eliminar matrícula ─────────────────────────────────
 function abrirModalEliminar(matriculaId, estudianteId, cursoNombre) {
     document.getElementById('eliminarMatriculaId').value  = matriculaId;
     document.getElementById('eliminarEstudianteId').value = estudianteId;
@@ -1010,21 +1112,73 @@ function abrirModalEliminar(matriculaId, estudianteId, cursoNombre) {
     document.body.style.overflow = 'hidden';
     setTimeout(() => document.getElementById('eliminarConfirmInput').focus(), 200);
 }
- 
 function cerrarModalEliminar() {
     document.getElementById('modalEliminarMatricula').classList.remove('active');
     document.body.style.overflow = '';
 }
- 
 function validarConfirmEliminar(val) {
     const ok = val.trim().toLowerCase() === 'eliminar';
     document.getElementById('btnConfirmarEliminar').disabled = !ok;
     document.getElementById('eliminarConfirmHidden').value    = val.trim();
 }
- 
 document.getElementById('modalEliminarMatricula')?.addEventListener('click', e => {
     if (e.target === e.currentTarget) cerrarModalEliminar();
 });
+
+// ── Modal nueva matrícula ────────────────────────────────────
+function abrirModalNuevaMatricula() {
+    document.getElementById('modalNuevaMatricula').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+function cerrarModalNuevaMatricula() {
+    document.getElementById('modalNuevaMatricula').classList.remove('active');
+    document.body.style.overflow = '';
+}
+document.getElementById('modalNuevaMatricula')?.addEventListener('click', e => {
+    if (e.target === e.currentTarget) cerrarModalNuevaMatricula();
+});
+
+// Preview pago en el modal de detalle
+function mostrarInfoGrupoModalDetalle(sel) {
+    const opt    = sel.options[sel.selectedIndex];
+    const info   = document.getElementById('infoGrupoModalDetalle');
+    const precio = parseFloat(opt.dataset.precio || 0);
+
+    if (!sel.value || precio <= 0) { info.style.display = 'none'; return; }
+
+    const fmt      = n => '$' + Math.round(n).toLocaleString('es-CO');
+    const hoy      = new Date();
+    const mesesNom = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                      'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+    info.style.display = 'flex';
+    info.innerHTML = `
+        <span class="material-symbols-rounded">auto_awesome</span>
+        <div>
+            <strong>Se generará 1 pago al matricular</strong>
+            <p>Mensualidad <strong>${mesesNom[hoy.getMonth()]} ${hoy.getFullYear()}</strong> · ${fmt(precio)} · Vence el día <strong>${hoy.getDate()}</strong>.</p>
+        </div>
+    `;
+}
+
+// Cerrar todos los modales con Escape
+document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (document.getElementById('modalNuevaMatricula').classList.contains('active'))   cerrarModalNuevaMatricula();
+    if (document.getElementById('modalEditarPago').classList.contains('active'))       cerrarEditarPago();
+    if (document.getElementById('modalEliminarMatricula').classList.contains('active')) cerrarModalEliminar();
+});
+
+// Reabrir modal si nueva.php redirige con ?open_modal=1
+<?php if ($open_modal): ?>
+document.addEventListener('DOMContentLoaded', () => abrirModalNuevaMatricula());
+<?php endif; ?>
+
+// Auto-ocultar flash
+setTimeout(() => {
+    const a = document.getElementById('flashAlert');
+    if (a) { a.style.transition='opacity .5s'; a.style.opacity='0'; setTimeout(()=>a.remove(),500); }
+}, 5000);
 </script>
 </body>
 </html>

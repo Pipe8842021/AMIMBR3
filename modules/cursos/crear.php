@@ -6,6 +6,8 @@ require_once '../../includes/auth_check.php';
 require_role('admin');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $is_ajax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+
     $nombre = trim($_POST['nombre']);
     $descripcion = trim($_POST['descripcion']);
     $duracion_meses = (int)$_POST['duracion_meses'];
@@ -14,25 +16,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $precio_mensual = (float)$_POST['precio_mensual'];
     $requisitos = trim($_POST['requisitos']);
     $estado = $_POST['estado'];
-    
+
     $errores = [];
-    
+
     if (empty($nombre)) {
         $errores[] = "El nombre del curso es obligatorio";
     }
-    
+
     if ($duracion_meses < 1 || $duracion_meses > 48) {
         $errores[] = "La duración debe estar entre 1 y 48 meses";
     }
-    
+
     if ($cupo_maximo < 1 || $cupo_maximo > 50) {
         $errores[] = "El cupo máximo debe estar entre 1 y 50";
     }
-    
+
     if ($precio_mensual < 0) {
         $errores[] = "El precio debe ser mayor o igual a 0";
     }
-    
+
     $imagen = null;
     $imagen_cropped = $_POST['imagen_cropped'] ?? '';
     $imagen_ext     = strtolower(trim($_POST['imagen_ext'] ?? 'jpg'));
@@ -59,358 +61,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     }
-    
+
     if (empty($errores)) {
         try {
             $sql = "INSERT INTO cursos (
-                nombre, descripcion, duracion_meses, nivel, 
+                nombre, descripcion, duracion_meses, nivel,
                 cupo_maximo, precio_mensual, estado, requisitos, imagen
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            
+
             $stmt = $pdo->prepare($sql);
             $stmt->execute([
                 $nombre, $descripcion, $duracion_meses, $nivel,
                 $cupo_maximo, $precio_mensual, $estado, $requisitos, $imagen
             ]);
-            
+
+            if ($is_ajax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true]);
+                exit;
+            }
             header("Location: index.php?success=curso_creado");
             exit;
-            
+
         } catch (PDOException $e) {
             error_log("Error al crear curso: " . $e->getMessage());
             $errores[] = "Error al guardar el curso. Intente nuevamente.";
         }
     }
+
+    if ($is_ajax) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'errores' => $errores]);
+        exit;
+    }
 }
-?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crear Nuevo Curso - Amimbré</title>
-    <link rel="shortcut icon" href="../../assets/img/3.png">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
-    <link rel="stylesheet" href="../../assets/css/colores.css">
-    <link rel="stylesheet" href="../../assets/css/style-cursos.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
-    <script>
-        (function() {
-            const theme = localStorage.getItem('amimbre-theme');
-            if (theme === 'light') {
-                document.documentElement.setAttribute('data-theme', 'light');
-            }
-        })();
-    </script>
-</head>
-<body>
-    <?php require_once '../../includes/header.php'; ?>
 
-    <main class="main-content">
-        <div class="page-header">
-            <div class="header-content">
-                <div class="header-left">
-                    <div class="title-section">
-                        <h1>Crear Nuevo Curso</h1>
-                        <p>Completa la información del curso</p>
-                    </div>
-                </div>
-
-                <a href="index.php" class="btn-back">
-                    <span class="material-symbols-rounded">arrow_back</span>
-                    Volver a Cursos
-                </a>
-            </div>
-        </div>
-
-        <?php if (!empty($errores)): ?>
-        <div class="alert alert-error">
-            <span class="material-symbols-rounded">error</span>
-            <div>
-                <strong>Se encontraron errores:</strong>
-                <ul>
-                    <?php foreach ($errores as $error): ?>
-                        <li><?php echo htmlspecialchars($error); ?></li>
-                    <?php endforeach; ?>
-                </ul>
-            </div>
-        </div>
-        <?php endif; ?>
-
-        <form method="POST" enctype="multipart/form-data" class="form-curso">
-            <div class="form-grid">
-                <div class="form-column">
-                    <div class="form-section">
-                        <h3 class="section-title">Información Básica</h3>
-                        
-                        <div class="form-group">
-                            <label for="nombre">
-                                Nombre del Curso <span class="required">*</span>
-                            </label>
-                            <input 
-                                type="text" 
-                                id="nombre" 
-                                name="nombre" 
-                                required
-                                value="<?php echo htmlspecialchars($_POST['nombre'] ?? ''); ?>"
-                                placeholder="Ej: Piano Clásico"
-                            >
-                        </div>
-
-                        <div class="form-group">
-                            <label for="descripcion">Descripción</label>
-                            <textarea 
-                                id="descripcion" 
-                                name="descripcion" 
-                                rows="4"
-                                placeholder="Describe el curso, metodología, objetivos..."
-                            ><?php echo htmlspecialchars($_POST['descripcion'] ?? ''); ?></textarea>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="nivel">
-                                    Nivel <span class="required">*</span>
-                                </label>
-                                <select id="nivel" name="nivel" required>
-                                    <option value="basico" <?php echo ($_POST['nivel'] ?? '') === 'basico' ? 'selected' : ''; ?>>Básico</option>
-                                    <option value="intermedio" <?php echo ($_POST['nivel'] ?? '') === 'intermedio' ? 'selected' : ''; ?>>Intermedio</option>
-                                    <option value="avanzado" <?php echo ($_POST['nivel'] ?? '') === 'avanzado' ? 'selected' : ''; ?>>Avanzado</option>
-                                </select>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="estado">
-                                    Estado <span class="required">*</span>
-                                </label>
-                                <select id="estado" name="estado" required>
-                                    <option value="activo" <?php echo ($_POST['estado'] ?? 'activo') === 'activo' ? 'selected' : ''; ?>>Activo</option>
-                                    <option value="inactivo" <?php echo ($_POST['estado'] ?? '') === 'inactivo' ? 'selected' : ''; ?>>Inactivo</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="requisitos">Requisitos</label>
-                            <textarea 
-                                id="requisitos" 
-                                name="requisitos" 
-                                rows="3"
-                                placeholder="Conocimientos previos, edad mínima, materiales necesarios..."
-                            ><?php echo htmlspecialchars($_POST['requisitos'] ?? ''); ?></textarea>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-column">
-                    <div class="form-section">
-                        <h3 class="section-title">Detalles del Curso</h3>
-                        
-                        <div class="form-group">
-                            <label for="duracion_meses">
-                                Duración (meses) <span class="required">*</span>
-                            </label>
-                            <input 
-                                type="number" 
-                                id="duracion_meses" 
-                                name="duracion_meses" 
-                                min="1" 
-                                max="48" 
-                                required
-                                value="<?php echo htmlspecialchars($_POST['duracion_meses'] ?? '12'); ?>"
-                            >
-                            <small>Entre 1 y 48 meses</small>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="cupo_maximo">
-                                Cupo Máximo por Grupo <span class="required">*</span>
-                            </label>
-                            <input 
-                                type="number" 
-                                id="cupo_maximo" 
-                                name="cupo_maximo" 
-                                min="1" 
-                                max="50" 
-                                required
-                                value="<?php echo htmlspecialchars($_POST['cupo_maximo'] ?? '15'); ?>"
-                            >
-                            <small>Entre 1 y 50 estudiantes</small>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="precio_mensual">
-                                Precio Mensual <span class="required">*</span>
-                            </label>
-                            <div class="input-with-prefix">
-                                <span class="prefix">$</span>
-                                <input 
-                                    type="number" 
-                                    id="precio_mensual" 
-                                    name="precio_mensual" 
-                                    min="0" 
-                                    step="1000" 
-                                    required
-                                    value="<?php echo htmlspecialchars($_POST['precio_mensual'] ?? ''); ?>"
-                                    placeholder="150000"
-                                >
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="imagen">Imagen del Curso</label>
-                            <div class="file-upload">
-                                <input 
-                                    type="file" 
-                                    id="imagen_raw" 
-                                    name="_imagen_raw_unused"
-                                    accept="image/jpeg,image/png,image/webp"
-                                    style="position:absolute;opacity:0;width:0;height:0;"
-                                >
-                                <input type="hidden" name="imagen_cropped" id="imagen_cropped">
-                                <input type="hidden" name="imagen_ext" id="imagen_ext">
-
-                                <label for="imagen_raw" class="file-upload-label" id="upload-label">
-                                    <span class="material-symbols-rounded">crop</span>
-                                    <span id="upload-label-text">Seleccionar y recortar imagen</span>
-                                </label>
-                                <small>JPG, PNG o WEBP · Máx. 5MB · Se recortará en proporción 2:1</small>
-                            </div>
-                            <div class="image-preview-cropped" id="preview-cropped">
-                                <img id="preview-cropped-img" src="" alt="Imagen recortada">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-actions">
-                <a href="index.php" class="btn-secundario">Cancelar</a>
-                <button type="submit" class="btn-primario">
-                    <span class="material-symbols-rounded">save</span>
-                    Crear Curso
-                </button>
-            </div>
-        </form>
-    </main>
-
-    <div class="cropper-modal-overlay" id="cropperOverlay">
-        <div class="cropper-modal-box">
-            <div class="cropper-modal-header">
-                <h3>
-                    <span class="material-symbols-rounded">crop</span>
-                    Recortar imagen del curso
-                </h3>
-                <button class="cropper-close-btn" id="btnCropClose" type="button">
-                    <span class="material-symbols-rounded">close</span>
-                </button>
-            </div>
-            <div class="cropper-canvas-wrap">
-                <img id="cropImage" src="" alt="Imagen a recortar">
-            </div>
-            <div class="cropper-modal-footer">
-                <span class="cropper-hint">
-                    <span class="material-symbols-rounded">info</span>
-                    Ajusta el recuadro · Proporción fija 2:1
-                </span>
-                <div class="cropper-actions">
-                    <button type="button" class="btn-crop-cancel" id="btnCropCancel">Cancelar</button>
-                    <button type="button" class="btn-crop-confirm" id="btnCropConfirm">
-                        <span class="material-symbols-rounded">check</span>
-                        Aplicar recorte
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
-    <script>
-    (function () {
-        const ASPECT = 2 / 1;
-
-        const inputRaw      = document.getElementById('imagen_raw');
-        const inputCropped  = document.getElementById('imagen_cropped');
-        const inputExt      = document.getElementById('imagen_ext');
-        const uploadLabel   = document.getElementById('upload-label');
-        const uploadText    = document.getElementById('upload-label-text');
-        const previewBox    = document.getElementById('preview-cropped');
-        const previewImg    = document.getElementById('preview-cropped-img');
-
-        // ── Modal ──────────────────────────────────────────────
-        const overlay  = document.getElementById('cropperOverlay');
-        const cropImg  = document.getElementById('cropImage');
-        let cropper    = null;
-        let currentExt = 'jpg';
-
-        inputRaw.addEventListener('change', function (e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            if (file.size > 5 * 1024 * 1024) {
-                alert('La imagen no puede superar 5MB');
-                this.value = '';
-                return;
-            }
-
-            currentExt = file.name.split('.').pop().toLowerCase();
-            const url  = URL.createObjectURL(file);
-
-            if (cropper) { cropper.destroy(); cropper = null; }
-
-            cropImg.src = url;
-            overlay.classList.add('active');
-
-            cropImg.onload = function () {
-                cropper = new Cropper(cropImg, {
-                    aspectRatio: ASPECT,
-                    viewMode: 2,
-                    dragMode: 'move',
-                    autoCropArea: 1,
-                    restore: false,
-                    guides: true,
-                    center: true,
-                    highlight: true,
-                    cropBoxMovable: true,
-                    cropBoxResizable: true,
-                    toggleDragModeOnDblclick: false,
-                    background: true,
-                });
-            };
-            this.value = '';
-        });
-
-        document.getElementById('btnCropConfirm').addEventListener('click', function () {
-            if (!cropper) return;
-
-            const canvas = cropper.getCroppedCanvas({ width: 1200, height: 600 });
-            const mime   = currentExt === 'png' ? 'image/png' : 'image/jpeg';
-            const b64    = canvas.toDataURL(mime, 0.92);
-
-            inputCropped.value = b64;
-            inputExt.value     = currentExt;
-
-            previewImg.src = b64;
-            previewBox.classList.add('visible');
-
-            uploadLabel.classList.add('has-file');
-            uploadText.textContent = 'Imagen lista — clic para cambiar';
-
-            closeCropper();
-        });
-
-        document.getElementById('btnCropCancel').addEventListener('click', closeCropper);
-        document.getElementById('btnCropClose').addEventListener('click', closeCropper);
-        overlay.addEventListener('click', function (e) {
-            if (e.target === overlay) closeCropper();
-        });
-
-        function closeCropper() {
-            overlay.classList.remove('active');
-            if (cropper) { cropper.destroy(); cropper = null; }
-        }
-    })();
-    </script>
-</body>
-</html>
+header("Location: index.php");
+exit;

@@ -243,8 +243,8 @@ $fecha_hoy   = $dias_semana[date('w')] . ', ' . date('d') . ' de ' . $meses[date
                                 <a href="asistencia.php?grupo=<?php echo $g['id']; ?>" class="gpa-btn secondary">
                                     <span class="material-symbols-rounded">fact_check</span> Asistencia
                                 </a>
-                                <a href="../documentos/institucionales/bitacoras/crear.php?grupo=<?php echo $g['id']; ?>" class="gpa-btn secondary">
-                                    <span class="material-symbols-rounded">edit_note</span> Bitácora
+                                <a href="../documentos/institucionales/index.php" class="gpa-btn secondary">
+                                    <span class="material-symbols-rounded">edit_note</span> Bitácoras
                                 </a>
                             </div>
                         </div>

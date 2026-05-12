@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <header>
         <div class="logo-section">
             <img src="../assets/img/1.jpg" alt="Logo Amimbré">
-            <a href="index.html"><h1>Amimbré</h1></a>
+            <a href="index.php"><h1>Amimbré</h1></a>
         </div>
         <div class="header-actions">
             <a href="../auth/login.php" class="login-btn">Iniciar Sesión</a>
@@ -39,6 +39,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <div class="hero-band">
         <div class="hero-content">
+            <a href="index.php" class="back-home-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                Volver al inicio
+            </a>
             <span class="hero-eyebrow">Escuela de Música Amimbré</span>
             <h2 class="hero-title">Hoja de Vida &amp; Preinscripción</h2>
             <p class="hero-sub">Completa el formulario con tus datos para reservar tu cupo. Los campos marcados con <span class="req-star">*</span> son obligatorios.</p>

@@ -30,6 +30,19 @@
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+    /* Colores fijos de documentos imprimibles (independientes del tema) */
+    --d-blue:   #1479b0;
+    --d-orange: #ff6d00;
+    --d-green:  #4ec336;
+    --d-red:    #ba2626;
+    --d-yellow: #d4a000;
+    --d-white:  #ffffff;
+    --d-bg:     #f8fafc;
+    --d-text:   #1a2535;
+    --d-muted:  #6b7280;
+    --d-light:  #9ca3af;
+    --d-border: #e5e7eb;
 }
 
 /* ========================

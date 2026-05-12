@@ -147,6 +147,54 @@ function tiempo_transcurrido($fecha) {
 }
 
 $icono = icono_archivo($documento['tipo_archivo']);
+
+// ── Respuesta AJAX ──────────────────────────────────────────────
+$is_ajax = !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
+        && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+
+if ($is_ajax) {
+    $categorias_labels = [
+        'informes'     => 'Informe',
+        'facturas'     => 'Factura',
+        'contratos'    => 'Contrato',
+        'nominas'      => 'Nómina',
+        'presupuestos' => 'Presupuesto',
+        'legal'        => 'Legal',
+        'otro'         => 'Otro',
+    ];
+    $visibilidad_labels = [
+        'solo_admin'               => 'Solo Administradores',
+        'profesores'               => 'Todos los Profesores',
+        'profesor_especifico'      => 'Profesor Específico',
+        'todos_excepto_estudiantes' => 'Todos excepto Estudiantes',
+    ];
+
+    header('Content-Type: application/json');
+    echo json_encode([
+        'success'   => true,
+        'documento' => [
+            'id'                     => $documento['id'],
+            'titulo'                 => $documento['titulo'],
+            'categoria'              => $documento['categoria'],
+            'categoria_label'        => $categorias_labels[$documento['categoria']] ?? 'N/A',
+            'descripcion'            => $documento['descripcion'] ?? '',
+            'tipo_archivo'           => $documento['tipo_archivo'],
+            'nombre_archivo'         => $documento['nombre_archivo'],
+            'tamanio_archivo'        => $documento['tamanio_archivo'] ?? 0,
+            'visibilidad'            => $documento['visibilidad'],
+            'visibilidad_label'      => $visibilidad_labels[$documento['visibilidad']] ?? '',
+            'profesor_especifico_id' => $documento['profesor_especifico_id'],
+            'profesor_nombre'        => $documento['profesor_nombre'] ?? null,
+            'profesor_email'         => $documento['profesor_email'] ?? null,
+            'subido_por_nombre'      => $documento['subido_por_nombre'],
+            'fecha_creacion'         => $documento['fecha_creacion'],
+            'fecha_modificacion'     => $documento['fecha_modificacion'] ?? null,
+            'icono'                  => $icono,
+        ],
+        'historial' => $historial_accesos,
+    ]);
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">

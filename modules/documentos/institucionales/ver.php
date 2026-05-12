@@ -156,6 +156,42 @@ $iconos = [
 ];
 
 $icono_data = $iconos[$tipo] ?? ['icono' => 'description', 'color' => 'var(--text-secondary)'];
+
+// AJAX: devolver JSON para el modal de ver
+$is_ajax = !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
+        && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+
+if ($is_ajax) {
+    header('Content-Type: application/json');
+
+    $data = [
+        'success'   => true,
+        'tipo'      => $tipo,
+        'documento' => $documento,
+        'icono'     => $icono_data['icono'],
+        'color'     => $icono_data['color'],
+    ];
+
+    if ($tipo === 'certificado') {
+        $data['titulo_display'] = 'Certificado de ' . ($documento['curso_nombre'] ?? '') . ' – ' . ($documento['estudiante_nombre'] ?? '');
+        $data['fecha_display']  = formatear_fecha_completa($documento['fecha_aprobacion']);
+        $data['periodo']        = (!empty($documento['fecha_inicio_curso']) && !empty($documento['fecha_fin_curso']))
+            ? date('d/m/Y', strtotime($documento['fecha_inicio_curso'])) . ' – ' . date('d/m/Y', strtotime($documento['fecha_fin_curso']))
+            : '';
+    } elseif ($tipo === 'comunicado') {
+        $data['titulo_display'] = $documento['titulo'] ?? 'Sin título';
+        $data['fecha_display']  = formatear_fecha_completa($documento['fecha_publicacion']);
+    } elseif ($tipo === 'acta') {
+        $data['titulo_display']     = $documento['titulo'] ?? 'Sin título';
+        $data['fecha_display']      = formatear_fecha_completa($documento['fecha_reunion']);
+        $data['tipo_reunion_label'] = ucfirst(str_replace('_', ' ', $documento['tipo_reunion'] ?? ''));
+        $vis_map = ['solo_admin' => 'Solo Admin', 'admin_profesores' => 'Admin y Profesores', 'todos' => 'Todos'];
+        $data['visibilidad_label']  = $vis_map[$documento['visibilidad'] ?? ''] ?? '';
+    }
+
+    echo json_encode($data);
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -590,10 +626,10 @@ $icono_data = $iconos[$tipo] ?? ['icono' => 'description', 'color' => 'var(--tex
 
             <!-- Acciones -->
             <div class="actions-bar">
-                <button class="btn-download" onclick="window.location.href='descargar.php?tipo=<?php echo $tipo; ?>&id=<?php echo $doc_id; ?>'">
-                    <span class="material-symbols-rounded">download</span>
-                    Descargar Archivo
-                </button>
+                <a class="btn-download" href="generar.php?tipo=<?php echo $tipo; ?>&id=<?php echo $doc_id; ?>" target="_blank">
+                    <span class="material-symbols-rounded">picture_as_pdf</span>
+                    Ver / Descargar PDF
+                </a>
                 <?php if ($user['rol'] === 'admin'): ?>
                 <button class="btn-delete" 
                         onclick="if(confirm('¿Estás seguro de eliminar este documento?')) window.location.href='eliminar.php?tipo=<?php echo $tipo; ?>&id=<?php echo $doc_id; ?>'">

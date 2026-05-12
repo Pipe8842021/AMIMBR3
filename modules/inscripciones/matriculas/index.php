@@ -170,7 +170,7 @@ $open_modal = isset($_GET['open_modal']) && $_GET['open_modal'] === '1';
 
     <!-- Flash -->
     <?php if ($flash_msg): ?>
-    <div class="alert alert-<?= $flash_type === 'success' ? 'success' : 'danger' ?>">
+    <div class="alert alert-<?= $flash_type === 'success' ? 'success' : 'danger' ?>" id="alertFlash">
         <span class="material-symbols-rounded"><?= $flash_type === 'success' ? 'check_circle' : 'error' ?></span>
         <?= htmlspecialchars($flash_msg) ?>
     </div>
@@ -431,7 +431,12 @@ $open_modal = isset($_GET['open_modal']) && $_GET['open_modal'] === '1';
                 </div>
             </div>
 
-            <form method="POST" action="nueva.php" class="form-nueva-matricula" id="formNuevaModal">
+            <form method="POST" action="nueva.php" class="form-nueva-matricula" id="formNuevaModal" novalidate>
+
+                <div class="alert alert-error" id="alertValidarMatricula" style="display:none">
+                    <span class="material-symbols-rounded">error</span>
+                    <span id="msgValidarMatricula"></span>
+                </div>
 
                 <!-- Buscador + select de estudiante -->
                 <div class="form-group">
@@ -578,6 +583,30 @@ function mostrarInfoGrupoModal(sel) {
     `;
 }
 
+// Validación del formulario Nueva Matrícula
+document.getElementById('formNuevaModal').addEventListener('submit', function(e) {
+    const alertEl = document.getElementById('alertValidarMatricula');
+    const msgEl   = document.getElementById('msgValidarMatricula');
+    const sel     = document.getElementById('selectEstudianteModal');
+
+    alertEl.style.display = 'none';
+    sel.classList.remove('input-error');
+
+    if (!sel.value) {
+        e.preventDefault();
+        msgEl.textContent = 'Debes seleccionar un estudiante antes de crear la matrícula.';
+        alertEl.style.display = 'flex';
+        sel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+});
+
+document.getElementById('selectEstudianteModal').addEventListener('change', function() {
+    if (this.value) {
+        this.classList.remove('input-error');
+        document.getElementById('alertValidarMatricula').style.display = 'none';
+    }
+});
+
 // Reabrir modal si viene de un error en nueva.php
 <?php if ($open_modal): ?>
 document.addEventListener('DOMContentLoaded', () => abrirModalNuevaMatricula());
@@ -591,7 +620,7 @@ document.querySelector('.search-input[name="buscar"]')?.addEventListener('input'
 
 // Auto-ocultar flash
 setTimeout(() => {
-    const a = document.querySelector('.alert');
+    const a = document.getElementById('alertFlash');
     if (a) { a.style.transition = 'opacity .5s'; a.style.opacity = '0'; setTimeout(() => a.remove(), 500); }
 }, 5000);
 </script>

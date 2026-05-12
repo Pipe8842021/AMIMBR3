@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"c:\\\\xampp\\\\htdocs\\\\AMIMBR3\\\\modules\\\\documentos\" -Recurse)",
+      "Bash(Select-Object FullName)",
+      "Bash(php -l \"c:\\\\xampp\\\\htdocs\\\\AMIMBR3\\\\modules\\\\documentos\\\\institucionales\\\\index.php\")",
+      "Bash(php -l \"c:\\\\xampp\\\\htdocs\\\\AMIMBR3\\\\modules\\\\documentos\\\\institucionales\\\\crear.php\")",
+      "Bash(php -l \"c:\\\\xampp\\\\htdocs\\\\AMIMBR3\\\\modules\\\\documentos\\\\institucionales\\\\eliminar.php\")",
+      "Bash(php -l \"c:\\\\xampp\\\\htdocs\\\\AMIMBR3\\\\modules\\\\documentos\\\\institucionales\\\\ver.php\")",
+      "Bash(php -l \"c:\\\\xampp\\\\htdocs\\\\AMIMBR3\\\\modules\\\\documentos\\\\institucionales\\\\generar.php\")",
+      "Bash(php -l \"c:\\\\xampp\\\\htdocs\\\\AMIMBR3\\\\modules\\\\documentos\\\\institucionales\\\\editar.php\")"
+    ]
+  }
+}

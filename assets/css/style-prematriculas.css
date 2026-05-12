@@ -35,12 +35,12 @@ body { min-height: 100vh; background: var(--hover-bg); color: var(--text-primary
 .btn-primary {
     display: inline-flex; align-items: center; gap: 8px;
     padding: 10px 18px;
-    background: var(--gradient-primary-blue);
-    color: #fff; border: none; border-radius: 10px;
+    background: var(--subtle-blue);
+    color: var(--primary-blue); border: none; border-radius: 10px;
     font-size: 0.9rem; font-weight: 600; cursor: pointer;
     transition: all 0.2s ease; text-decoration: none;
 }
-.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(20,121,176,0.35); }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(20,121,176,0.35); background-color: var(--primary-blue); color: #fff; }
 
 .btn-secondary {
     display: inline-flex; align-items: center; gap: 6px;
@@ -54,19 +54,19 @@ body { min-height: 100vh; background: var(--hover-bg); color: var(--text-primary
 
 .btn-success {
     display: inline-flex; align-items: center; gap: 6px;
-    padding: 9px 16px; background: var(--gradient-primary-green);
-    color: #fff; border: none; border-radius: 10px;
+    padding: 9px 16px; background: var(--subtle-green);
+    color: var(--primary-green); border: none; border-radius: 10px;
     font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;
 }
-.btn-success:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(78,195,54,0.3); }
+.btn-success:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(78,195,54,0.3); background-color: var(--primary-green); color: #fff; }
 
 .btn-danger {
     display: inline-flex; align-items: center; gap: 6px;
-    padding: 9px 16px; background: var(--gradient-primary-orange);
-    color: #fff; border: none; border-radius: 10px;
+    padding: 9px 16px; background: var(--subtle-orange);
+    color: var(--primary-orange); border: none; border-radius: 10px;
     font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;
 }
-.btn-danger:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(255,109,0,0.3); }
+.btn-danger:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(255,109,0,0.3); background-color: var(--primary-orange); color: #fff; }
 
 /* ── Alertas ────────────────────────────────────────────────── */
 .alert {
@@ -291,8 +291,8 @@ body { min-height: 100vh; background: var(--hover-bg); color: var(--text-primary
     border-radius: 18px 18px 0 0;
 }
 .modal-header--primary { background: var(--dark-bg); }
-.modal-header--success { background: linear-gradient(135deg, #0b2210, #15181b); }
-.modal-header--danger  { background: linear-gradient(135deg, #2a1000, #15181b); }
+.modal-header--success { background: var(--dark-bg); }
+.modal-header--danger  { background: var(--dark-bg); }
 
 .modal-title {
     display: flex; align-items: center; gap: 10px;

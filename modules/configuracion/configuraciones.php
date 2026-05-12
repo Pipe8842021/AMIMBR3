@@ -95,6 +95,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'chang
     }
 }
 
+// --- 3. GUARDAR INFO PÁGINA DE INICIO (solo admin) ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_pagina_info' && $user_rol === 'admin') {
+    $campos = ['mision', 'vision', 'valores', 'sobre_nosotros',
+               'contacto_direccion', 'contacto_telefono', 'contacto_email', 'contacto_horario'];
+    try {
+        $stmt = $pdo->prepare("INSERT INTO configuracion_pagina (clave, valor) VALUES (?, ?) ON DUPLICATE KEY UPDATE valor = VALUES(valor)");
+        foreach ($campos as $campo) {
+            $stmt->execute([$campo, trim($_POST[$campo] ?? '')]);
+        }
+        $mensaje_feedback = "Información de la página actualizada correctamente.";
+        $tipo_feedback    = "success";
+    } catch (PDOException $e) {
+        $mensaje_feedback = "Error al guardar: " . $e->getMessage();
+        $tipo_feedback    = "error";
+    }
+}
+
+// --- 4. SUBIR IMAGEN GALERÍA (solo admin) ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'upload_galeria' && $user_rol === 'admin') {
+    if (isset($_FILES['imagen_galeria']) && $_FILES['imagen_galeria']['error'] === UPLOAD_ERR_OK) {
+        $file    = $_FILES['imagen_galeria'];
+        $ext     = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        $allowed = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+        if (!in_array($ext, $allowed)) {
+            $mensaje_feedback = "Formato no permitido. Use JPG, PNG, WEBP o GIF.";
+            $tipo_feedback    = "error";
+        } elseif ($file['size'] > 5 * 1024 * 1024) {
+            $mensaje_feedback = "La imagen no puede superar 5MB.";
+            $tipo_feedback    = "error";
+        } else {
+            $upload_dir = __DIR__ . '/../../assets/uploads/galeria/';
+            if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+            $filename = uniqid() . '_' . time() . '.' . $ext;
+            if (move_uploaded_file($file['tmp_name'], $upload_dir . $filename)) {
+                $max_orden = (int)$pdo->query("SELECT COALESCE(MAX(orden), 0) FROM galeria_pagina")->fetchColumn();
+                $pdo->prepare("INSERT INTO galeria_pagina (nombre_archivo, descripcion, orden) VALUES (?, ?, ?)")
+                    ->execute([$filename, trim($_POST['descripcion'] ?? ''), $max_orden + 1]);
+                $mensaje_feedback = "Imagen subida correctamente.";
+                $tipo_feedback    = "success";
+            } else {
+                $mensaje_feedback = "Error al guardar la imagen en el servidor.";
+                $tipo_feedback    = "error";
+            }
+        }
+    } else {
+        $mensaje_feedback = "No se recibió ninguna imagen válida.";
+        $tipo_feedback    = "error";
+    }
+}
+
+// --- 5. ELIMINAR IMAGEN GALERÍA (solo admin) ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_galeria' && $user_rol === 'admin') {
+    $img_id = (int)($_POST['imagen_id'] ?? 0);
+    if ($img_id > 0) {
+        try {
+            $stmt = $pdo->prepare("SELECT nombre_archivo FROM galeria_pagina WHERE id = ?");
+            $stmt->execute([$img_id]);
+            $img = $stmt->fetch();
+            if ($img) {
+                $path = __DIR__ . '/../../assets/uploads/galeria/' . $img['nombre_archivo'];
+                if (file_exists($path)) unlink($path);
+                $pdo->prepare("DELETE FROM galeria_pagina WHERE id = ?")->execute([$img_id]);
+            }
+            $mensaje_feedback = "Imagen eliminada correctamente.";
+            $tipo_feedback    = "success";
+        } catch (PDOException $e) {
+            $mensaje_feedback = "Error al eliminar la imagen.";
+            $tipo_feedback    = "error";
+        }
+    }
+}
+
 // Datos actuales del usuario
 $stmt = $pdo->prepare("SELECT nombre, email, rol, telefono, foto_perfil FROM usuarios WHERE id=?");
 $stmt->execute([$user_id]);
@@ -106,6 +178,19 @@ if ($user_rol === 'admin') {
     $stmt = $pdo->prepare("SELECT id, nombre, email, rol, foto_perfil FROM usuarios WHERE id != ? ORDER BY rol ASC, nombre ASC");
     $stmt->execute([$user_id]);
     $lista_usuarios = $stmt->fetchAll();
+}
+
+// Datos para Página de Inicio (solo admin)
+$pagina_config = [];
+$galeria_imgs  = [];
+if ($user_rol === 'admin') {
+    try {
+        $rows = $pdo->query("SELECT clave, valor FROM configuracion_pagina")->fetchAll();
+        foreach ($rows as $row) $pagina_config[$row['clave']] = $row['valor'];
+    } catch (PDOException $e) {}
+    try {
+        $galeria_imgs = $pdo->query("SELECT * FROM galeria_pagina ORDER BY orden ASC, id ASC")->fetchAll();
+    } catch (PDOException $e) {}
 }
 
 // Helper: inicial del nombre para avatar fallback
@@ -180,6 +265,10 @@ function get_foto_url(?string $foto): string {
                     <button class="tab-link" onclick="openTab(event,'tab-permisos')">
                         <span class="material-symbols-rounded">admin_panel_settings</span>
                         Permisos
+                    </button>
+                    <button class="tab-link" onclick="openTab(event,'tab-pagina')">
+                        <span class="material-symbols-rounded">web</span>
+                        Página de Inicio
                     </button>
                     <?php endif; ?>
                 </nav>
@@ -465,6 +554,175 @@ function get_foto_url(?string $foto): string {
                 </div>
                 <?php endif; ?>
 
+                <!-- ===== TAB: PÁGINA DE INICIO (solo admin) ===== -->
+                <?php if ($user_rol === 'admin'): ?>
+                <div id="tab-pagina" class="tab-content">
+
+                    <!-- Galería -->
+                    <div class="config-section">
+                        <div class="section-header">
+                            <span class="material-symbols-rounded">photo_library</span>
+                            <div>
+                                <h3>Galería</h3>
+                                <p>Imágenes que aparecen en la sección Galería del sitio público</p>
+                            </div>
+                        </div>
+                        <div class="section-body">
+                            <form method="POST" enctype="multipart/form-data" id="form-upload-galeria">
+                                <input type="hidden" name="action" value="upload_galeria">
+
+                                <!-- Zona de drop personalizada -->
+                                <div class="galeria-dropzone" id="galeria-dropzone">
+                                    <input type="file" name="imagen_galeria" id="galeria-file-input"
+                                           accept="image/*" required class="galeria-file-hidden">
+                                    <div class="dropzone-idle" id="dropzone-idle">
+                                        <span class="material-symbols-rounded">cloud_upload</span>
+                                        <p>Arrastra una imagen aquí o <label for="galeria-file-input" class="dropzone-browse">selecciona un archivo</label></p>
+                                        <span>JPG, PNG, WEBP, GIF · Máx. 5 MB</span>
+                                    </div>
+                                    <div class="dropzone-preview" id="dropzone-preview">
+                                        <img id="dropzone-thumb" src="" alt="">
+                                        <div class="dropzone-preview-info">
+                                            <p id="dropzone-filename">archivo.jpg</p>
+                                            <span id="dropzone-filesize">0 KB</span>
+                                            <button type="button" class="dropzone-clear" id="dropzone-clear">
+                                                <span class="material-symbols-rounded">close</span>
+                                                Quitar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-group" style="margin-top:14px;">
+                                    <label>Descripción (opcional)</label>
+                                    <input type="text" name="descripcion" placeholder="Descripción de la imagen...">
+                                </div>
+
+                                <div class="galeria-upload-actions">
+                                    <button type="submit" class="btn-primario" id="btn-subir-imagen" disabled>
+                                        <span class="material-symbols-rounded">upload</span>
+                                        Subir Imagen
+                                    </button>
+                                </div>
+                            </form>
+
+                            <?php if (!empty($galeria_imgs)): ?>
+                            <div class="galeria-admin-grid">
+                                <?php foreach ($galeria_imgs as $img): ?>
+                                <div class="galeria-admin-item">
+                                    <img src="../../assets/uploads/galeria/<?= htmlspecialchars($img['nombre_archivo']) ?>"
+                                         alt="<?= htmlspecialchars($img['descripcion'] ?? '') ?>">
+                                    <div class="galeria-item-overlay">
+                                        <form method="POST"
+                                              onsubmit="return confirm('¿Eliminar esta imagen? Esta acción no se puede deshacer.')">
+                                            <input type="hidden" name="action" value="delete_galeria">
+                                            <input type="hidden" name="imagen_id" value="<?= $img['id'] ?>">
+                                            <button type="submit" class="btn-galeria-del" title="Eliminar imagen">
+                                                <span class="material-symbols-rounded">delete</span>
+                                            </button>
+                                        </form>
+                                    </div>
+                                    <?php if ($img['descripcion']): ?>
+                                    <p class="galeria-item-desc"><?= htmlspecialchars($img['descripcion']) ?></p>
+                                    <?php endif; ?>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php else: ?>
+                            <div class="galeria-empty-state">
+                                <span class="material-symbols-rounded">photo_library</span>
+                                <p>No hay imágenes administradas aún.</p>
+                                <span>Se muestran las imágenes predeterminadas del sitio. Sube imágenes para reemplazarlas.</span>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <!-- Misión, Visión, Valores y Descripción general -->
+                    <form method="POST">
+                        <input type="hidden" name="action" value="update_pagina_info">
+
+                        <div class="config-section">
+                            <div class="section-header">
+                                <span class="material-symbols-rounded">school</span>
+                                <div>
+                                    <h3>Misión, Visión y Valores</h3>
+                                    <p>Texto de la sección "Sobre Nosotros" del sitio público</p>
+                                </div>
+                            </div>
+                            <div class="section-body">
+                                <div class="form-group" style="margin-bottom:18px;">
+                                    <label>Misión</label>
+                                    <textarea name="mision" rows="3"
+                                              placeholder="Escribe la misión de la institución..."><?= htmlspecialchars($pagina_config['mision'] ?? '') ?></textarea>
+                                </div>
+                                <div class="form-group" style="margin-bottom:18px;">
+                                    <label>Visión</label>
+                                    <textarea name="vision" rows="3"
+                                              placeholder="Escribe la visión de la institución..."><?= htmlspecialchars($pagina_config['vision'] ?? '') ?></textarea>
+                                </div>
+                                <div class="form-group" style="margin-bottom:18px;">
+                                    <label>Valores</label>
+                                    <textarea name="valores" rows="3"
+                                              placeholder="Escribe los valores de la institución..."><?= htmlspecialchars($pagina_config['valores'] ?? '') ?></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>Descripción general (párrafo "Sobre Amimbré")</label>
+                                    <textarea name="sobre_nosotros" rows="6"
+                                              placeholder="Descripción general (usa doble salto de línea para separar párrafos)..."><?= htmlspecialchars($pagina_config['sobre_nosotros'] ?? '') ?></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="config-section">
+                            <div class="section-header">
+                                <span class="material-symbols-rounded">contact_phone</span>
+                                <div>
+                                    <h3>Información de Contacto</h3>
+                                    <p>Datos visibles en la sección "Contacto" del sitio público</p>
+                                </div>
+                            </div>
+                            <div class="section-body">
+                                <div class="form-grid-2">
+                                    <div class="form-group">
+                                        <label>Dirección</label>
+                                        <input type="text" name="contacto_direccion"
+                                               value="<?= htmlspecialchars($pagina_config['contacto_direccion'] ?? '') ?>"
+                                               placeholder="Dirección física de la institución">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Teléfono</label>
+                                        <input type="text" name="contacto_telefono"
+                                               value="<?= htmlspecialchars($pagina_config['contacto_telefono'] ?? '') ?>"
+                                               placeholder="Número de contacto">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Correo Electrónico</label>
+                                        <input type="email" name="contacto_email"
+                                               value="<?= htmlspecialchars($pagina_config['contacto_email'] ?? '') ?>"
+                                               placeholder="email@ejemplo.com">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Horario de Atención</label>
+                                        <input type="text" name="contacto_horario"
+                                               value="<?= htmlspecialchars($pagina_config['contacto_horario'] ?? '') ?>"
+                                               placeholder="Ej: Lunes - Sábado: 7:00 a 5:00">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primario">
+                                <span class="material-symbols-rounded">save</span>
+                                Guardar Cambios
+                            </button>
+                        </div>
+                    </form>
+
+                </div>
+                <?php endif; ?>
+
             </div><!-- /tabs-content -->
         </div><!-- /config-layout -->
     </main>
@@ -660,6 +918,78 @@ function get_foto_url(?string $foto): string {
             overlay.classList.remove('active');
             if (cropper) { cropper.destroy(); cropper = null; }
         }
+    })();
+
+    // ── GALERÍA DROPZONE ──────────────────────────────────────
+    (function () {
+        const fileInput   = document.getElementById('galeria-file-input');
+        const dropzone    = document.getElementById('galeria-dropzone');
+        const idleView    = document.getElementById('dropzone-idle');
+        const previewView = document.getElementById('dropzone-preview');
+        const thumb       = document.getElementById('dropzone-thumb');
+        const fname       = document.getElementById('dropzone-filename');
+        const fsize       = document.getElementById('dropzone-filesize');
+        const clearBtn    = document.getElementById('dropzone-clear');
+        const submitBtn   = document.getElementById('btn-subir-imagen');
+
+        if (!fileInput) return;
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+
+        function showPreview(file) {
+            if (!file || !file.type.startsWith('image/')) return;
+            const url = URL.createObjectURL(file);
+            thumb.src = url;
+            fname.textContent = file.name;
+            fsize.textContent = formatSize(file.size);
+            idleView.style.display  = 'none';
+            previewView.style.display = 'flex';
+            submitBtn.disabled = false;
+            dropzone.classList.add('has-file');
+        }
+
+        function clearFile() {
+            fileInput.value = '';
+            thumb.src = '';
+            idleView.style.display  = 'flex';
+            previewView.style.display = 'none';
+            submitBtn.disabled = true;
+            dropzone.classList.remove('has-file', 'drag-over');
+        }
+
+        fileInput.addEventListener('change', function () {
+            if (this.files[0]) showPreview(this.files[0]);
+        });
+
+        clearBtn.addEventListener('click', clearFile);
+
+        // Drag & drop
+        ['dragenter', 'dragover'].forEach(evt => {
+            dropzone.addEventListener(evt, function (e) {
+                e.preventDefault();
+                dropzone.classList.add('drag-over');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(evt => {
+            dropzone.addEventListener(evt, function (e) {
+                e.preventDefault();
+                dropzone.classList.remove('drag-over');
+            });
+        });
+
+        dropzone.addEventListener('drop', function (e) {
+            const file = e.dataTransfer.files[0];
+            if (!file) return;
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            fileInput.files = dt.files;
+            showPreview(file);
+        });
     })();
     </script>
 </body>
