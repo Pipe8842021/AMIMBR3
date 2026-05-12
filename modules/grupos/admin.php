@@ -284,9 +284,7 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
                         </option>
                     <?php endforeach; ?>
                 </select>
-                <button type="submit" class="btn-filtrar">
-                    <span class="material-symbols-rounded">filter_list</span>
-                </button>
+
                 <?php if ($filtro_estado || $filtro_buscar): ?>
                     <a href="admin.php" class="btn-limpiar" title="Limpiar filtros">
                         <span class="material-symbols-rounded">close</span>
@@ -804,6 +802,29 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
         function cerrarModalEditar() {
             document.getElementById('modalEditarGrupo').classList.remove('active');
         }
+        // Intercepción de scroll para móviles en la tabla "Grupos"
+        document.addEventListener('DOMContentLoaded', () => {
+            const tableWrapper = document.querySelector('.table-wrapper');
+
+            // Solo ejecutar en pantallas móviles (menores a 768px)
+            if (window.innerWidth < 768 && tableWrapper) {
+                setTimeout(() => {
+                    // 1. Desplazar un poco a la derecha (60px)
+                    tableWrapper.scrollTo({
+                        left: 60,
+                        behavior: 'smooth'
+                    });
+
+                    // 2. Regresar al inicio después de 600ms
+                    setTimeout(() => {
+                        tableWrapper.scrollTo({
+                            left: 0,
+                            behavior: 'smooth'
+                        });
+                    }, 600);
+                }, 1000); // Se dispara 1 segundo después de cargar para que el usuario lo note
+            }
+        });
     </script>
 </body>
 

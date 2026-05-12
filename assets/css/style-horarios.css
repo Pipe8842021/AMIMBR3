@@ -243,7 +243,7 @@ body.sidebar-collapsed .main-content,
     margin-right: 3px;
 }
 
-/* ── Variante Profesor (naranja) ─────────────────────────── */
+
 .day.profesor.today {
     border: 2px solid var(--primary-orange);
     background: rgba(255, 152, 0, 0.05);
@@ -253,7 +253,7 @@ body.sidebar-collapsed .main-content,
     border-color: var(--primary-orange);
 }
 
-/* ── Variante Estudiante (verde) ──────────────────────────── */
+
 .day.estudiante.today {
     border: 2px solid var(--primary-green);
     background: rgba(76, 175, 80, 0.05);
@@ -263,7 +263,7 @@ body.sidebar-collapsed .main-content,
     border-color: var(--primary-green);
 }
 
-/* ── Variantes de color por rol / vista ─────────────────── */
+
 .event-tag-single.green {
     background: var(--subtle-green);
     color: var(--primary-green);
@@ -276,7 +276,7 @@ body.sidebar-collapsed .main-content,
     border-left-color: var(--primary-orange);
 }
 
-/* Badge "+N más" */
+
 .event-more-badge {
     display: inline-block;
     font-size: 0.65rem;
@@ -290,7 +290,6 @@ body.sidebar-collapsed .main-content,
     align-self: flex-start;
 }
 
-/* ── Cuadro de Ayuda ─────────────────────────────────────── */
 .help-card {
     background: var(--dark-bg);
     border-radius: 16px;
