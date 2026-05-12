@@ -174,7 +174,7 @@ if ($login_status === 'success' && isset($redirect)) {
         <div class="right-side">
             <div class="form-container">
 
-                <a href="../public/index.html" class="back-link">
+                <a href="../public/index.php" class="back-link">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                     </svg>
@@ -191,8 +191,8 @@ if ($login_status === 'success' && isset($redirect)) {
                     <div class="form-group">
                         <label class="form-label" for="email">Correo electrónico</label>
                         <input class="form-input" type="email" id="email" name="email"
-                               placeholder="tu@email.com" required
-                               value="<?= isset($_POST['email']) ? htmlspecialchars($_POST['email']) : '' ?>">
+                                placeholder="tu@email.com" required
+                                value="<?= isset($_POST['email']) ? htmlspecialchars($_POST['email']) : '' ?>">
                     </div>
 
                     <div class="form-group">
@@ -201,7 +201,7 @@ if ($login_status === 'success' && isset($redirect)) {
                             <a href="recuperar-password.php" class="forgot-link">¿Olvidaste tu contraseña?</a>
                         </div>
                         <input class="form-input" type="password" id="password" name="password"
-                               placeholder="••••••••" required>
+                                placeholder="••••••••" required>
                     </div>
 
                     <div class="checkbox-group">

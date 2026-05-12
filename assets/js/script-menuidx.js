@@ -275,14 +275,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.addEventListener('scroll', highlightNavigation);
 
-    // ── THEME TOGGLE ──────────────────────────────────────
-    const themeToggle = document.querySelector('.theme-toggle');
-    if (themeToggle) {
-        themeToggle.addEventListener('click', function() {
-            console.log('Theme toggle clicked');
-        });
-    }
-
     // ── RESIZE ────────────────────────────────────────────
     let resizeTimer;
     window.addEventListener('resize', function() {
@@ -298,28 +290,58 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ============================================================
-// THEME TOGGLE — Claro / Oscuro
+// MAP FALLBACK — muestra imagen si Google Maps no carga
 // ============================================================
 (function () {
-    const toggle = document.querySelector('.theme-toggle');
-    const html   = document.documentElement;
+    const iframe   = document.getElementById('contactMap');
+    const fallback = document.getElementById('mapFallback');
+    if (!iframe || !fallback) return;
+
+    function showFallback() {
+        iframe.style.display  = 'none';
+        fallback.style.display = 'block';
+    }
+
+    function showMap() {
+        fallback.style.display = 'none';
+        iframe.style.display   = 'block';
+        // Fuerza recarga del iframe al volver la conexión
+        const src = iframe.src;
+        iframe.src = '';
+        iframe.src = src;
+    }
+
+    // Si arranca sin conexión, muestra la imagen de inmediato
+    if (!navigator.onLine) showFallback();
+
+    window.addEventListener('offline', showFallback);
+    window.addEventListener('online',  showMap);
+})();
+
+// ============================================================
+// THEME TOGGLE — Claro / Oscuro (múltiples instancias)
+// ============================================================
+(function () {
+    const html        = document.documentElement;
     const STORAGE_KEY = 'amimbre-theme';
 
-    // Aplicar tema guardado al cargar
     const savedTheme = localStorage.getItem(STORAGE_KEY);
     if (savedTheme === 'light') {
         html.setAttribute('data-theme', 'light');
     }
 
-    toggle?.addEventListener('click', () => {
+    function applyToggle() {
         const isLight = html.getAttribute('data-theme') === 'light';
-
         if (isLight) {
-            html.removeAttribute('data-theme');          // → dark (default)
+            html.removeAttribute('data-theme');
             localStorage.setItem(STORAGE_KEY, 'dark');
         } else {
-            html.setAttribute('data-theme', 'light');    // → light
+            html.setAttribute('data-theme', 'light');
             localStorage.setItem(STORAGE_KEY, 'light');
         }
+    }
+
+    document.querySelectorAll('.theme-toggle').forEach(toggle => {
+        toggle.addEventListener('click', applyToggle);
     });
 })();

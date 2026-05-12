@@ -146,6 +146,28 @@ try {
     $hojas_calculo = 0;
 }
 
+// Obtener lista de profesores (para el modal de crear)
+$profesores = [];
+if ($user['rol'] === 'admin') {
+    try {
+        $stmt = $pdo->query("SELECT id, nombre FROM usuarios WHERE rol = 'profesor' AND estado = 'activo' ORDER BY nombre");
+        $profesores = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        $profesores = [];
+    }
+}
+
+// Mensaje de éxito tras una acción
+$success_msg = '';
+if (isset($_GET['success'])) {
+    $mensajes = [
+        'documento_creado'      => 'Documento creado exitosamente.',
+        'documento_actualizado' => 'Documento actualizado exitosamente.',
+        'documento_eliminado'   => 'Documento eliminado exitosamente.',
+    ];
+    $success_msg = $mensajes[$_GET['success']] ?? '';
+}
+
 // Función para obtener icono según tipo de archivo
 function icono_archivo($tipo) {
     $iconos = [
@@ -237,12 +259,23 @@ function formatear_fecha($fecha) {
                 </div>
             </div>
             <?php if ($user['rol'] === 'admin'): ?>
-            <button class="btn-primary" onclick="window.location.href='crear.php'">
+            <button class="btn-primary" onclick="abrirModalCrear()">
                 <span class="material-symbols-rounded">add</span>
                 Nuevo Archivo
             </button>
             <?php endif; ?>
         </div>
+
+        <?php if ($success_msg): ?>
+        <div class="alert alert-success" id="alertaExito" style="margin-bottom:24px">
+            <span class="material-symbols-rounded">check_circle</span>
+            <span><?php echo htmlspecialchars($success_msg); ?></span>
+            <button onclick="this.parentElement.style.display='none'" style="margin-left:auto;background:none;border:none;cursor:pointer;color:inherit;display:flex;align-items:center">
+                <span class="material-symbols-rounded" style="font-size:20px">close</span>
+            </button>
+        </div>
+        <script>setTimeout(function(){var a=document.getElementById('alertaExito');if(a)a.style.display='none';},4000);</script>
+        <?php endif; ?>
 
         <!-- Estadísticas -->
         <div class="stats-grid">
@@ -291,7 +324,7 @@ function formatear_fecha($fecha) {
         <div class="filters-container">
             <div class="search-box">
                 <span class="material-symbols-rounded">search</span>
-                <input type="text" id="searchInput" placeholder="Buscar por nombre, descripción o etiqueta..." 
+                <input type="text" id="searchInput" placeholder="Buscar documentos..."
                        value="<?php echo htmlspecialchars($search); ?>">
             </div>
 
@@ -362,17 +395,30 @@ function formatear_fecha($fecha) {
                                         <span class="material-symbols-rounded">download</span>
                                         Descargar
                                     </a>
-                                    <a href="ver.php?id=<?php echo $doc['id']; ?>" class="menu-item">
+                                    <a href="#" class="menu-item"
+                                       onclick="abrirModalVer(<?php echo $doc['id']; ?>); return false;">
                                         <span class="material-symbols-rounded">visibility</span>
                                         Ver detalles
                                     </a>
                                     <?php if ($user['rol'] === 'admin'): ?>
-                                    <a href="editar.php?id=<?php echo $doc['id']; ?>" class="menu-item">
+                                    <a href="#" class="menu-item"
+                                       data-doc="<?php echo htmlspecialchars(json_encode([
+                                           'id'                   => $doc['id'],
+                                           'titulo'               => $doc['titulo'],
+                                           'categoria'            => $doc['categoria'],
+                                           'descripcion'          => $doc['descripcion'] ?? '',
+                                           'visibilidad'          => $doc['visibilidad'],
+                                           'profesor_especifico_id' => $doc['profesor_especifico_id'],
+                                           'nombre_archivo'       => $doc['nombre_archivo'],
+                                           'tipo_archivo'         => $doc['tipo_archivo'],
+                                           'tamanio_archivo'      => $doc['tamanio_archivo'] ?? 0,
+                                       ]), ENT_QUOTES); ?>"
+                                       onclick="abrirModalEditar(JSON.parse(this.dataset.doc)); return false;">
                                         <span class="material-symbols-rounded">edit</span>
                                         Editar
                                     </a>
-                                    <a href="eliminar.php?id=<?php echo $doc['id']; ?>" class="menu-item danger" 
-                                       onclick="return confirm('¿Estás seguro de eliminar este documento?')">
+                                    <a href="#" class="menu-item danger"
+                                       onclick="abrirModalEliminar(<?php echo $doc['id']; ?>, '<?php echo htmlspecialchars(addslashes($doc['titulo']), ENT_QUOTES); ?>'); return false;">
                                         <span class="material-symbols-rounded">delete</span>
                                         Eliminar
                                     </a>
@@ -421,7 +467,7 @@ function formatear_fecha($fecha) {
                     <h3>No hay documentos</h3>
                     <p>No se encontraron documentos con los filtros seleccionados</p>
                     <?php if ($user['rol'] === 'admin'): ?>
-                    <button class="btn-primary" onclick="window.location.href='crear.php'" style="margin: auto;" id="newDocBtn">
+                    <button class="btn-primary" onclick="abrirModalCrear()" style="margin: auto;" id="newDocBtn">
                         <span class="material-symbols-rounded">add</span>
                         Crear primer documento
                     </button>
@@ -430,6 +476,386 @@ function formatear_fecha($fecha) {
             <?php endif; ?>
         </div>
     </main>
+
+    <?php if ($user['rol'] === 'admin'): ?>
+    <!-- Modal Ver Documento Administrativo -->
+    <div id="modalVerDoc" class="modal">
+        <div class="modal-content modal-ver-doc-content">
+
+            <!-- Header -->
+            <div class="modal-header-crear">
+                <div style="display:flex;align-items:center;gap:14px;min-width:0">
+                    <div id="mvd_icono" style="width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0"></div>
+                    <div style="min-width:0">
+                        <h2 id="mvd_titulo" style="font-size:1.1rem;margin:0 0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></h2>
+                        <p id="mvd_subtitulo" style="font-size:0.83rem;color:var(--text-secondary);margin:0"></p>
+                    </div>
+                </div>
+                <button class="modal-close-btn" type="button" onclick="cerrarModalVer()" title="Cerrar">
+                    <span class="material-symbols-rounded">close</span>
+                </button>
+            </div>
+
+            <!-- Loading -->
+            <div id="mvd_loading" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 28px;gap:14px;color:var(--text-secondary)">
+                <span class="material-symbols-rounded" style="font-size:2.5rem;color:var(--primary-blue);animation:mvSpin 1s linear infinite">progress_activity</span>
+                <span style="font-size:0.9rem">Cargando documento...</span>
+            </div>
+
+            <!-- Contenido -->
+            <div id="mvd_content" class="modal-body-scroll" style="display:none">
+
+                <!-- Grid de info -->
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:20px">
+                    <div class="info-item-detail">
+                        <div class="info-label">Categoría</div>
+                        <div class="info-value" id="mvd_categoria"></div>
+                    </div>
+                    <div class="info-item-detail">
+                        <div class="info-label">Tipo de Archivo</div>
+                        <div class="info-value" id="mvd_tipo" style="text-transform:uppercase"></div>
+                    </div>
+                    <div class="info-item-detail">
+                        <div class="info-label">Tamaño</div>
+                        <div class="info-value" id="mvd_tamano"></div>
+                    </div>
+                    <div class="info-item-detail">
+                        <div class="info-label">Visibilidad</div>
+                        <div class="info-value" id="mvd_visibilidad"></div>
+                    </div>
+                    <div class="info-item-detail">
+                        <div class="info-label">Subido por</div>
+                        <div class="info-value" id="mvd_subido_por"></div>
+                    </div>
+                    <div class="info-item-detail">
+                        <div class="info-label">Fecha de creación</div>
+                        <div class="info-value" id="mvd_fecha" style="font-size:0.88rem"></div>
+                    </div>
+                </div>
+
+                <!-- Descripción -->
+                <div id="mvd_descripcion_wrap" style="margin-bottom:20px;display:none">
+                    <div class="section-title-detail" style="margin-bottom:10px">
+                        <span class="material-symbols-rounded">description</span>
+                        Descripción
+                    </div>
+                    <div class="description-box" id="mvd_descripcion"></div>
+                </div>
+
+                <!-- Acceso específico -->
+                <div id="mvd_profesor_wrap" style="margin-bottom:20px;display:none">
+                    <div class="section-title-detail" style="margin-bottom:10px">
+                        <span class="material-symbols-rounded">person</span>
+                        Acceso Específico
+                    </div>
+                    <div class="info-item-detail">
+                        <div class="info-label">Profesor Autorizado</div>
+                        <div class="info-value" id="mvd_profesor"></div>
+                    </div>
+                </div>
+
+                <!-- Historial -->
+                <div class="section-title-detail" style="margin-bottom:10px">
+                    <span class="material-symbols-rounded">history</span>
+                    Historial de Accesos
+                </div>
+                <div id="mvd_historial"></div>
+
+            </div>
+
+            <!-- Footer -->
+            <div id="mvd_footer" class="modal-footer-crear" style="display:none">
+                <div style="display:flex;gap:10px;width:100%;align-items:center;flex-wrap:wrap">
+                    <a id="mvd_btn_descargar" href="#"
+                       style="display:flex;align-items:center;gap:8px;padding:10px 20px;border-radius:8px;font-family:'Poppins',sans-serif;font-size:0.9rem;font-weight:600;cursor:pointer;background:var(--subtle-green);color:var(--primary-green);border:none;text-decoration:none;transition:all 0.25s ease"
+                       onmouseover="this.style.background='var(--primary-green)';this.style.color='white'"
+                       onmouseout="this.style.background='var(--subtle-green)';this.style.color='var(--primary-green)'">
+                        <span class="material-symbols-rounded">download</span>
+                        Descargar
+                    </a>
+                    <div style="margin-left:auto;display:flex;gap:10px">
+                        <button id="mvd_btn_editar" type="button" onclick="verAEditar()">
+                            <span class="material-symbols-rounded">edit</span>
+                            Editar
+                        </button>
+                        <button id="mvd_btn_eliminar" type="button" onclick="verAEliminar()">
+                            <span class="material-symbols-rounded">delete</span>
+                            Eliminar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Modal Crear Documento Administrativo -->
+    <div id="modalCrearDoc" class="modal">
+        <div class="modal-content">
+
+            <!-- Header -->
+            <div class="modal-header-crear">
+                <div>
+                    <h2>Nuevo Documento Administrativo</h2>
+                    <p>Sube y configura un nuevo archivo</p>
+                </div>
+                <button class="modal-close-btn" type="button" onclick="cerrarModalCrear()" title="Cerrar">
+                    <span class="material-symbols-rounded">close</span>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="modal-body-scroll">
+                <div class="alert alert-error" id="alertaErrorCrear" style="display:none">
+                    <span class="material-symbols-rounded">error</span>
+                    <span id="mensajeErrorCrear"></span>
+                </div>
+
+                <form id="formCrearDoc" method="POST" action="crear.php" enctype="multipart/form-data">
+
+                    <div class="form-group">
+                        <label class="form-label required">Título del Documento</label>
+                        <input type="text" name="titulo" class="form-input"
+                               placeholder="Ej: Informe Financiero Q4 2024" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label required">Categoría</label>
+                        <select name="categoria" class="form-select" required>
+                            <option value="">Seleccionar categoría</option>
+                            <option value="informes">Informe</option>
+                            <option value="facturas">Factura</option>
+                            <option value="contratos">Contrato</option>
+                            <option value="nominas">Nómina</option>
+                            <option value="presupuestos">Presupuesto</option>
+                            <option value="legal">Legal</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Descripción</label>
+                        <textarea name="descripcion" class="form-textarea"
+                                  placeholder="Describe el contenido del documento..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label required">Visibilidad</label>
+                        <select name="visibilidad" id="modalVisibilidadSelect" class="form-select" required>
+                            <option value="">Seleccionar visibilidad</option>
+                            <option value="solo_admin">Solo Administradores</option>
+                            <option value="profesores">Todos los Profesores</option>
+                            <option value="profesor_especifico">Profesor Específico</option>
+                            <option value="todos_excepto_estudiantes">Todos excepto Estudiantes</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="modalProfesorField" style="display:none">
+                        <label class="form-label required">Seleccionar Profesor</label>
+                        <select name="profesor_especifico_id" class="form-select">
+                            <option value="">Seleccionar profesor</option>
+                            <?php foreach ($profesores as $profesor): ?>
+                            <option value="<?php echo $profesor['id']; ?>">
+                                <?php echo htmlspecialchars($profesor['nombre']); ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label required">Archivo</label>
+                        <div class="file-upload" id="modalFileUpload">
+                            <input type="file" name="archivo" id="modalArchivoInput" required
+                                   accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png">
+                            <span class="material-symbols-rounded file-upload-icon">cloud_upload</span>
+                            <div class="file-upload-text">Arrastra y suelta o haz clic para seleccionar</div>
+                            <div class="file-upload-hint">PDF, Word, Excel o Imágenes (máx. 10MB)</div>
+                        </div>
+                        <div id="modalFileName" style="margin-top:12px; color:var(--primary-green); display:none;"></div>
+                    </div>
+
+                </form>
+            </div>
+
+            <!-- Footer -->
+            <div class="modal-footer-crear">
+                <div style="display:flex; justify-content:flex-end; gap:10px; width:100%;">
+                    <button type="button" class="btn-cancelar" onclick="cerrarModalCrear()">Cancelar</button>
+                    <button type="button" class="btn-primario" id="btnSubmitDoc" onclick="submitCrearDoc()">
+                        <span class="material-symbols-rounded">upload</span>
+                        Subir Documento
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($user['rol'] === 'admin'): ?>
+    <!-- Modal Editar Documento Administrativo -->
+    <div id="modalEditarDoc" class="modal">
+        <div class="modal-content">
+
+            <!-- Header -->
+            <div class="modal-header-crear">
+                <div>
+                    <h2>Editar Documento</h2>
+                    <p>Modifica la información del archivo</p>
+                </div>
+                <button class="modal-close-btn" type="button" onclick="cerrarModalEditar()" title="Cerrar">
+                    <span class="material-symbols-rounded">close</span>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="modal-body-scroll">
+                <div class="alert alert-error" id="alertaErrorEditar" style="display:none">
+                    <span class="material-symbols-rounded">error</span>
+                    <span id="mensajeErrorEditar"></span>
+                </div>
+
+                <form id="formEditarDoc" method="POST" action="editar.php" enctype="multipart/form-data">
+                    <input type="hidden" name="doc_id" id="editDocId">
+
+                    <div class="form-group">
+                        <label class="form-label required">Título del Documento</label>
+                        <input type="text" name="titulo" id="editTitulo" class="form-input"
+                               placeholder="Ej: Informe Financiero Q4 2024" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label required">Categoría</label>
+                        <select name="categoria" id="editCategoria" class="form-select" required>
+                            <option value="">Seleccionar categoría</option>
+                            <option value="informes">Informe</option>
+                            <option value="facturas">Factura</option>
+                            <option value="contratos">Contrato</option>
+                            <option value="nominas">Nómina</option>
+                            <option value="presupuestos">Presupuesto</option>
+                            <option value="legal">Legal</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Descripción</label>
+                        <textarea name="descripcion" id="editDescripcion" class="form-textarea"
+                                  placeholder="Describe el contenido del documento..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label required">Visibilidad</label>
+                        <select name="visibilidad" id="editVisibilidad" class="form-select" required>
+                            <option value="">Seleccionar visibilidad</option>
+                            <option value="solo_admin">Solo Administradores</option>
+                            <option value="profesores">Todos los Profesores</option>
+                            <option value="profesor_especifico">Profesor Específico</option>
+                            <option value="todos_excepto_estudiantes">Todos excepto Estudiantes</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="editProfesorField" style="display:none">
+                        <label class="form-label required">Seleccionar Profesor</label>
+                        <select name="profesor_especifico_id" id="editProfesorId" class="form-select">
+                            <option value="">Seleccionar profesor</option>
+                            <?php foreach ($profesores as $profesor): ?>
+                            <option value="<?php echo $profesor['id']; ?>">
+                                <?php echo htmlspecialchars($profesor['nombre']); ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Reemplazar Archivo <small style="font-weight:400;color:var(--text-secondary)">(opcional)</small></label>
+
+                        <div class="current-file-info">
+                            <div class="current-file-name" id="editCurrentFileName"></div>
+                            <div class="current-file-meta" id="editCurrentFileMeta"></div>
+                        </div>
+
+                        <div class="form-note">
+                            <span class="material-symbols-rounded" style="font-size:20px">info</span>
+                            <div>Si no seleccionas un archivo nuevo, se conserva el actual.</div>
+                        </div>
+
+                        <div class="file-upload" id="editFileUpload">
+                            <input type="file" name="archivo" id="editArchivoInput"
+                                   accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png">
+                            <span class="material-symbols-rounded file-upload-icon">cloud_upload</span>
+                            <div class="file-upload-text">Arrastra y suelta o haz clic para seleccionar</div>
+                            <div class="file-upload-hint">PDF, Word, Excel o Imágenes (máx. 10MB)</div>
+                        </div>
+                        <div id="editFileName" style="margin-top:12px; color:var(--primary-green); display:none;"></div>
+                    </div>
+
+                </form>
+            </div>
+
+            <!-- Footer -->
+            <div class="modal-footer-crear">
+                <div style="display:flex; justify-content:flex-end; gap:10px; width:100%;">
+                    <button type="button" class="btn-cancelar" onclick="cerrarModalEditar()">Cancelar</button>
+                    <button type="button" class="btn-primario" id="btnSubmitEditar" onclick="submitEditarDoc()">
+                        <span class="material-symbols-rounded">save</span>
+                        Guardar Cambios
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Modal Eliminar Documento Administrativo -->
+    <?php if ($user['rol'] === 'admin'): ?>
+    <div id="modalEliminarDoc" class="modal">
+        <div class="modal-content" style="max-width:440px">
+
+            <div class="modal-header-crear">
+                <div style="display:flex;align-items:center;gap:12px">
+                    <div style="width:42px;height:42px;border-radius:10px;background:rgba(239,68,68,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                        <span class="material-symbols-rounded" style="color:#ef4444;font-size:22px">delete</span>
+                    </div>
+                    <div>
+                        <h2>Eliminar Documento</h2>
+                        <p>Esta acción no se puede deshacer</p>
+                    </div>
+                </div>
+                <button class="modal-close-btn" type="button" onclick="cerrarModalEliminar()" title="Cerrar">
+                    <span class="material-symbols-rounded">close</span>
+                </button>
+            </div>
+
+            <div class="modal-body-scroll" style="padding:24px 28px">
+                <p style="color:var(--text-primary);font-size:0.95rem;line-height:1.6;margin-bottom:8px">
+                    ¿Estás seguro de que quieres eliminar el documento
+                    <strong id="eliminarDocTitulo" style="color:var(--text-primary)"></strong>?
+                </p>
+                <p style="color:var(--text-secondary);font-size:0.85rem">
+                    El documento quedará desactivado y dejará de aparecer en la lista.
+                </p>
+
+                <div class="alert alert-error" id="alertaErrorEliminar" style="display:none;margin-top:16px;margin-bottom:0">
+                    <span class="material-symbols-rounded">error</span>
+                    <span id="mensajeErrorEliminar"></span>
+                </div>
+            </div>
+
+            <div class="modal-footer-crear">
+                <div style="display:flex;justify-content:flex-end;gap:10px;width:100%">
+                    <button type="button" class="btn-cancelar" onclick="cerrarModalEliminar()">Cancelar</button>
+                    <button type="button" id="btnConfirmarEliminar" onclick="submitEliminarDoc()">
+                        <span class="material-symbols-rounded">delete</span>
+                        Eliminar
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <?php endif; ?>
 
     <script>
         // Función para toggle del menú de acciones
@@ -474,6 +900,403 @@ function formatear_fecha($fecha) {
         document.getElementById('categoriaFilter').addEventListener('change', applyFilters);
         document.getElementById('tipoFilter').addEventListener('change', applyFilters);
         document.getElementById('fechaFilter').addEventListener('change', applyFilters);
+
+        // ── Modal Ver Documento ──────────────────────────────
+        let _verDocData = null;
+
+        async function abrirModalVer(docId) {
+            _verDocData = null;
+            document.getElementById('mvd_loading').style.display  = 'flex';
+            document.getElementById('mvd_content').style.display  = 'none';
+            document.getElementById('mvd_footer').style.display   = 'none';
+            document.getElementById('mvd_titulo').textContent     = '';
+            document.getElementById('mvd_subtitulo').textContent  = '';
+            document.getElementById('mvd_icono').innerHTML        = '';
+            document.getElementById('modalVerDoc').style.display  = 'flex';
+
+            try {
+                const res  = await fetch(`ver.php?id=${docId}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const data = await res.json();
+                if (!data.success) { cerrarModalVer(); return; }
+
+                const doc = data.documento;
+                _verDocData = doc;
+
+                // Header
+                const ico = document.getElementById('mvd_icono');
+                ico.style.background = doc.icono.color + '20';
+                ico.style.color      = doc.icono.color;
+                ico.innerHTML        = `<span class="material-symbols-rounded">${doc.icono.icono}</span>`;
+                document.getElementById('mvd_titulo').textContent    = doc.titulo;
+                document.getElementById('mvd_subtitulo').textContent =
+                    `Subido por ${doc.subido_por_nombre} · ${mvdBytes(doc.tamanio_archivo)}`;
+
+                // Grid de info
+                document.getElementById('mvd_categoria').textContent  = doc.categoria_label;
+                document.getElementById('mvd_tipo').textContent       = doc.tipo_archivo;
+                document.getElementById('mvd_tamano').textContent     = mvdBytes(doc.tamanio_archivo);
+                document.getElementById('mvd_subido_por').textContent = doc.subido_por_nombre;
+                document.getElementById('mvd_fecha').textContent      = mvdFecha(doc.fecha_creacion);
+
+                const visClases = {
+                    solo_admin: 'admin', profesores: 'profesores',
+                    profesor_especifico: 'especifico', todos_excepto_estudiantes: 'todos'
+                };
+                const visIcon = doc.visibilidad === 'solo_admin' ? 'lock' : 'visibility';
+                document.getElementById('mvd_visibilidad').innerHTML =
+                    `<span class="badge-visibility ${visClases[doc.visibilidad] || ''}">
+                        <span class="material-symbols-rounded" style="font-size:15px">${visIcon}</span>
+                        ${doc.visibilidad_label}
+                    </span>`;
+
+                // Descripción
+                const descWrap = document.getElementById('mvd_descripcion_wrap');
+                if (doc.descripcion) {
+                    document.getElementById('mvd_descripcion').textContent = doc.descripcion;
+                    descWrap.style.display = 'block';
+                } else {
+                    descWrap.style.display = 'none';
+                }
+
+                // Profesor específico
+                const profWrap = document.getElementById('mvd_profesor_wrap');
+                if (doc.visibilidad === 'profesor_especifico' && doc.profesor_nombre) {
+                    document.getElementById('mvd_profesor').textContent =
+                        doc.profesor_nombre + (doc.profesor_email ? ` (${doc.profesor_email})` : '');
+                    profWrap.style.display = 'block';
+                } else {
+                    profWrap.style.display = 'none';
+                }
+
+                // Historial
+                const hist = document.getElementById('mvd_historial');
+                if (data.historial.length > 0) {
+                    hist.className = 'access-timeline';
+                    hist.innerHTML = data.historial.map(h => `
+                        <div class="timeline-item">
+                            <div class="timeline-icon ${h.accion === 'descarga' ? 'download' : 'view'}">
+                                <span class="material-symbols-rounded">${h.accion === 'descarga' ? 'download' : 'visibility'}</span>
+                            </div>
+                            <div class="timeline-content">
+                                <div class="timeline-action">
+                                    ${h.usuario_nombre}
+                                    ${h.accion === 'descarga' ? 'descargó' : 'visualizó'} el documento
+                                    <span style="color:var(--text-secondary);font-weight:400">(${h.usuario_rol.charAt(0).toUpperCase()+h.usuario_rol.slice(1)})</span>
+                                </div>
+                                <div class="timeline-time">${mvdTiempo(h.fecha_acceso)}</div>
+                            </div>
+                        </div>`).join('');
+                } else {
+                    hist.className = '';
+                    hist.innerHTML = `<div class="empty-timeline">
+                        <span class="material-symbols-rounded">history</span>
+                        <div>No hay historial de accesos aún</div>
+                    </div>`;
+                }
+
+                // Botones footer
+                document.getElementById('mvd_btn_descargar').href = `descargar.php?id=${doc.id}`;
+                const esAdmin = <?php echo $user['rol'] === 'admin' ? 'true' : 'false'; ?>;
+                document.getElementById('mvd_btn_editar').style.display  = esAdmin ? 'flex' : 'none';
+                document.getElementById('mvd_btn_eliminar').style.display = esAdmin ? 'flex' : 'none';
+
+                document.getElementById('mvd_loading').style.display = 'none';
+                document.getElementById('mvd_content').style.display = 'block';
+                document.getElementById('mvd_footer').style.display  = 'block';
+
+            } catch (err) {
+                cerrarModalVer();
+            }
+        }
+
+        function cerrarModalVer() {
+            document.getElementById('modalVerDoc').style.display = 'none';
+            _verDocData = null;
+        }
+
+        function verAEditar() {
+            if (!_verDocData) return;
+            const doc = _verDocData;
+            cerrarModalVer();
+            abrirModalEditar(doc);
+        }
+
+        function verAEliminar() {
+            if (!_verDocData) return;
+            const id     = _verDocData.id;
+            const titulo = _verDocData.titulo;
+            cerrarModalVer();
+            abrirModalEliminar(id, titulo);
+        }
+
+        document.getElementById('modalVerDoc').addEventListener('click', function(e) {
+            if (e.target === this) cerrarModalVer();
+        });
+
+        // Helpers del modal ver
+        function mvdBytes(b) {
+            if (b >= 1048576) return (b / 1048576).toFixed(2) + ' MB';
+            if (b >= 1024)    return (b / 1024).toFixed(2)    + ' KB';
+            return b + ' B';
+        }
+        function mvdFecha(f) {
+            const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+            const d = new Date(f);
+            return `${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
+        }
+        function mvdTiempo(f) {
+            const diff = Math.floor((new Date() - new Date(f)) / 1000);
+            if (diff < 60)    return 'Hace unos segundos';
+            if (diff < 3600)  return `Hace ${Math.floor(diff/60)} minuto${Math.floor(diff/60)>1?'s':''}`;
+            if (diff < 86400) return `Hace ${Math.floor(diff/3600)} hora${Math.floor(diff/3600)>1?'s':''}`;
+            return `Hace ${Math.floor(diff/86400)} día${Math.floor(diff/86400)>1?'s':''}`;
+        }
+
+        // ── Modal Crear Documento ────────────────────────────
+        <?php if ($user['rol'] === 'admin'): ?>
+        function abrirModalCrear() {
+            document.getElementById('modalCrearDoc').style.display = 'flex';
+            document.getElementById('formCrearDoc').reset();
+            document.getElementById('alertaErrorCrear').style.display = 'none';
+            document.getElementById('modalFileName').style.display = 'none';
+            document.getElementById('modalProfesorField').style.display = 'none';
+        }
+
+        function cerrarModalCrear() {
+            document.getElementById('modalCrearDoc').style.display = 'none';
+        }
+
+        document.getElementById('modalCrearDoc').addEventListener('click', function(e) {
+            if (e.target === this) cerrarModalCrear();
+        });
+
+        document.getElementById('modalVisibilidadSelect').addEventListener('change', function() {
+            document.getElementById('modalProfesorField').style.display =
+                this.value === 'profesor_especifico' ? 'block' : 'none';
+        });
+
+        document.getElementById('modalArchivoInput').addEventListener('change', function() {
+            const fileNameEl = document.getElementById('modalFileName');
+            if (this.files.length > 0) {
+                fileNameEl.textContent = '✓ ' + this.files[0].name;
+                fileNameEl.style.display = 'block';
+            } else {
+                fileNameEl.style.display = 'none';
+            }
+        });
+
+        const modalFileUpload = document.getElementById('modalFileUpload');
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev => {
+            modalFileUpload.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); });
+        });
+        ['dragenter', 'dragover'].forEach(ev => {
+            modalFileUpload.addEventListener(ev, () => {
+                modalFileUpload.style.borderColor = 'var(--primary-blue)';
+                modalFileUpload.style.background = 'var(--dark-bg)';
+            });
+        });
+        ['dragleave', 'drop'].forEach(ev => {
+            modalFileUpload.addEventListener(ev, () => {
+                modalFileUpload.style.borderColor = 'var(--border-color)';
+                modalFileUpload.style.background = 'var(--hover-bg)';
+            });
+        });
+        modalFileUpload.addEventListener('drop', e => {
+            document.getElementById('modalArchivoInput').files = e.dataTransfer.files;
+            document.getElementById('modalArchivoInput').dispatchEvent(new Event('change'));
+        });
+
+        async function submitCrearDoc() {
+            const form = document.getElementById('formCrearDoc');
+            const btn  = document.getElementById('btnSubmitDoc');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-rounded">hourglass_top</span> Subiendo...';
+
+            try {
+                const res  = await fetch('crear.php', {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: new FormData(form)
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    cerrarModalCrear();
+                    window.location.href = 'index.php?success=documento_creado';
+                } else {
+                    document.getElementById('mensajeErrorCrear').textContent = data.error;
+                    document.getElementById('alertaErrorCrear').style.display = 'flex';
+                }
+            } catch (err) {
+                document.getElementById('mensajeErrorCrear').textContent = 'Error de conexión. Intenta nuevamente.';
+                document.getElementById('alertaErrorCrear').style.display = 'flex';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span class="material-symbols-rounded">upload</span> Subir Documento';
+            }
+        }
+        // ── Modal Editar Documento ───────────────────────────
+        function abrirModalEditar(doc) {
+            document.getElementById('editDocId').value        = doc.id;
+            document.getElementById('editTitulo').value       = doc.titulo;
+            document.getElementById('editCategoria').value    = doc.categoria;
+            document.getElementById('editDescripcion').value  = doc.descripcion;
+            document.getElementById('editVisibilidad').value  = doc.visibilidad;
+
+            const profesorField = document.getElementById('editProfesorField');
+            if (doc.visibilidad === 'profesor_especifico') {
+                profesorField.style.display = 'block';
+                document.getElementById('editProfesorId').value = doc.profesor_especifico_id || '';
+            } else {
+                profesorField.style.display = 'none';
+            }
+
+            // Archivo actual
+            const bytes = doc.tamanio_archivo;
+            const size  = bytes >= 1048576 ? (bytes / 1048576).toFixed(2) + ' MB'
+                        : bytes >= 1024    ? (bytes / 1024).toFixed(2)    + ' KB'
+                        : bytes + ' B';
+            document.getElementById('editCurrentFileName').innerHTML =
+                `<span class="material-symbols-rounded" style="vertical-align:middle;font-size:18px">insert_drive_file</span> Archivo actual: ${doc.nombre_archivo}`;
+            document.getElementById('editCurrentFileMeta').textContent =
+                `Tipo: ${doc.tipo_archivo.toUpperCase()} · Tamaño: ${size}`;
+
+            // Reset input archivo y error
+            document.getElementById('editArchivoInput').value    = '';
+            document.getElementById('editFileName').style.display = 'none';
+            document.getElementById('alertaErrorEditar').style.display = 'none';
+
+            document.getElementById('modalEditarDoc').style.display = 'flex';
+        }
+
+        function cerrarModalEditar() {
+            document.getElementById('modalEditarDoc').style.display = 'none';
+        }
+
+        document.getElementById('modalEditarDoc').addEventListener('click', function(e) {
+            if (e.target === this) cerrarModalEditar();
+        });
+
+        document.getElementById('editVisibilidad').addEventListener('change', function() {
+            document.getElementById('editProfesorField').style.display =
+                this.value === 'profesor_especifico' ? 'block' : 'none';
+        });
+
+        document.getElementById('editArchivoInput').addEventListener('change', function() {
+            const el = document.getElementById('editFileName');
+            if (this.files.length > 0) {
+                el.textContent    = '✓ Nuevo archivo: ' + this.files[0].name;
+                el.style.display  = 'block';
+            } else {
+                el.style.display = 'none';
+            }
+        });
+
+        const editFileUpload = document.getElementById('editFileUpload');
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev => {
+            editFileUpload.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); });
+        });
+        ['dragenter', 'dragover'].forEach(ev => {
+            editFileUpload.addEventListener(ev, () => {
+                editFileUpload.style.borderColor = 'var(--primary-blue)';
+                editFileUpload.style.background  = 'var(--dark-bg)';
+            });
+        });
+        ['dragleave', 'drop'].forEach(ev => {
+            editFileUpload.addEventListener(ev, () => {
+                editFileUpload.style.borderColor = 'var(--border-color)';
+                editFileUpload.style.background  = 'var(--hover-bg)';
+            });
+        });
+        editFileUpload.addEventListener('drop', e => {
+            document.getElementById('editArchivoInput').files = e.dataTransfer.files;
+            document.getElementById('editArchivoInput').dispatchEvent(new Event('change'));
+        });
+
+        async function submitEditarDoc() {
+            const form = document.getElementById('formEditarDoc');
+            const btn  = document.getElementById('btnSubmitEditar');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-rounded">hourglass_top</span> Guardando...';
+
+            try {
+                const res  = await fetch('editar.php', {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: new FormData(form)
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    cerrarModalEditar();
+                    window.location.href = 'index.php?success=documento_actualizado';
+                } else {
+                    document.getElementById('mensajeErrorEditar').textContent = data.error;
+                    document.getElementById('alertaErrorEditar').style.display = 'flex';
+                }
+            } catch (err) {
+                document.getElementById('mensajeErrorEditar').textContent = 'Error de conexión. Intenta nuevamente.';
+                document.getElementById('alertaErrorEditar').style.display = 'flex';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span class="material-symbols-rounded">save</span> Guardar Cambios';
+            }
+        }
+
+        // ── Modal Eliminar Documento ─────────────────────────
+        let _eliminarDocId = null;
+
+        function abrirModalEliminar(id, titulo) {
+            _eliminarDocId = id;
+            document.getElementById('eliminarDocTitulo').textContent = '"' + titulo + '"';
+            document.getElementById('alertaErrorEliminar').style.display = 'none';
+            document.getElementById('modalEliminarDoc').style.display = 'flex';
+        }
+
+        function cerrarModalEliminar() {
+            _eliminarDocId = null;
+            document.getElementById('modalEliminarDoc').style.display = 'none';
+        }
+
+        document.getElementById('modalEliminarDoc').addEventListener('click', function(e) {
+            if (e.target === this) cerrarModalEliminar();
+        });
+
+        async function submitEliminarDoc() {
+            if (!_eliminarDocId) return;
+            const btn = document.getElementById('btnConfirmarEliminar');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-rounded">hourglass_top</span> Eliminando...';
+
+            try {
+                const form = new FormData();
+                form.append('doc_id', _eliminarDocId);
+
+                const res  = await fetch('eliminar.php', {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: form
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    cerrarModalEliminar();
+                    window.location.href = 'index.php?success=documento_eliminado';
+                } else {
+                    document.getElementById('mensajeErrorEliminar').textContent = data.error;
+                    document.getElementById('alertaErrorEliminar').style.display = 'flex';
+                }
+            } catch (err) {
+                document.getElementById('mensajeErrorEliminar').textContent = 'Error de conexión. Intenta nuevamente.';
+                document.getElementById('alertaErrorEliminar').style.display = 'flex';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span class="material-symbols-rounded">delete</span> Eliminar';
+            }
+        }
+        <?php endif; ?>
 
         // Toggle vista grid/list
         document.querySelectorAll('.view-btn').forEach(btn => {

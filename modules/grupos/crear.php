@@ -128,14 +128,20 @@ date_default_timezone_set('America/Bogota');
         </div>
 
         <?php if ($error): ?>
-            <div class="alert alert-danger" style="background: #fee2e2; border: 1px solid #ef4444; padding: 15px; border-radius: 8px; margin-bottom: 20px; color: #b91c1c;">
-                <span class="material-symbols-rounded">error</span> <?php echo $error; ?>
+            <div class="alert alert-error">
+                <span class="material-symbols-rounded">error</span>
+                <?php echo htmlspecialchars($error); ?>
             </div>
         <?php endif; ?>
 
         <div style="max-width: 800px; margin: 0 auto;">
             <div class="card">
-                <form method="POST" class="modulo-form">
+                <form method="POST" class="modulo-form" id="formCrearGrupo" novalidate>
+
+                    <div class="alert alert-error" id="alertValidarCrear" style="display:none">
+                        <span class="material-symbols-rounded">error</span>
+                        <span id="msgValidarCrear"></span>
+                    </div>
 
                     <h3 style="margin-bottom: 15px; color: var(--primary-blue); border-bottom: 2px solid #eee; padding-bottom: 5px;">Información General</h3>
 
@@ -232,6 +238,43 @@ date_default_timezone_set('America/Bogota');
             </div>
         </div>
     </main>
+<script>
+document.getElementById('formCrearGrupo').addEventListener('submit', function(e) {
+    const alertEl = document.getElementById('alertValidarCrear');
+    const msgEl   = document.getElementById('msgValidarCrear');
+    alertEl.style.display = 'none';
+    this.querySelectorAll('.input-error').forEach(el => el.classList.remove('input-error'));
+
+    const required = this.querySelectorAll('[required]');
+    let firstEmpty = null;
+    required.forEach(function(el) {
+        const isEmpty = (el.tagName === 'SELECT' && !el.value) ||
+                        (el.tagName !== 'SELECT' && !el.value.trim());
+        if (isEmpty) { el.classList.add('input-error'); if (!firstEmpty) firstEmpty = el; }
+    });
+
+    if (firstEmpty) {
+        const label = firstEmpty.closest('.input-group')?.querySelector('label')
+                        ?.textContent?.replace('*','').trim() ?? 'campo requerido';
+        msgEl.textContent = 'El campo "' + label + '" es obligatorio. Completa todos los campos marcados con *.';
+        alertEl.style.display = 'flex';
+        alertEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        e.preventDefault();
+    }
+});
+
+document.querySelectorAll('#formCrearGrupo [required]').forEach(function(el) {
+    ['input', 'change'].forEach(function(ev) {
+        el.addEventListener(ev, function() {
+            if (this.value.trim() || (this.tagName === 'SELECT' && this.value)) {
+                this.classList.remove('input-error');
+                if (!document.querySelectorAll('#formCrearGrupo .input-error').length)
+                    document.getElementById('alertValidarCrear').style.display = 'none';
+            }
+        });
+    });
+});
+</script>
 </body>
 
 </html>

@@ -121,8 +121,9 @@ $estado_cfg = [
         </div>
 
         <?php if ($error): ?>
-            <div class="alert alert-danger">
-                <span class="material-symbols-rounded">error</span><?php echo $error; ?>
+            <div class="alert alert-error">
+                <span class="material-symbols-rounded">error</span>
+                <?php echo htmlspecialchars($error); ?>
             </div>
         <?php endif; ?>
 
@@ -136,7 +137,12 @@ $estado_cfg = [
                     </div>
                 </div>
 
-                <form method="POST" class="modulo-form">
+                <form method="POST" class="modulo-form" id="formEditarGrupo" novalidate>
+
+                    <div class="alert alert-error" id="alertValidarEditar" style="display:none">
+                        <span class="material-symbols-rounded">error</span>
+                        <span id="msgValidarEditar"></span>
+                    </div>
                     <input type="hidden" name="action" value="editar">
                     <input type="hidden" name="id" value="<?php echo $id; ?>">
 
@@ -231,6 +237,44 @@ $estado_cfg = [
         </div>
 
     </main>
+
+<script>
+document.getElementById('formEditarGrupo').addEventListener('submit', function(e) {
+    const alertEl = document.getElementById('alertValidarEditar');
+    const msgEl   = document.getElementById('msgValidarEditar');
+    alertEl.style.display = 'none';
+    this.querySelectorAll('.input-error').forEach(el => el.classList.remove('input-error'));
+
+    const required = this.querySelectorAll('[required]');
+    let firstEmpty = null;
+    required.forEach(function(el) {
+        const isEmpty = (el.tagName === 'SELECT' && !el.value) ||
+                        (el.tagName !== 'SELECT' && !el.value.trim());
+        if (isEmpty) { el.classList.add('input-error'); if (!firstEmpty) firstEmpty = el; }
+    });
+
+    if (firstEmpty) {
+        const label = firstEmpty.closest('.input-group')?.querySelector('label')
+                        ?.textContent?.replace('*','').trim() ?? 'campo requerido';
+        msgEl.textContent = 'El campo "' + label + '" es obligatorio. Completa todos los campos marcados con *.';
+        alertEl.style.display = 'flex';
+        alertEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        e.preventDefault();
+    }
+});
+
+document.querySelectorAll('#formEditarGrupo [required]').forEach(function(el) {
+    ['input', 'change'].forEach(function(ev) {
+        el.addEventListener(ev, function() {
+            if (this.value.trim() || (this.tagName === 'SELECT' && this.value)) {
+                this.classList.remove('input-error');
+                if (!document.querySelectorAll('#formEditarGrupo .input-error').length)
+                    document.getElementById('alertValidarEditar').style.display = 'none';
+            }
+        });
+    });
+});
+</script>
 </body>
 
 </html>

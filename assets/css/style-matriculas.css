@@ -46,11 +46,11 @@ body { min-height: 100vh; background: var(--hover-bg); color: var(--text-primary
 .btn-primary {
     display: inline-flex; align-items: center; gap: 7px;
     padding: 10px 18px; border-radius: 10px; border: none;
-    background: var(--gradient-primary-blue); color: #fff;
+    background: var(--subtle-blue); color: var(--primary-blue);
     font-size: 0.88rem; font-weight: 600; font-family: "Poppins", sans-serif;
     cursor: pointer; text-decoration: none; transition: all 0.2s ease;
 }
-.btn-primary:hover  { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(20,121,176,0.35); }
+.btn-primary:hover  { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(20,121,176,0.35); background-color: var(--primary-blue); color: #fff; }
 .btn-primary.btn-sm { padding: 7px 13px; font-size: 0.8rem; }
 .btn-primary .material-symbols-rounded { font-size: 0.88rem; }
 
@@ -78,11 +78,11 @@ body { min-height: 100vh; background: var(--hover-bg); color: var(--text-primary
 .btn-danger-solid {
     display: inline-flex; align-items: center; gap: 7px;
     padding: 9px 16px; border-radius: 10px; border: none;
-    background: var(--gradient-primary-orange); color: #fff;
+    background: var(--subtle-orange); color: var(--primary-orange);
     font-size: 0.88rem; font-weight: 600; font-family: "Poppins", sans-serif;
-    cursor: pointer; transition: all 0.2s ease;
+    cursor: pointer; transition: all 0.2s ease; text-decoration: none;
 }
-.btn-danger-solid:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(255,109,0,0.35); }
+.btn-danger-solid:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(255,109,0,0.35); background-color: var(--primary-orange); color: #fff; }
 
 .btn-xs {
     display: inline-flex; align-items: center; gap: 4px;
@@ -120,12 +120,14 @@ body { min-height: 100vh; background: var(--hover-bg); color: var(--text-primary
 .alert {
     display: flex; align-items: center; gap: 10px;
     padding: 13px 18px; border-radius: 12px; margin-bottom: 20px;
-    font-size: 0.9rem; font-weight: 500;
+    font-size: 0.9rem; font-weight: 500; text-align: left;
 }
 .alert .material-symbols-rounded { font-size: 20px; flex-shrink: 0; }
 .alert-success { background: var(--subtle-green);  color: var(--primary-green);  border: 1px solid rgba(78,195,54,0.3); }
 .alert-danger  { background: var(--subtle-orange); color: var(--primary-orange); border: 1px solid rgba(255,109,0,0.3); }
 .alert-warning { background: var(--subtle-yellow); color: var(--primary-yellow); border: 1px solid rgba(233,233,62,0.3); }
+.alert-error   { background: rgba(239,68,68,0.1);  color: #ef4444;               border: 1px solid rgba(239,68,68,0.3); }
+.input-error   { border-color: #ef4444 !important; }
 
 /* ── Badges ─────────────────────────────────────────────────── */
 .badge {
@@ -273,8 +275,8 @@ body { min-height: 100vh; background: var(--hover-bg); color: var(--text-primary
 
 /* ── Paginación ─────────────────────────────────────────────── */
 .pagination {
-    display: flex; align-items: center; justify-content: space-between;
-    flex-wrap: wrap; gap: 12px; margin-top: 20px;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 10px; margin-top: 20px;
 }
 .pag-info    { font-size: 0.82rem; color: var(--text-secondary); }
 .pag-controls{ display: flex; gap: 6px; }

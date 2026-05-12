@@ -657,9 +657,14 @@ try {
             </button>
         </div>
 
-        <form method="POST" id="formCrear" onsubmit="return validarFormCrear()">
+        <form method="POST" id="formCrear" onsubmit="return validarFormCrear()" novalidate>
             <input type="hidden" name="accion" value="crear_admin">
             <div class="modal-body">
+
+                <div class="alert alert-error" id="alertValidarCrear" style="display:none">
+                    <span class="material-symbols-rounded">error</span>
+                    <span id="msgValidarCrear"></span>
+                </div>
 
                 <!-- ── 1. Datos personales ─────────────────────── -->
                 <div class="form-seccion">
@@ -1213,13 +1218,61 @@ function calcularEdad() {
 
 // ── Validar formulario crear ──────────────────────────────────
 function validarFormCrear() {
-    const doc = document.getElementById('inputDoc')?.value.trim() ?? '';
-    if (doc.length < 5) {
-        alert('El número de documento debe tener al menos 5 caracteres.');
+    const alertEl = document.getElementById('alertValidarCrear');
+    const msgEl   = document.getElementById('msgValidarCrear');
+    alertEl.style.display = 'none';
+
+    document.querySelectorAll('#formCrear .input-error').forEach(el => el.classList.remove('input-error'));
+
+    const required = document.querySelectorAll('#formCrear [required]');
+    let firstEmpty = null;
+
+    required.forEach(el => {
+        const isEmpty = (el.tagName === 'SELECT' && !el.value) ||
+                        (el.tagName !== 'SELECT' && !el.value.trim());
+        if (isEmpty) {
+            el.classList.add('input-error');
+            if (!firstEmpty) firstEmpty = el;
+        }
+    });
+
+    if (firstEmpty) {
+        const label = firstEmpty.closest('.form-group-modal')?.querySelector('label')
+                        ?.textContent?.replace('*', '').trim() ?? 'campo requerido';
+        msgEl.textContent = `El campo "${label}" es obligatorio. Completa todos los campos marcados con *.`;
+        alertEl.style.display = 'flex';
+        firstEmpty.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return false;
     }
+
+    const doc = document.getElementById('inputDoc')?.value.trim() ?? '';
+    if (doc.length < 5) {
+        msgEl.textContent = 'El número de documento debe tener al menos 5 caracteres.';
+        alertEl.style.display = 'flex';
+        document.getElementById('inputDoc')?.classList.add('input-error');
+        document.getElementById('inputDoc')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return false;
+    }
+
     return true;
 }
+
+document.querySelectorAll('#formCrear [required]').forEach(el => {
+    el.addEventListener('input', () => {
+        if (el.value.trim()) {
+            el.classList.remove('input-error');
+            const remaining = document.querySelectorAll('#formCrear .input-error');
+            if (!remaining.length) document.getElementById('alertValidarCrear').style.display = 'none';
+        }
+    });
+    el.addEventListener('change', () => {
+        if (el.value) {
+            el.classList.remove('input-error');
+            const remaining = document.querySelectorAll('#formCrear .input-error');
+            if (!remaining.length) document.getElementById('alertValidarCrear').style.display = 'none';
+        }
+    });
+});
 
 // ── Dropdown de filtro ────────────────────────────────────────
 function toggleFdd() {
