@@ -96,9 +96,14 @@ $hoy_label   = $dias_semana_nombres[date('N')-1] . ', ' . $hoy . ' de ' . $meses
 
     <!-- ── Encabezado ── -->
     <div class="dashboard-header">
-        <div class="dashboard-title">
-            <h1>Mi Horario de Clases</h1>
-            <p>Consulta tus asignaturas y salones</p>
+        <div class="header-left">
+            <button class="btn-back" onclick="window.history.back()">
+                <span class="material-symbols-rounded">arrow_back</span>
+            </button>
+            <div class="dashboard-title">
+                <h1>Mi Horario de Clases</h1>
+                <p>Consulta tus asignaturas y salones</p>
+            </div>
         </div>
         <div class="dashboard-date">
             <span class="material-symbols-rounded">calendar_month</span>
@@ -139,7 +144,7 @@ $hoy_label   = $dias_semana_nombres[date('N')-1] . ', ' . $hoy . ' de ' . $meses
     </div>
 
     <!-- ── Calendario ── -->
-    <div class="content-grid" style="grid-template-columns: 2fr 1fr;">
+    <div class="content-grid">
 
         <div class="calendar-card">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
@@ -301,25 +306,33 @@ window.addEventListener('click', e => {
     if (e.target === m) m.style.display = 'none';
 });
 
-/* ── Sincronizar margin-left con el sidebar colapsable ── */
+/* ── Sincronizar layout con el sidebar colapsable ── */
 (function () {
     const main      = document.querySelector('.main-content');
-    const EXPANDED  = '270px';
-    const COLLAPSED = '80px';
+    const EXPANDED  = 270;
+    const COLLAPSED = 85;
 
-    function syncMargin() {
-        const collapsed =
+    function syncLayout() {
+        if (window.innerWidth <= 1024) {
+            main.style.marginLeft = '';
+            main.style.width = '';
+            return;
+        }
+        const isCollapsed =
             document.body.classList.contains('sidebar-collapsed') ||
             document.querySelector('.sidebar')?.classList.contains('collapsed');
-        main.style.marginLeft = collapsed ? COLLAPSED : EXPANDED;
+        const w = isCollapsed ? COLLAPSED : EXPANDED;
+        main.style.marginLeft = w + 'px';
+        main.style.width = `calc(100% - ${w}px)`;
     }
 
-    const observer = new MutationObserver(syncMargin);
+    const observer = new MutationObserver(syncLayout);
     observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
     const sidebar = document.querySelector('.sidebar');
     if (sidebar) observer.observe(sidebar, { attributes: true, attributeFilter: ['class'] });
 
-    syncMargin();
+    window.addEventListener('resize', syncLayout);
+    syncLayout();
 })();
 </script>
 </body>

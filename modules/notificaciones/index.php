@@ -91,6 +91,55 @@ try {
     die("Error del sistema.");
 }
 
+// ─── Handler: Crear notificación (modal) ─────────────────────────────────────
+$modal_crear_error = null;
+$modal_crear_open  = false;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'crear_notificacion' && $user['rol'] === 'admin') {
+    $destinatarios = $_POST['destinatarios'] ?? [];
+    $enviar_todos  = !empty($_POST['enviar_todos']);
+    $enviar_rol    = trim($_POST['enviar_rol'] ?? '');
+    $tipo          = $_POST['tipo']      ?? '';
+    $titulo        = trim($_POST['titulo']   ?? '');
+    $mensaje       = trim($_POST['mensaje']  ?? '');
+    $enlace        = trim($_POST['enlace']   ?? '');
+    $prioridad     = $_POST['prioridad'] ?? 'normal';
+    $enviar_rol = trim($_POST['enviar_rol'] ?? '');
+    
+    if (empty($tipo) || empty($titulo) || empty($mensaje)
+        || (!$enviar_todos && $enviar_rol === '' && empty($destinatarios))) {
+        $modal_crear_error = "Completa todos los campos obligatorios.";
+        $modal_crear_open  = true;
+    } else {
+        try {
+            $pdo->beginTransaction();
+            if ($enviar_todos) {
+                $st = $pdo->query("SELECT id FROM usuarios WHERE estado='activo'");
+                $destinatarios = $st->fetchAll(PDO::FETCH_COLUMN);
+            } elseif ($enviar_rol !== '') {
+                $st = $pdo->prepare("SELECT id FROM usuarios WHERE estado='activo' AND rol = ?");
+                $st->execute([$enviar_rol]);
+                $destinatarios = $st->fetchAll(PDO::FETCH_COLUMN);
+            }
+            $st = $pdo->prepare("
+                INSERT INTO notificaciones (usuario_id, tipo, titulo, mensaje, enlace, prioridad, emisor, fecha_creacion)
+                VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+            ");
+            foreach ($destinatarios as $uid) {
+                $st->execute([(int)$uid, $tipo, $titulo, $mensaje, $enlace ?: null, $prioridad, $user['nombre']]);
+            }
+            $pdo->commit();
+            header("Location: index.php?msg=enviadas&total=" . count($destinatarios));
+            exit;
+        } catch (PDOException $e) {
+            $pdo->rollBack();
+            error_log($e->getMessage());
+            $modal_crear_error = "Error al enviar las notificaciones. Inténtalo de nuevo.";
+            $modal_crear_open  = true;
+        }
+    }
+}
+
 // ─── Filtros ─────────────────────────────────────────────────────────────────
 $filtro_tipo   = isset($_GET['tipo'])   ? $_GET['tipo']   : 'todas';
 $filtro_estado = isset($_GET['estado']) ? $_GET['estado'] : 'todas';
@@ -128,6 +177,17 @@ $total_notificaciones = $stats['total'];
 $sin_leer             = $stats['sin_leer'];
 $preinscripciones     = $stats['preinscripciones'];
 $eventos              = $stats['eventos'];
+
+// ─── Lista de usuarios para el modal crear (solo admin) ──────────────────────
+$usuarios_lista = [];
+if ($user['rol'] === 'admin') {
+    try {
+        $stmt = $pdo->query("SELECT id, nombre, rol FROM usuarios WHERE estado='activo' ORDER BY nombre ASC");
+        $usuarios_lista = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log($e->getMessage());
+    }
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function tiempo_transcurrido(string $fecha): string {
@@ -199,7 +259,7 @@ if (file_exists('../../includes/header.php')) require_once '../../includes/heade
                 </button>
                 <?php endif; ?>
                 <?php if ($user['rol'] === 'admin'): ?>
-                <button class="btn-primary" onclick="location.href='crear.php'">
+                <button class="btn-primary" onclick="openModal('createModal')">
                     <span class="material-symbols-rounded">add</span>
                     Nueva notificación
                 </button>
@@ -207,6 +267,13 @@ if (file_exists('../../includes/header.php')) require_once '../../includes/heade
             </div>
         </div>
     </div>
+
+    <?php if (isset($_GET['msg']) && $_GET['msg'] === 'enviadas'): ?>
+    <div class="flash-noti-success" id="flashEnviadas">
+        <span class="material-symbols-rounded">check_circle</span>
+        Notificación enviada correctamente a <strong><?= (int)($_GET['total'] ?? 0) ?></strong> usuario(s).
+    </div>
+    <?php endif; ?>
 
     <!-- ─── Stats ───────────────────────────────────────────────────────────── -->
     <div class="stats-grid">
@@ -366,7 +433,6 @@ if (file_exists('../../includes/header.php')) require_once '../../includes/heade
                     </button>
                     <?php endif; ?>
 
-                    <!-- Botón ver detalles -->
                     <button class="action-btn"
                             onclick="verDetalles(this.closest('.notification-card'))"
                             title="Ver detalles">
@@ -398,6 +464,132 @@ if (file_exists('../../includes/header.php')) require_once '../../includes/heade
     </div>
 </main>
 
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     MODAL — Crear Notificación
+═══════════════════════════════════════════════════════════════════════════ -->
+<?php if ($user['rol'] === 'admin'): ?>
+<div class="modal-overlay" id="createModal">
+    <div class="modal-box create-modal-box">
+        <button class="modal-close-btn" onclick="closeModal('createModal')">
+            <span class="material-symbols-rounded">close</span>
+        </button>
+
+        <div style="margin-bottom:20px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                <div style="width:40px;height:40px;border-radius:12px;background:rgba(249,115,22,.15);color:var(--primary-orange,#f97316);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <span class="material-symbols-rounded" style="font-size:20px;">send</span>
+                </div>
+                <div>
+                    <h3 class="modal-title" style="text-align:left;margin-bottom:0;">Nueva Notificación</h3>
+                    <p style="font-size:0.82rem;color:var(--text-secondary);margin:0;">Enviar a usuarios del sistema</p>
+                </div>
+            </div>
+        </div>
+
+        <form method="POST" id="formCrearNotificacion" novalidate>
+            <input type="hidden" name="action" value="crear_notificacion">
+
+            <div class="modal-form-group">
+                <label>Tipo <span class="req-star">*</span></label>
+                <select name="tipo" id="crear-tipo" class="modal-form-control">
+                    <option value="">Seleccionar tipo...</option>
+                    <option value="sistema">Sistema</option>
+                    <option value="preinscripcion">Preinscripción</option>
+                    <option value="evento">Evento</option>
+                    <option value="general">General</option>
+                </select>
+            </div>
+
+            <div class="modal-form-group">
+                <label>Título <span class="req-star">*</span></label>
+                <input type="text" name="titulo" id="crear-titulo" class="modal-form-control"
+                       placeholder="Ej: Nueva actualización del sistema">
+            </div>
+
+            <div class="modal-form-group">
+                <label>Mensaje <span class="req-star">*</span></label>
+                <textarea name="mensaje" id="crear-mensaje" class="modal-form-control"
+                          placeholder="Escribe el contenido de la notificación..."></textarea>
+            </div>
+
+            <div class="modal-form-group">
+                <label>Enlace <span style="font-size:0.78rem;color:var(--text-secondary);">(opcional)</span></label>
+                <input type="text" name="enlace" class="modal-form-control"
+                       placeholder="/AMIMBR3/modules/...">
+            </div>
+
+            <div class="modal-form-group">
+                <label>Prioridad</label>
+                <select name="prioridad" class="modal-form-control">
+                    <option value="normal">Normal</option>
+                    <option value="alta">Alta</option>
+                    <option value="baja">Baja</option>
+                </select>
+            </div>
+
+            <div class="modal-form-group">
+                <label>Destinatarios <span class="req-star">*</span></label>
+
+                <!-- Selector de modo -->
+                <div class="dest-mode-grid">
+                    <label class="dest-mode-card active" data-mode="todos">
+                        <input type="radio" name="modo_destino" value="todos" checked>
+                        <span class="material-symbols-rounded">groups</span>
+                        <span>Todos</span>
+                    </label>
+                    <label class="dest-mode-card" data-mode="admins">
+                        <input type="radio" name="modo_destino" value="admins">
+                        <span class="material-symbols-rounded">admin_panel_settings</span>
+                        <span>Admins</span>
+                    </label>
+                    <label class="dest-mode-card" data-mode="profesores">
+                        <input type="radio" name="modo_destino" value="profesores">
+                        <span class="material-symbols-rounded">school</span>
+                        <span>Profesores</span>
+                    </label>
+                    <label class="dest-mode-card" data-mode="estudiantes">
+                        <input type="radio" name="modo_destino" value="estudiantes">
+                        <span class="material-symbols-rounded">person</span>
+                        <span>Estudiantes</span>
+                    </label>
+                    <label class="dest-mode-card" data-mode="personalizado">
+                        <input type="radio" name="modo_destino" value="personalizado">
+                        <span class="material-symbols-rounded">tune</span>
+                        <span>Personalizado</span>
+                    </label>
+                </div>
+
+                <!-- Lista personalizada (solo visible en modo personalizado) -->
+                <div id="listaDestModal" class="modal-check-list" style="display:none; margin-top:10px;">
+                    <?php foreach ($usuarios_lista as $u): ?>
+                    <label class="modal-check-item"
+                        data-rol="<?= htmlspecialchars($u['rol']) ?>">
+                        <input type="checkbox" name="destinatarios[]" value="<?= $u['id'] ?>">
+                        <span><?= htmlspecialchars($u['nombre']) ?></span>
+                        <span class="modal-user-rol"><?= ucfirst($u['rol']) ?></span>
+                    </label>
+                    <?php endforeach; ?>
+                </div>
+
+                <!-- Campo oculto para modos que no son personalizados -->
+                <input type="hidden" name="enviar_todos"      id="hid_todos"      value="">
+                <input type="hidden" name="enviar_rol"         id="hid_rol"         value="">
+            </div>
+
+            <div id="modal-alert-crear-noti" class="modal-alert-noti"></div>
+
+            <div class="modal-actions" style="margin-top:20px;">
+                <button type="button" class="modal-btn cancel" onclick="closeModal('createModal')">Cancelar</button>
+                <button type="submit" class="modal-btn confirm" id="btnEnviarModal">
+                    <span class="material-symbols-rounded">send</span>
+                    Enviar notificación
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+<?php endif; ?>
 
 <!-- ═══════════════════════════════════════════════════════════════════════════
      MODAL — Confirmación "Marcar todas como leídas"
@@ -473,375 +665,6 @@ if (file_exists('../../includes/header.php')) require_once '../../includes/heade
 </div>
 
 
-<!-- ─── Estilos adicionales ──────────────────────────────────────────────── -->
-<style>
-/* ── Chip bar ────────────────────────────────────────────────────────────── */
-.filters-toolbar {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    margin: 0 0 20px;
-}
-.chip-bar {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
-    padding: 12px 16px;
-}
-.chip-group {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-}
-.chip-group-label {
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: .05em;
-    white-space: nowrap;
-    margin-right: 2px;
-}
-.chip-divider {
-    width: 1px;
-    height: 28px;
-    background: var(--border-color);
-    margin: 0 4px;
-    flex-shrink: 0;
-}
-.chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 5px 12px;
-    border-radius: 20px;
-    border: 1px solid var(--border-color);
-    background: transparent;
-    color: var(--text-secondary);
-    font-size: 0.78rem;
-    font-weight: 500;
-    text-decoration: none;
-    transition: all 0.22s ease;
-    white-space: nowrap;
-    font-family: "Poppins", sans-serif;
-}
-.chip .material-symbols-rounded { font-size: 15px; }
-.chip:hover {
-    border-color: var(--primary-blue);
-    color: var(--primary-blue);
-    background: var(--subtle-blue, rgba(59,130,246,.08));
-    transform: translateY(-1px);
-}
-.chip.active {
-    background: var(--primary-blue);
-    border-color: var(--primary-blue);
-    color: #fff;
-    box-shadow: 0 3px 10px rgba(59,130,246,.35);
-}
-
-/* ── Dot unread + badge leída ────────────────────────────────────────────── */
-.dot-unread {
-    display: inline-block;
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--primary-orange, #f97316);
-    margin-left: 6px;
-    vertical-align: middle;
-    animation: pulse-badge 2s infinite;
-}
-.badge-read {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    padding: 3px 8px;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    background: rgba(34,197,94,.15);
-    color: #22c55e;
-}
-@keyframes pulse-badge {
-    0%, 100% { transform: scale(1);   box-shadow: 0 0 0 0 rgba(249,115,22,.4); }
-    50%       { transform: scale(1.1); box-shadow: 0 0 0 5px rgba(249,115,22,0); }
-}
-
-/* ── Modal overlay ───────────────────────────────────────────────────────── */
-.modal-overlay {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,.55);
-    backdrop-filter: blur(4px);
-    z-index: 2000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity .25s ease;
-}
-.modal-overlay.open {
-    opacity: 1;
-    pointer-events: auto;
-}
-.modal-box {
-    background: var(--dark-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 20px;
-    padding: 32px 28px 28px;
-    width: 100%;
-    max-width: 420px;
-    box-shadow: 0 20px 60px rgba(0,0,0,.4);
-    transform: scale(.94) translateY(12px);
-    transition: transform .28s cubic-bezier(0.34,1.56,0.64,1);
-    position: relative;
-}
-.modal-overlay.open .modal-box {
-    transform: scale(1) translateY(0);
-}
-
-/* ── Modal confirmación ──────────────────────────────────────────────────── */
-.modal-icon {
-    width: 56px; height: 56px;
-    border-radius: 16px;
-    display: flex; align-items: center; justify-content: center;
-    margin: 0 auto 18px;
-    font-size: 1.6rem;
-}
-.confirm-icon {
-    background: rgba(59,130,246,.15);
-    color: var(--primary-blue);
-}
-.modal-title {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    text-align: center;
-    margin-bottom: 8px;
-}
-.modal-desc {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-    text-align: center;
-    line-height: 1.6;
-    margin-bottom: 24px;
-}
-.modal-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-}
-.modal-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 10px 22px;
-    border-radius: 10px;
-    border: 1px solid var(--border-color);
-    font-family: "Poppins", sans-serif;
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-.modal-btn.cancel {
-    background: transparent;
-    color: var(--text-secondary);
-}
-.modal-btn.cancel:hover {
-    background: var(--hover-bg);
-    color: var(--text-primary);
-}
-.modal-btn.confirm {
-    background: var(--primary-blue);
-    color: #fff;
-    border-color: var(--primary-blue);
-    box-shadow: 0 4px 14px rgba(59,130,246,.35);
-}
-.modal-btn.confirm:hover {
-    filter: brightness(1.1);
-    transform: translateY(-1px);
-}
-.modal-btn .material-symbols-rounded { font-size: 16px; }
-
-/* ── Modal detalle ───────────────────────────────────────────────────────── */
-.detail-modal-box {
-    max-width: 500px;
-    padding: 28px 28px 24px;
-}
-.modal-close-btn {
-    position: absolute;
-    top: 16px; right: 16px;
-    width: 32px; height: 32px;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    background: transparent;
-    color: var(--text-secondary);
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-.modal-close-btn:hover {
-    background: var(--hover-bg);
-    color: var(--text-primary);
-}
-.modal-close-btn .material-symbols-rounded { font-size: 18px; }
-
-.detail-header {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin-bottom: 18px;
-}
-.detail-icon-wrap {
-    width: 52px; height: 52px;
-    border-radius: 14px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.4rem;
-    flex-shrink: 0;
-    background: rgba(59,130,246,.15);
-    color: var(--primary-blue);
-}
-.detail-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-.detail-tipo-badge {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-    background: rgba(59,130,246,.15);
-    color: var(--primary-blue);
-}
-.detail-prioridad {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-}
-.detail-prioridad.alta { color: var(--primary-orange, #f97316); }
-
-.detail-title {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: 10px;
-    line-height: 1.4;
-}
-.detail-message {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    line-height: 1.7;
-    margin-bottom: 20px;
-}
-.detail-info-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 20px;
-}
-.detail-info-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-}
-.detail-info-item > .material-symbols-rounded {
-    font-size: 1.1rem;
-    color: var(--primary-blue);
-    flex-shrink: 0;
-}
-.detail-info-label {
-    display: block;
-    font-size: 0.68rem;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: .04em;
-    font-weight: 600;
-}
-.detail-info-value {
-    display: block;
-    font-size: 0.8rem;
-    color: var(--text-primary);
-    font-weight: 500;
-    margin-top: 1px;
-}
-.detail-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-.detail-actions a,
-.detail-actions button {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 9px 18px;
-    border-radius: 10px;
-    font-family: "Poppins", sans-serif;
-    font-size: 0.82rem;
-    font-weight: 600;
-    cursor: pointer;
-    text-decoration: none;
-    transition: all 0.2s ease;
-    border: 1px solid var(--border-color);
-}
-.detail-actions .btn-link {
-    background: var(--primary-blue);
-    color: #fff;
-    border-color: var(--primary-blue);
-    box-shadow: 0 3px 10px rgba(59,130,246,.3);
-}
-.detail-actions .btn-link:hover { filter: brightness(1.1); transform: translateY(-1px); }
-.detail-actions .btn-mark {
-    background: transparent;
-    color: var(--text-primary);
-}
-.detail-actions .btn-mark:hover { background: var(--hover-bg); }
-.detail-actions .material-symbols-rounded { font-size: 16px; }
-
-/* ── Toast ───────────────────────────────────────────────────────────────── */
-.toast {
-    position: fixed;
-    bottom: 28px;
-    left: 50%;
-    transform: translateX(-50%) translateY(80px);
-    background: var(--dark-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 12px 20px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    box-shadow: 0 8px 28px rgba(0,0,0,.3);
-    z-index: 3000;
-    transition: transform .35s cubic-bezier(0.34,1.56,0.64,1), opacity .3s ease;
-    opacity: 0;
-    white-space: nowrap;
-}
-.toast.show {
-    transform: translateX(-50%) translateY(0);
-    opacity: 1;
-}
-.toast-icon { font-size: 18px; }
-.toast.success .toast-icon { color: #22c55e; }
-.toast.error   .toast-icon { color: #ef4444; }
-</style>
-
-
 <!-- ─── JavaScript ───────────────────────────────────────────────────────── -->
 <script>
 /* ── Utilidades AJAX ──────────────────────────────────────────────────────── */
@@ -885,6 +708,7 @@ document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
         closeModal('confirmModal');
         closeModal('detailModal');
+        closeModal('createModal');
     }
 });
 
@@ -929,19 +753,17 @@ function marcarLeida(id) {
 
 /* ── Eliminar ─────────────────────────────────────────────────────────────── */
 function eliminarNotificacion(id) {
-    // Reutilizamos el modal de confirmación con texto distinto
     const modal = document.getElementById('confirmModal');
     modal.querySelector('.confirm-icon').innerHTML = '<span class="material-symbols-rounded">delete</span>';
-    modal.querySelector('.confirm-icon').style.background = 'rgba(239,68,68,.15)';
-    modal.querySelector('.confirm-icon').style.color = '#ef4444';
+    modal.querySelector('.confirm-icon').style.background = 'var(--subtle-red)';
+    modal.querySelector('.confirm-icon').style.color = 'var(--primary-red)';
     modal.querySelector('.modal-title').textContent = '¿Eliminar notificación?';
     modal.querySelector('.modal-desc').textContent = 'Esta notificación se eliminará permanentemente.';
     const btnOk = document.getElementById('confirmOk');
-    btnOk.style.background = '#ef4444';
-    btnOk.style.borderColor = '#ef4444';
+    btnOk.style.background = 'var(--subtle-red)';
+    btnOk.style.color = 'var(--primary-red)';
     btnOk.innerHTML = '<span class="material-symbols-rounded">delete</span> Eliminar';
 
-    // Reemplazar listener
     const nuevoBtn = btnOk.cloneNode(true);
     btnOk.parentNode.replaceChild(nuevoBtn, btnOk);
     nuevoBtn.addEventListener('click', function() {
@@ -977,19 +799,16 @@ function verDetalles(card) {
     const d = card.dataset;
     const tipoData = iconoMap[d.tipo] || iconoMap['general'];
 
-    // Icono
     const iconWrap = document.getElementById('detailIconWrap');
     iconWrap.style.background = tipoData.bg;
     iconWrap.style.color      = tipoData.color;
     document.getElementById('detailIcon').textContent = tipoData.icono;
 
-    // Tipo badge
     const tipoBadge = document.getElementById('detailTipo');
     tipoBadge.textContent   = d.tipo.charAt(0).toUpperCase() + d.tipo.slice(1);
     tipoBadge.style.background = tipoData.bg;
     tipoBadge.style.color      = tipoData.color;
 
-    // Prioridad
     const prioEl = document.getElementById('detailPrioridad');
     if (d.prioridad === 'alta') {
         prioEl.textContent  = '⚠ Alta prioridad';
@@ -999,18 +818,15 @@ function verDetalles(card) {
         prioEl.className    = 'detail-prioridad';
     }
 
-    // Contenido
     document.getElementById('detailTitulo').textContent  = d.fullTitulo;
     document.getElementById('detailMensaje').textContent = d.fullMensaje;
     document.getElementById('detailEmisor').textContent  = d.emisor;
 
-    // Fecha legible
     const fecha = new Date(d.fecha);
     document.getElementById('detailFecha').textContent =
         fecha.toLocaleDateString('es-CO', { day:'2-digit', month:'long', year:'numeric' }) + ' · ' +
         fecha.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
 
-    // Acciones
     const actDiv = document.getElementById('detailActions');
     actDiv.innerHTML = '';
     if (d.enlace) {
@@ -1034,8 +850,112 @@ function verDetalles(card) {
     openModal('detailModal');
 }
 
-// Botón cerrar del modal de detalle
 document.getElementById('detailClose').addEventListener('click', () => closeModal('detailModal'));
+
+/* ── Modal Crear Notificación ─────────────────────────────────────────────── */
+
+function mostrarAlertaNoti(msg) {
+    const div = document.getElementById('modal-alert-crear-noti');
+    if (!div) return;
+    div.innerHTML = `<span class="material-symbols-rounded">error</span>${msg}`;
+    div.style.display = 'flex';
+    div.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+document.querySelectorAll('.dest-mode-card').forEach(card => {
+    card.addEventListener('click', function () {
+        // Marcar card activa
+        document.querySelectorAll('.dest-mode-card').forEach(c => c.classList.remove('active'));
+        this.classList.add('active');
+
+        const modo = this.dataset.mode;
+        const lista = document.getElementById('listaDestModal');
+        const hidTodos = document.getElementById('hid_todos');
+        const hidRol   = document.getElementById('hid_rol');
+
+        // Limpiar campos ocultos y lista personalizada
+        hidTodos.value = '';
+        hidRol.value   = '';
+        lista.style.display = 'none';
+        lista.querySelectorAll('input[type="checkbox"]').forEach(i => i.checked = false);
+
+        if (modo === 'todos') {
+            hidTodos.value = '1';
+        } else if (modo === 'personalizado') {
+            lista.style.display = 'block';
+        } else {
+            // admins → admin | profesores → profesor | estudiantes → estudiante
+            const rolMap = { admins: 'admin', profesores: 'profesor', estudiantes: 'estudiante' };
+            hidRol.value = rolMap[modo];
+        }
+    });
+});
+
+// Inicializar: modo "todos" activo por defecto
+document.getElementById('hid_todos').value = '1';
+
+const formCrear = document.getElementById('formCrearNotificacion');
+if (formCrear) {
+    formCrear.addEventListener('submit', function(e) {
+        const tipo    = document.getElementById('crear-tipo').value;
+        const titulo  = document.getElementById('crear-titulo').value.trim();
+        const mensaje = document.getElementById('crear-mensaje').value.trim();
+        const hidTodos = document.getElementById('hid_todos').value;
+        const hidRol   = document.getElementById('hid_rol').value;
+        const alguno   = hidTodos === '1'
+                    || hidRol !== ''
+                    || document.querySelectorAll('#listaDestModal input:checked').length > 0;
+
+        if (!tipo) {
+            e.preventDefault();
+            mostrarAlertaNoti('Selecciona un tipo de notificación.');
+            return;
+        }
+        if (!titulo) {
+            e.preventDefault();
+            mostrarAlertaNoti('El título es obligatorio.');
+            return;
+        }
+        if (!mensaje) {
+            e.preventDefault();
+            mostrarAlertaNoti('El mensaje es obligatorio.');
+            return;
+        }
+        if (!alguno) {
+            e.preventDefault();
+            mostrarAlertaNoti('Selecciona al menos un destinatario o marca "Enviar a todos".');
+            return;
+        }
+
+        const btn = document.getElementById('btnEnviarModal');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-rounded">hourglass_empty</span> Enviando...';
+    });
+}
+
+// Auto-abrir modal si hubo error en POST
+<?php if ($modal_crear_open): ?>
+openModal('createModal');
+<?php if ($modal_crear_error): ?>
+(function() {
+    const div = document.getElementById('modal-alert-crear-noti');
+    if (div) {
+        div.innerHTML = '<span class="material-symbols-rounded">error</span><?= htmlspecialchars($modal_crear_error) ?>';
+        div.style.display = 'flex';
+    }
+})();
+<?php endif; ?>
+<?php endif; ?>
+
+// Auto-ocultar flash de éxito
+const flashEnv = document.getElementById('flashEnviadas');
+if (flashEnv) {
+    setTimeout(() => {
+        flashEnv.style.transition = 'opacity 0.5s ease';
+        flashEnv.style.opacity = '0';
+        setTimeout(() => flashEnv.remove(), 500);
+    }, 4000);
+}
 
 /* ── Búsqueda en tiempo real ──────────────────────────────────────────────── */
 document.getElementById('searchNotifications').addEventListener('input', function() {

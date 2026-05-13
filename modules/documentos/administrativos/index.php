@@ -477,8 +477,7 @@ function formatear_fecha($fecha) {
         </div>
     </main>
 
-    <?php if ($user['rol'] === 'admin'): ?>
-    <!-- Modal Ver Documento Administrativo -->
+    <!-- Modal Ver Documento — disponible para admin y profesor -->
     <div id="modalVerDoc" class="modal">
         <div class="modal-content modal-ver-doc-content">
 
@@ -554,12 +553,14 @@ function formatear_fecha($fecha) {
                     </div>
                 </div>
 
-                <!-- Historial -->
+                <!-- Historial (solo admin) -->
+                <?php if ($user['rol'] === 'admin'): ?>
                 <div class="section-title-detail" style="margin-bottom:10px">
                     <span class="material-symbols-rounded">history</span>
                     Historial de Accesos
                 </div>
                 <div id="mvd_historial"></div>
+                <?php endif; ?>
 
             </div>
 
@@ -573,6 +574,7 @@ function formatear_fecha($fecha) {
                         <span class="material-symbols-rounded">download</span>
                         Descargar
                     </a>
+                    <?php if ($user['rol'] === 'admin'): ?>
                     <div style="margin-left:auto;display:flex;gap:10px">
                         <button id="mvd_btn_editar" type="button" onclick="verAEditar()">
                             <span class="material-symbols-rounded">edit</span>
@@ -583,12 +585,14 @@ function formatear_fecha($fecha) {
                             Eliminar
                         </button>
                     </div>
+                    <?php endif; ?>
                 </div>
             </div>
 
         </div>
     </div>
 
+    <?php if ($user['rol'] === 'admin'): ?>
     <!-- Modal Crear Documento Administrativo -->
     <div id="modalCrearDoc" class="modal">
         <div class="modal-content">
@@ -970,37 +974,36 @@ function formatear_fecha($fecha) {
                     profWrap.style.display = 'none';
                 }
 
-                // Historial
+                // Historial (solo admin)
                 const hist = document.getElementById('mvd_historial');
-                if (data.historial.length > 0) {
-                    hist.className = 'access-timeline';
-                    hist.innerHTML = data.historial.map(h => `
-                        <div class="timeline-item">
-                            <div class="timeline-icon ${h.accion === 'descarga' ? 'download' : 'view'}">
-                                <span class="material-symbols-rounded">${h.accion === 'descarga' ? 'download' : 'visibility'}</span>
-                            </div>
-                            <div class="timeline-content">
-                                <div class="timeline-action">
-                                    ${h.usuario_nombre}
-                                    ${h.accion === 'descarga' ? 'descargó' : 'visualizó'} el documento
-                                    <span style="color:var(--text-secondary);font-weight:400">(${h.usuario_rol.charAt(0).toUpperCase()+h.usuario_rol.slice(1)})</span>
+                if (hist) {
+                    if (data.historial && data.historial.length > 0) {
+                        hist.className = 'access-timeline';
+                        hist.innerHTML = data.historial.map(h => `
+                            <div class="timeline-item">
+                                <div class="timeline-icon ${h.accion === 'descarga' ? 'download' : 'view'}">
+                                    <span class="material-symbols-rounded">${h.accion === 'descarga' ? 'download' : 'visibility'}</span>
                                 </div>
-                                <div class="timeline-time">${mvdTiempo(h.fecha_acceso)}</div>
-                            </div>
-                        </div>`).join('');
-                } else {
-                    hist.className = '';
-                    hist.innerHTML = `<div class="empty-timeline">
-                        <span class="material-symbols-rounded">history</span>
-                        <div>No hay historial de accesos aún</div>
-                    </div>`;
+                                <div class="timeline-content">
+                                    <div class="timeline-action">
+                                        ${h.usuario_nombre}
+                                        ${h.accion === 'descarga' ? 'descargó' : 'visualizó'} el documento
+                                        <span style="color:var(--text-secondary);font-weight:400">(${h.usuario_rol.charAt(0).toUpperCase()+h.usuario_rol.slice(1)})</span>
+                                    </div>
+                                    <div class="timeline-time">${mvdTiempo(h.fecha_acceso)}</div>
+                                </div>
+                            </div>`).join('');
+                    } else {
+                        hist.className = '';
+                        hist.innerHTML = `<div class="empty-timeline">
+                            <span class="material-symbols-rounded">history</span>
+                            <div>No hay historial de accesos aún</div>
+                        </div>`;
+                    }
                 }
 
-                // Botones footer
+                // Botón descargar
                 document.getElementById('mvd_btn_descargar').href = `descargar.php?id=${doc.id}`;
-                const esAdmin = <?php echo $user['rol'] === 'admin' ? 'true' : 'false'; ?>;
-                document.getElementById('mvd_btn_editar').style.display  = esAdmin ? 'flex' : 'none';
-                document.getElementById('mvd_btn_eliminar').style.display = esAdmin ? 'flex' : 'none';
 
                 document.getElementById('mvd_loading').style.display = 'none';
                 document.getElementById('mvd_content').style.display = 'block';

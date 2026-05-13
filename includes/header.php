@@ -287,6 +287,7 @@
             color: var(--text-primary);
             background: var(--primary-blue);
             transition: 0.5s;
+            z-index: 9998;
         }
 
         .sidebar-menu-button:hover {
@@ -317,7 +318,7 @@
         position: fixed;
         bottom: 28px;
         right: 28px;
-        z-index: 1000;
+        z-index: 9999;
         display: flex;
         flex-direction: column-reverse; /* los items crecen hacia arriba */
         align-items: flex-end;
@@ -496,7 +497,7 @@
         border: 1px solid var(--border-color);
         border-radius: 16px;
         box-shadow: 0 8px 32px rgba(0,0,0,0.35);
-        z-index: 1001;
+        z-index: 10000;
         display: flex;
         flex-direction: column;
         overflow: hidden;
@@ -590,6 +591,7 @@
         line-height: 1.4;
         display: -webkit-box;
         -webkit-line-clamp: 2;
+        line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
     }
@@ -652,7 +654,7 @@
         border: 1px solid var(--border-color);
         border-radius: 16px;
         box-shadow: 0 8px 32px rgba(0,0,0,0.35);
-        z-index: 1001;
+        z-index: 10000;
         padding: 20px;
         opacity: 0;
         pointer-events: none;
@@ -1178,14 +1180,23 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
             });
         });
 
+        function syncMenuButton() {
+            if (window.innerWidth > 768) return;
+            const collapsed = document.querySelector(".sidebar").classList.contains("collapsed");
+            document.querySelector(".sidebar-menu-button").style.display = collapsed ? "flex" : "none";
+        }
+
         document.querySelectorAll(".sidebar-toggler, .sidebar-menu-button").forEach((button) => {
             button.addEventListener("click", () => {
                 closeAllDropdowns();
                 document.querySelector(".sidebar").classList.toggle("collapsed");
+                syncMenuButton();
             });
         });
 
         if (window.innerWidth <= 1024) document.querySelector(".sidebar").classList.add("collapsed");
+        syncMenuButton();
+        window.addEventListener("resize", syncMenuButton);
     </script>
 </body>
 

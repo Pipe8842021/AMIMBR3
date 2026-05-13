@@ -1002,7 +1002,7 @@ usort($documentos, fn($a, $b) => strtotime($b['fecha']) - strtotime($a['fecha'])
             <div class="modal-footer-crear">
                 <button class="btn-cancelar" onclick="cerrarModalEditarBitacora()">Cancelar</button>
                 <button class="btn-primario" id="mebBitSubmitBtn" onclick="submitEditarBitacora()" disabled>
-                    <span class="material-symbols-rounded">save</span> Guardar Cambios
+                    <span class="material-symbols-rounded">save</span> Guardar
                 </button>
             </div>
         </div>
@@ -1220,7 +1220,7 @@ usort($documentos, fn($a, $b) => strtotime($b['fecha']) - strtotime($a['fecha'])
             .then(function(r){ return r.json(); })
             .then(function(res){
                 btn.disabled = false;
-                btn.innerHTML = '<span class="material-symbols-rounded">save</span> Guardar Documento';
+                btn.innerHTML = '<span class="material-symbols-rounded">save</span> Guardar ';
                 if (res.success) {
                     cerrarModalCrearInst();
                     mostrarAlertaInst('Documento creado correctamente', 'success');
@@ -1232,7 +1232,7 @@ usort($documentos, fn($a, $b) => strtotime($b['fecha']) - strtotime($a['fecha'])
             })
             .catch(function(){
                 btn.disabled = false;
-                btn.innerHTML = '<span class="material-symbols-rounded">save</span> Guardar Documento';
+                btn.innerHTML = '<span class="material-symbols-rounded">save</span> Guardar ';
                 document.getElementById('mciErrorText').textContent = 'Error de conexión';
                 errEl.style.display = 'flex';
             });
@@ -1485,7 +1485,7 @@ usort($documentos, fn($a, $b) => strtotime($b['fecha']) - strtotime($a['fecha'])
             .then(function(r){ return r.json(); })
             .then(function(res){
                 btn.disabled = false;
-                btn.innerHTML = '<span class="material-symbols-rounded">save</span> Guardar Cambios';
+                btn.innerHTML = '<span class="material-symbols-rounded">save</span> Guardar ';
                 if (res.success) {
                     cerrarModalEditarInst();
                     mostrarAlertaInst('Cambios guardados correctamente', 'success');
@@ -1496,7 +1496,7 @@ usort($documentos, fn($a, $b) => strtotime($b['fecha']) - strtotime($a['fecha'])
             })
             .catch(function(){
                 btn.disabled = false;
-                btn.innerHTML = '<span class="material-symbols-rounded">save</span> Guardar Cambios';
+                btn.innerHTML = '<span class="material-symbols-rounded">save</span> Guardar ';
                 if (errEl && errTxt) { errTxt.textContent = 'Error de conexión'; errEl.style.display = 'flex'; }
             });
         }
@@ -1815,7 +1815,7 @@ usort($documentos, fn($a, $b) => strtotime($b['fecha']) - strtotime($a['fecha'])
             .then(function(r){ return r.json(); })
             .then(function(res){
                 btn.disabled = false;
-                btn.innerHTML = '<span class="material-symbols-rounded">save</span> Guardar Bitácora';
+                btn.innerHTML = '<span class="material-symbols-rounded">save</span> Guardar ';
                 if (res.success) {
                     cerrarModalCrearBitacora();
                     mostrarAlertaInst('Bitácora creada correctamente', 'success');
@@ -1827,7 +1827,7 @@ usort($documentos, fn($a, $b) => strtotime($b['fecha']) - strtotime($a['fecha'])
             })
             .catch(function(){
                 btn.disabled = false;
-                btn.innerHTML = '<span class="material-symbols-rounded">save</span> Guardar Bitácora';
+                btn.innerHTML = '<span class="material-symbols-rounded">save</span> Guardar ';
                 errEl.innerHTML = '<span class="material-symbols-rounded">error</span><span>Error de conexión</span>';
                 errEl.style.display = 'flex';
             });
@@ -2037,7 +2037,7 @@ usort($documentos, fn($a, $b) => strtotime($b['fecha']) - strtotime($a['fecha'])
             .then(function(r){ return r.json(); })
             .then(function(res){
                 btn.disabled = false;
-                btn.innerHTML = '<span class="material-symbols-rounded">save</span> Guardar Cambios';
+                btn.innerHTML = '<span class="material-symbols-rounded">save</span> Guardar ';
                 if (res.success) {
                     cerrarModalEditarBitacora();
                     mostrarAlertaInst('Bitácora actualizada correctamente', 'success');
@@ -2048,7 +2048,7 @@ usort($documentos, fn($a, $b) => strtotime($b['fecha']) - strtotime($a['fecha'])
             })
             .catch(function(){
                 btn.disabled = false;
-                btn.innerHTML = '<span class="material-symbols-rounded">save</span> Guardar Cambios';
+                btn.innerHTML = '<span class="material-symbols-rounded">save</span> Guardar ';
                 if (errEl && errTxt) { errTxt.textContent = 'Error de conexión'; errEl.style.display = 'flex'; }
             });
         }

@@ -16,4 +16,4 @@ if (is_logged_in()) {
 }
 
 // Cerrar sesión y redirigir
-logout('../public/index.html');
+logout('../public/index.php');

@@ -48,6 +48,17 @@ body {
     font-size: 2rem;
 }
 
+/* ── Botón volver ────────────────────────────────────────── */
+.header-left { display: flex; align-items: center; gap: 16px; }
+.btn-back {
+    width: 40px; height: 40px; border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: var(--dark-bg); color: var(--text-primary);
+    cursor: pointer; display: flex; align-items: center;
+    justify-content: center; transition: all 0.3s ease; flex-shrink: 0;
+}
+.btn-back:hover { background: var(--primary-blue); border-color: var(--primary-blue); color: #fff; }
+
 .page-header p {
     color: var(--text-secondary);
     font-size: 0.95rem;

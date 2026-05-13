@@ -124,9 +124,14 @@
 
     <main class="main-content">
         <div class="dashboard-header">
-            <div class="dashboard-title">
-                <h1>Mi Información Académica</h1>
-                <p>Cursos, horarios y seguimiento de asistencia</p>
+            <div class="header-left">
+                <button class="btn-back" onclick="window.history.back()">
+                    <span class="material-symbols-rounded">arrow_back</span>
+                </button>
+                <div class="dashboard-title">
+                    <h1>Mi Información Académica</h1>
+                    <p>Cursos, horarios y seguimiento de asistencia</p>
+                </div>
             </div>
             <div class="date-display">
                 <span class="material-symbols-rounded">calendar_today</span>

@@ -7,6 +7,11 @@ require_role('admin');
 
 $success = null;
 $error   = null;
+
+if (isset($_GET['msg']) && $_GET['msg'] === 'eliminado') {
+    $success = "Grupo eliminado correctamente.";
+}
+
 // En la sección de manejo de POST de admin.php
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'crear_grupo') {
     // Datos del Grupo
@@ -16,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'crear
     $cupo_maximo  = (int)($_POST['cupo_maximo'] ?? 20);
     $aula_input   = trim($_POST['aula']         ?? '');
     $fecha_inicio = $_POST['fecha_inicio']      ?? '';
-    $fecha_fin    = $_POST['fecha_fin']         ?: null;
+    $fecha_fin    = ($_POST['fecha_fin'] ?? '')  ?: null;
     $estado       = $_POST['estado']            ?? 'planificado';
 
     // Datos del Horario (Nuevos campos)
@@ -77,23 +82,85 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'crear
             $stmtHorario->execute([$nuevo_id, $dia_semana, $hora_inicio, $hora_fin, $aula_input]);
 
             $pdo->commit();
-            header("Location: ver.php?id=$nuevo_id&msg=creado");
-            exit;
+            $success = "Grupo creado exitosamente.";
         } catch (Exception $e) {
             $pdo->rollBack();
             error_log($e->getMessage());
             $error = "Error: " . $e->getMessage();
         }
     }
-
-    $cursos = $pdo->query("SELECT id, nombre, nivel FROM cursos WHERE estado='activo' ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
-    $profesores = $pdo->query("SELECT id, nombre FROM usuarios WHERE rol='profesor' AND estado='activo' ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
-    date_default_timezone_set('America/Bogota');
-    // ... Copia aquí la lógica de validación y el try-catch de crear.php ...
-    // Asegúrate de que al final, en lugar de redirigir a ver.php, 
-    // puedas asignar el mensaje a $success y dejar que la página se recargue.
-    $success = "Grupo creado exitosamente.";
 }
+// Respuesta AJAX para crear_grupo
+if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
+    strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest' &&
+    ($_POST['action'] ?? '') === 'crear_grupo') {
+    header('Content-Type: application/json');
+    if ($error) {
+        echo json_encode(['success' => false, 'error' => strip_tags($error)]);
+    } else {
+        echo json_encode(['success' => true]);
+    }
+    exit;
+}
+
+// Manejo de edición de grupo
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'editar') {
+    $id_edit      = (int)($_POST['id']           ?? 0);
+    $nombre       = trim($_POST['nombre']        ?? '');
+    $curso_id     = (int)($_POST['curso_id']     ?? 0);
+    $profesor_id  = (int)($_POST['profesor_id']  ?? 0);
+    $cupo_maximo  = (int)($_POST['cupo_maximo']  ?? 20);
+    $aula         = trim($_POST['aula']          ?? '');
+    $fecha_inicio = $_POST['fecha_inicio']       ?? '';
+    $fecha_fin    = $_POST['fecha_fin']          ?: null;
+    $horario      = trim($_POST['horario']       ?? '');
+    $estado       = $_POST['estado']             ?? 'planificado';
+    $estados_validos = ['planificado', 'activo', 'finalizado', 'cancelado'];
+
+    if (!$id_edit || !$nombre || !$curso_id || !$fecha_inicio || !in_array($estado, $estados_validos)) {
+        $error = "Completa todos los campos obligatorios.";
+    } else {
+        try {
+            $pdo->prepare("
+                UPDATE grupos
+                SET nombre = ?, curso_id = ?, profesor_id = ?, cupo_maximo = ?,
+                    aula = ?, fecha_inicio = ?, fecha_fin = ?, horario = ?, estado = ?
+                WHERE id = ?
+            ")->execute([
+                $nombre, $curso_id, $profesor_id ?: null, $cupo_maximo,
+                $aula ?: null, $fecha_inicio, $fecha_fin, $horario ?: null, $estado,
+                $id_edit
+            ]);
+            $success = "Grupo actualizado correctamente.";
+        } catch (PDOException $e) {
+            error_log($e->getMessage());
+            $error = "Error al actualizar el grupo.";
+        }
+    }
+}
+
+// Manejo de eliminación de grupo
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'eliminar_grupo') {
+    $id_del = (int)($_POST['id_del'] ?? 0);
+    if ($id_del) {
+        try {
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM matriculas WHERE grupo_id = ? AND estado = 'activa'");
+            $stmt->execute([$id_del]);
+            if ((int)$stmt->fetchColumn() > 0) {
+                $error = "No se puede eliminar el grupo: tiene matrículas activas. Cambia su estado a <strong>Cancelado</strong> primero.";
+            } else {
+                $pdo->prepare("DELETE FROM horarios WHERE grupo_id = ?")->execute([$id_del]);
+                $pdo->prepare("DELETE FROM grupos   WHERE id = ?")->execute([$id_del]);
+                header("Location: admin.php?msg=eliminado");
+                exit;
+            }
+        } catch (PDOException $e) {
+            error_log($e->getMessage());
+            $error = "Error al eliminar el grupo.";
+        }
+    }
+}
+
 // Manejo de cambio de estado
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cambiar_estado') {
     $id_grupo     = (int)($_POST['id']           ?? 0);
@@ -133,10 +200,21 @@ try {
 
     $sql_where = $where ? "WHERE " . implode(" AND ", $where) : "";
 
+    $pagina  = max(1, (int)($_GET['pagina'] ?? 1));
+    $por_pag = 15;
+
+    $stmtTotal = $pdo->prepare("SELECT COUNT(*) FROM grupos g JOIN cursos c ON g.curso_id = c.id LEFT JOIN usuarios u ON g.profesor_id = u.id $sql_where");
+    $stmtTotal->execute($params);
+    $total_grupos  = (int)$stmtTotal->fetchColumn();
+    $total_paginas = max(1, (int)ceil($total_grupos / $por_pag));
+    $pagina        = min($pagina, $total_paginas);
+    $offset        = ($pagina - 1) * $por_pag;
+
     $stmt = $pdo->prepare("
         SELECT
-            g.id, g.nombre, g.fecha_inicio, g.fecha_fin, g.estado, 
-            g.cupo_actual, g.cupo_maximo, g.aula,
+            g.id, g.nombre, g.fecha_inicio, g.fecha_fin, g.estado,
+            g.cupo_actual, g.cupo_maximo, g.aula, g.horario,
+            g.curso_id, g.profesor_id,
             c.nombre AS curso_nombre,
             c.nivel  AS curso_nivel,
             u.nombre AS profesor_nombre
@@ -145,6 +223,7 @@ try {
         LEFT JOIN usuarios u ON g.profesor_id = u.id
         $sql_where
         ORDER BY g.id DESC
+        LIMIT $por_pag OFFSET $offset
     ");
     $stmt->execute($params);
     $grupos = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -174,7 +253,15 @@ try {
     $grupos = [];
     $totales = [];
     $total_general = 0;
+    $total_grupos  = 0;
+    $total_paginas = 1;
+    $pagina        = 1;
+    $por_pag       = 15;
+    $offset        = 0;
 }
+
+$cursos     = $pdo->query("SELECT id, nombre, nivel FROM cursos WHERE estado='activo' ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
+$profesores = $pdo->query("SELECT id, nombre FROM usuarios WHERE rol='profesor' AND estado='activo' ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
 
 $estado_cfg = [
     'planificado' => ['cls' => 'badge-info',    'txt' => 'Planificado', 'icon' => 'schedule'],
@@ -220,9 +307,14 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
     <main class="main-content">
 
         <div class="dashboard-header">
-            <div class="dashboard-title">
-                <h1>Gestión de Grupos</h1>
-                <p>Creación y control de secciones académicas</p>
+            <div class="header-left">
+                <button class="btn-back" onclick="window.history.back()">
+                    <span class="material-symbols-rounded">arrow_back</span>
+                </button>
+                <div class="dashboard-title">
+                    <h1>Gestión de Grupos</h1>
+                    <p>Creación y control de secciones académicas</p>
+                </div>
             </div>
             <button type="button" class="btn-submit" onclick="abrirModalCrear()">
                 <span class="material-symbols-rounded">add_circle</span> Nuevo grupo
@@ -242,20 +334,24 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
             </div>
         <?php endif; ?>
 
-        <div class="modulo-stats">
-            <div class="modulo-stat-chip total">
-                <span class="material-symbols-rounded">layers</span>
-                <div>
-                    <span class="chip-value"><?php echo $total_general; ?></span>
-                    <span class="chip-label">Total grupos</span>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon total">
+                    <span class="material-symbols-rounded">layers</span>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Total Grupos</span>
+                    <span class="stat-value"><?php echo $total_general; ?></span>
                 </div>
             </div>
             <?php foreach ($estado_cfg as $est => $cfg): ?>
-                <div class="modulo-stat-chip <?php echo $est; ?>">
-                    <span class="material-symbols-rounded"><?php echo $cfg['icon']; ?></span>
-                    <div>
-                        <span class="chip-value"><?php echo $totales[$est] ?? 0; ?></span>
-                        <span class="chip-label"><?php echo $cfg['txt']; ?>s</span>
+                <div class="stat-card">
+                    <div class="stat-icon <?php echo $est; ?>">
+                        <span class="material-symbols-rounded"><?php echo $cfg['icon']; ?></span>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label"><?php echo $cfg['txt']; ?>s</span>
+                        <span class="stat-value"><?php echo $totales[$est] ?? 0; ?></span>
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -265,7 +361,7 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
             <div class="section-header">
                 <div>
                     <h3 class="section-title">Grupos Registrados</h3>
-                    <p class="section-subtitle"><?php echo count($grupos); ?> resultado<?php echo count($grupos) != 1 ? 's' : ''; ?></p>
+                    <p class="section-subtitle"><?php echo $total_grupos; ?> resultado<?php echo $total_grupos != 1 ? 's' : ''; ?></p>
                 </div>
             </div>
 
@@ -396,9 +492,11 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
                                                     <?php endforeach; ?>
                                                 </div>
                                             </div>
-                                            <a href="eliminar.php?id=<?php echo $g['id']; ?>" class="tbl-btn delete" title="Eliminar grupo">
+                                            <button type="button" class="tbl-btn delete"
+                                                onclick="abrirModalEliminar(<?php echo $g['id']; ?>, '<?php echo addslashes(htmlspecialchars($g['nombre'])); ?>')"
+                                                title="Eliminar grupo">
                                                 <span class="material-symbols-rounded">delete</span>
-                                            </a>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -406,6 +504,33 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
                         </tbody>
                     </table>
                 </div>
+
+                <div class="pagination-bar">
+                    <span class="pagination-info">
+                        Mostrando <?php echo ($offset + 1); ?>–<?php echo min($offset + $por_pag, $total_grupos); ?> de <?php echo $total_grupos; ?>
+                    </span>
+                    <?php if ($total_paginas > 1): ?>
+                    <div class="pagination-btns">
+                        <?php if ($pagina > 1): ?>
+                            <a href="?<?php echo http_build_query(array_merge($_GET, ['pagina' => $pagina - 1])); ?>" class="pag-btn" title="Anterior">
+                                <span class="material-symbols-rounded">chevron_left</span>
+                            </a>
+                        <?php endif; ?>
+                        <?php for ($i = 1; $i <= $total_paginas; $i++): ?>
+                            <a href="?<?php echo http_build_query(array_merge($_GET, ['pagina' => $i])); ?>"
+                               class="pag-btn<?php echo $i === $pagina ? ' active' : ''; ?>">
+                                <?php echo $i; ?>
+                            </a>
+                        <?php endfor; ?>
+                        <?php if ($pagina < $total_paginas): ?>
+                            <a href="?<?php echo http_build_query(array_merge($_GET, ['pagina' => $pagina + 1])); ?>" class="pag-btn" title="Siguiente">
+                                <span class="material-symbols-rounded">chevron_right</span>
+                            </a>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
+                </div>
+
             <?php else: ?>
                 <div class="empty-state">
                     <span class="material-symbols-rounded">layers</span>
@@ -460,6 +585,8 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
             padding: 24px;
             box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
             animation: slideUp 0.3s ease;
+            max-height: 92vh;
+            overflow-y: auto;
         }
 
         @keyframes slideUp {
@@ -524,32 +651,21 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
                 </button>
             </div>
             <div class="modal-body">
-                <form method="POST" id="formCrearGrupo">
-                    <div class="form-row form-row--2">
-                        <div class="input-group">
-                            <label>Fecha de Inicio <span class="req">*</span></label>
-                            <input type="date" name="fecha_inicio" required value="<?php echo date('Y-m-d'); ?>">
-                        </div>
-                        <div class="input-group">
-                            <label>Cupo Máximo</label>
-                            <input type="number" name="cupo_maximo" value="20" min="1">
-                        </div>
-                    </div>
+                <form method="POST" id="formCrearGrupo" novalidate>
                     <input type="hidden" name="estado" value="planificado">
-
                     <input type="hidden" name="action" value="crear_grupo">
 
                     <div class="form-row">
                         <div class="input-group">
                             <label>Nombre del grupo <span class="req">*</span></label>
-                            <input type="text" name="nombre" required placeholder="Ej: Piano Básico A">
+                            <input type="text" name="nombre" id="crear-nombre" placeholder="Ej: Piano Básico A">
                         </div>
                     </div>
 
                     <div class="form-row form-row--2">
                         <div class="input-group">
                             <label>Curso <span class="req">*</span></label>
-                            <select name="curso_id" required>
+                            <select name="curso_id" id="crear-curso_id">
                                 <option value="">Seleccionar...</option>
                                 <?php foreach ($cursos as $c): ?>
                                     <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['nombre']) ?></option>
@@ -569,16 +685,27 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
 
                     <div class="form-row form-row--2">
                         <div class="input-group">
+                            <label>Fecha de Inicio <span class="req">*</span></label>
+                            <input type="date" name="fecha_inicio" id="crear-fecha_inicio" value="<?php echo date('Y-m-d'); ?>">
+                        </div>
+                        <div class="input-group">
+                            <label>Cupo Máximo</label>
+                            <input type="number" name="cupo_maximo" value="20" min="1">
+                        </div>
+                    </div>
+
+                    <div class="form-row form-row--2">
+                        <div class="input-group">
                             <label>Día <span class="req">*</span></label>
-                            <select name="dia_semana" required>
+                            <select name="dia_semana" id="crear-dia_semana">
+                                <option value="">Seleccionar día...</option>
                                 <option value="lunes">Lunes</option>
                                 <option value="martes">Martes</option>
-                                <option value="wed">Miércoles</option>
-                                <option value="thu">Jueves</option>
-                                <option value="fri">Viernes</option>
-                                <option value="sat">Sábado</option>
-                                <option value="sun">Domingo</option>
-                                <!-- ... otros días ... -->
+                                <option value="miercoles">Miércoles</option>
+                                <option value="jueves">Jueves</option>
+                                <option value="viernes">Viernes</option>
+                                <option value="sabado">Sábado</option>
+                                <option value="domingo">Domingo</option>
                             </select>
                         </div>
                         <div class="input-group">
@@ -590,16 +717,18 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
                     <div class="form-row form-row--2">
                         <div class="input-group">
                             <label>Hora Inicio <span class="req">*</span></label>
-                            <input type="time" name="hora_inicio" required>
+                            <input type="time" name="hora_inicio" id="crear-hora_inicio">
                         </div>
                         <div class="input-group">
                             <label>Hora Fin <span class="req">*</span></label>
-                            <input type="time" name="hora_fin" required>
+                            <input type="time" name="hora_fin" id="crear-hora_fin">
                         </div>
                     </div>
 
-                    <div class="form-actions" style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
-                        <button type="button" class="btn-cancel" onclick="cerrarModalCrear()" class="btn-cancel">Cancelar</button>
+                    <div id="modal-alert-crear" class="modal-alert"></div>
+
+                    <div class="form-actions" style="margin-top:16px; display:flex; justify-content:flex-end; gap:10px;">
+                        <button type="button" class="btn-cancel" onclick="cerrarModalCrear()">Cancelar</button>
                         <button type="submit" class="btn-submit">Guardar Grupo</button>
                     </div>
                 </form>
@@ -619,21 +748,22 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
                 </button>
             </div>
             <div class="modal-body">
-                <form method="POST" id="formEditarGrupo">
+                <form method="POST" id="formEditarGrupo" novalidate>
                     <input type="hidden" name="action" value="editar">
                     <input type="hidden" name="id" id="edit-id">
 
                     <div class="form-row">
                         <div class="input-group">
                             <label>Nombre del grupo <span class="req">*</span></label>
-                            <input type="text" name="nombre" id="edit-nombre" required>
+                            <input type="text" name="nombre" id="edit-nombre" placeholder="Ej: Piano Básico A">
                         </div>
                     </div>
 
                     <div class="form-row form-row--2">
                         <div class="input-group">
                             <label>Curso <span class="req">*</span></label>
-                            <select name="curso_id" id="edit-curso_id" required>
+                            <select name="curso_id" id="edit-curso_id">
+                                <option value="">Seleccionar...</option>
                                 <?php foreach ($cursos as $c): ?>
                                     <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['nombre']) ?></option>
                                 <?php endforeach; ?>
@@ -657,7 +787,7 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
                         </div>
                         <div class="input-group">
                             <label>Fecha Inicio <span class="req">*</span></label>
-                            <input type="date" name="fecha_inicio" id="edit-fecha_inicio" required>
+                            <input type="date" name="fecha_inicio" id="edit-fecha_inicio">
                         </div>
                         <div class="input-group">
                             <label>Fecha Fin</label>
@@ -667,8 +797,8 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
 
                     <div class="form-row form-row--2">
                         <div class="input-group">
-                            <label>Horario (Texto)</label>
-                            <input type="text" name="horario" id="edit-horario" placeholder="Ej: Lun y Mar 08:00 - 10:00">
+                            <label>Horario</label>
+                            <input type="text" name="horario" id="edit-horario" placeholder="Ej: Lunes 08:00 - 10:00">
                         </div>
                         <div class="input-group">
                             <label>Aula</label>
@@ -676,7 +806,7 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
                         </div>
                     </div>
 
-                    <div class="form-row" style="max-width: 200px;">
+                    <div class="form-row" style="max-width: 220px;">
                         <div class="input-group">
                             <label>Estado</label>
                             <select name="estado" id="edit-estado">
@@ -688,7 +818,9 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
                         </div>
                     </div>
 
-                    <div class="form-actions" style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
+                    <div id="modal-alert-editar" class="modal-alert"></div>
+
+                    <div class="form-actions" style="margin-top:16px; display:flex; justify-content:flex-end; gap:10px;">
                         <button type="button" onclick="cerrarModalEditar()" class="btn-cancel">Cancelar</button>
                         <button type="submit" class="btn-submit">Guardar Cambios</button>
                     </div>
@@ -697,10 +829,47 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
         </div>
     </div>
 
+    <!-- Modal Confirmación Eliminar -->
+    <div id="modalEliminar" class="modal-overlay">
+        <div class="modal-content" style="max-width: 460px;">
+            <div class="modal-header">
+                <div>
+                    <h3>Eliminar Grupo</h3>
+                    <p style="font-size:0.85rem; color:var(--text-secondary);">Esta acción no se puede deshacer</p>
+                </div>
+                <button onclick="cerrarModalEliminar()" class="btn-close-modal">
+                    <span class="material-symbols-rounded">close</span>
+                </button>
+            </div>
+            <div class="modal-body" style="text-align:center; padding: 16px 0 4px;">
+                <div style="width:64px;height:64px;border-radius:16px;background:var(--subtle-orange);color:var(--primary-orange);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                    <span class="material-symbols-rounded" style="font-size:32px;">delete_forever</span>
+                </div>
+                <p style="font-size:0.95rem;color:var(--text-primary);margin-bottom:8px;">
+                    ¿Eliminar el grupo<br>
+                    <strong id="del-nombre-grupo" style="color:var(--primary-orange);"></strong>?
+                </p>
+                <p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:20px;">
+                    Se eliminarán también los horarios asociados. Esta acción es permanente.
+                </p>
+                <form method="POST">
+                    <input type="hidden" name="action" value="eliminar_grupo">
+                    <input type="hidden" name="id_del" id="del-id">
+                    <div style="display:flex;gap:10px;justify-content:center;">
+                        <button type="button" onclick="cerrarModalEliminar()" class="btn-cancel">Cancelar</button>
+                        <button type="submit" class="btn-submit danger">
+                            <span class="material-symbols-rounded">delete_forever</span> Sí, eliminar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Lógica de los Dropdowns de estado
+        // ── Dropdowns de estado ──────────────────────────────
         document.querySelectorAll('.dropdown-estado').forEach(dd => {
-            const btn = dd.querySelector('.tbl-btn.estado');
+            const btn  = dd.querySelector('.tbl-btn.estado');
             const menu = dd.querySelector('.dropdown-estado-menu');
             btn.addEventListener('click', e => {
                 e.stopPropagation();
@@ -714,15 +883,15 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
             document.querySelectorAll('.dropdown-estado-menu.open').forEach(m => m.classList.remove('open'));
         });
 
-        // Lógica del Modal de Horarios
+        // ── Modal Horarios ───────────────────────────────────
         const horariosData = <?php echo json_encode($horarios_modal); ?>;
         const diasEsp = <?php echo json_encode($dias_esp); ?>;
 
         function abrirModalHorarios(grupoId, nombreGrupo) {
-            const modal = document.getElementById('modalHorarios');
-            const body = document.getElementById('modalBody');
+            const modal  = document.getElementById('modalHorarios');
+            const body   = document.getElementById('modalBody');
             const titulo = document.getElementById('modalTitulo');
-            const link = document.getElementById('linkGestionar');
+            const link   = document.getElementById('linkGestionar');
 
             titulo.innerText = nombreGrupo;
             link.href = "../horarios/index.php?grupo_id=" + grupoId;
@@ -731,13 +900,12 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
             if (horariosData[grupoId] && horariosData[grupoId].length > 0) {
                 html = "<ul>";
                 horariosData[grupoId].forEach(h => {
-                    html += `
-                    <li>
-                        <span class="material-symbols-rounded" style="color:var(--primary-green); font-size:20px;">event_available</span>
+                    html += `<li>
+                        <span class="material-symbols-rounded" style="color:var(--primary-green);font-size:20px;">event_available</span>
                         <div>
-                            <div style="font-weight:600; font-size:0.95rem;">${diasEsp[h.dia_semana] || h.dia_semana}</div>
-                            <div style="font-size:0.85rem; color:var(--text-secondary)">
-                                ${h.hora_inicio.substring(0,5)} - ${h.hora_fin.substring(0,5)} 
+                            <div style="font-weight:600;font-size:0.95rem;">${diasEsp[h.dia_semana] || h.dia_semana}</div>
+                            <div style="font-size:0.85rem;color:var(--text-secondary)">
+                                ${h.hora_inicio.substring(0,5)} - ${h.hora_fin.substring(0,5)}
                                 ${h.aula ? '· Aula: ' + h.aula : ''}
                             </div>
                         </div>
@@ -745,12 +913,11 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
                 });
                 html += "</ul>";
             } else {
-                html = `<div style="text-align:center; padding:20px; color:var(--text-secondary);">
-                            <span class="material-symbols-rounded" style="font-size:40px; display:block; margin-bottom:10px; opacity:0.5;">calendar_today</span>
-                            Este grupo no tiene horarios registrados.
-                        </div>`;
+                html = `<div style="text-align:center;padding:20px;color:var(--text-secondary);">
+                    <span class="material-symbols-rounded" style="font-size:40px;display:block;margin-bottom:10px;opacity:0.5;">calendar_today</span>
+                    Este grupo no tiene horarios registrados.
+                </div>`;
             }
-
             body.innerHTML = html;
             modal.classList.add('active');
         }
@@ -759,12 +926,19 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
             document.getElementById('modalHorarios').classList.remove('active');
         }
 
-        window.onclick = function(event) {
-            const modal = document.getElementById('modalHorarios');
-            if (event.target == modal) cerrarModal();
+        // ── Alertas personalizadas dentro de modales ─────────
+        function mostrarAlertaModal(divId, msg) {
+            const div = document.getElementById(divId);
+            div.innerHTML = `<span class="material-symbols-rounded">error</span>${msg}`;
+            div.style.display = 'flex';
+            div.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        function ocultarAlertaModal(divId) {
+            const div = document.getElementById(divId);
+            if (div) div.style.display = 'none';
         }
 
-        // Auto-ocultar alertas
+        // ── Auto-ocultar alertas de página ───────────────────
         setTimeout(() => {
             document.querySelectorAll('.alert').forEach(a => {
                 a.style.transition = 'opacity 0.5s ease';
@@ -773,37 +947,143 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
             });
         }, 4000);
 
+        // ── Modal Crear ──────────────────────────────────────
         function abrirModalCrear() {
+            ocultarAlertaModal('modal-alert-crear');
             document.getElementById('modalCrearGrupo').classList.add('active');
         }
-
         function cerrarModalCrear() {
             document.getElementById('modalCrearGrupo').classList.remove('active');
         }
 
+        document.getElementById('formCrearGrupo').addEventListener('submit', function(e) {
+            const nombre      = document.getElementById('crear-nombre').value.trim();
+            const curso_id    = document.getElementById('crear-curso_id').value;
+            const fecha_ini   = document.getElementById('crear-fecha_inicio').value;
+            const dia         = document.getElementById('crear-dia_semana').value;
+            const hora_inicio = document.getElementById('crear-hora_inicio').value;
+            const hora_fin    = document.getElementById('crear-hora_fin').value;
+
+            if (!nombre) {
+                e.preventDefault();
+                mostrarAlertaModal('modal-alert-crear', 'El nombre del grupo es obligatorio.');
+                return;
+            }
+            if (!curso_id) {
+                e.preventDefault();
+                mostrarAlertaModal('modal-alert-crear', 'Debes seleccionar un curso.');
+                return;
+            }
+            if (!fecha_ini) {
+                e.preventDefault();
+                mostrarAlertaModal('modal-alert-crear', 'La fecha de inicio es obligatoria.');
+                return;
+            }
+            if (!dia) {
+                e.preventDefault();
+                mostrarAlertaModal('modal-alert-crear', 'Debes seleccionar el día de la clase.');
+                return;
+            }
+            if (!hora_inicio || !hora_fin) {
+                e.preventDefault();
+                mostrarAlertaModal('modal-alert-crear', 'Las horas de inicio y fin son obligatorias.');
+                return;
+            }
+            if (hora_fin <= hora_inicio) {
+                e.preventDefault();
+                mostrarAlertaModal('modal-alert-crear', 'La hora de fin debe ser posterior a la hora de inicio.');
+                return;
+            }
+            ocultarAlertaModal('modal-alert-crear');
+        });
+
+        // ── Modal Editar ─────────────────────────────────────
         function abrirModalEditar(datos) {
-            // Rellenar campos ocultos e informativos
-            document.getElementById('edit-id').value = datos.id;
-            document.getElementById('edit-grupo-id-label').innerText = 'Editando ID #' + datos.id;
+            ocultarAlertaModal('modal-alert-editar');
 
-            // Rellenar inputs de texto y select
-            document.getElementById('edit-nombre').value = datos.nombre;
-            document.getElementById('edit-curso_id').value = datos.curso_id;
-            document.getElementById('edit-profesor_id').value = datos.profesor_id || '';
-            document.getElementById('edit-cupo').value = datos.cupo_maximo;
-            document.getElementById('edit-horario').value = datos.horario || '';
-            document.getElementById('edit-aula').value = datos.aula || '';
-            document.getElementById('edit-fecha_inicio').value = datos.fecha_inicio;
-            document.getElementById('edit-fecha_fin').value = datos.fecha_fin || '';
-            document.getElementById('edit-estado').value = datos.estado;
+            document.getElementById('edit-id').value              = datos.id;
+            document.getElementById('edit-grupo-id-label').innerText = 'Editando grupo #' + datos.id;
+            document.getElementById('edit-nombre').value          = datos.nombre       || '';
+            document.getElementById('edit-curso_id').value        = datos.curso_id     || '';
+            document.getElementById('edit-profesor_id').value     = datos.profesor_id  || '';
+            document.getElementById('edit-cupo').value            = datos.cupo_maximo  || 20;
+            document.getElementById('edit-horario').value         = datos.horario      || '';
+            document.getElementById('edit-aula').value            = datos.aula         || '';
+            document.getElementById('edit-fecha_inicio').value    = datos.fecha_inicio || '';
+            document.getElementById('edit-fecha_fin').value       = datos.fecha_fin    || '';
+            document.getElementById('edit-estado').value          = datos.estado       || 'planificado';
 
-            // Mostrar modal
             document.getElementById('modalEditarGrupo').classList.add('active');
         }
-
         function cerrarModalEditar() {
             document.getElementById('modalEditarGrupo').classList.remove('active');
         }
+
+        document.getElementById('formEditarGrupo').addEventListener('submit', function(e) {
+            const nombre    = document.getElementById('edit-nombre').value.trim();
+            const curso_id  = document.getElementById('edit-curso_id').value;
+            const fecha_ini = document.getElementById('edit-fecha_inicio').value;
+
+            if (!nombre) {
+                e.preventDefault();
+                mostrarAlertaModal('modal-alert-editar', 'El nombre del grupo es obligatorio.');
+                return;
+            }
+            if (!curso_id) {
+                e.preventDefault();
+                mostrarAlertaModal('modal-alert-editar', 'Debes seleccionar un curso.');
+                return;
+            }
+            if (!fecha_ini) {
+                e.preventDefault();
+                mostrarAlertaModal('modal-alert-editar', 'La fecha de inicio es obligatoria.');
+                return;
+            }
+            ocultarAlertaModal('modal-alert-editar');
+        });
+
+        // ── Modal Eliminar ───────────────────────────────────
+        function abrirModalEliminar(id, nombre) {
+            document.getElementById('del-id').value = id;
+            document.getElementById('del-nombre-grupo').textContent = nombre;
+            document.getElementById('modalEliminar').classList.add('active');
+        }
+        function cerrarModalEliminar() {
+            document.getElementById('modalEliminar').classList.remove('active');
+        }
+
+        // ── Cerrar al clic en overlay ────────────────────────
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', function(e) {
+                if (e.target === this) this.classList.remove('active');
+            });
+        });
+
+        // ── Indicador scroll horizontal tabla de grupos ──────
+        (function () {
+            var container = document.querySelector('.table-wrapper');
+            if (!container) return;
+            if (container.parentElement.classList.contains('table-scroll-outer')) return;
+
+            var outer = document.createElement('div');
+            outer.className = 'table-scroll-outer';
+            container.parentNode.insertBefore(outer, container);
+            outer.appendChild(container);
+
+            var badge = document.createElement('div');
+            badge.className = 'table-scroll-badge';
+            badge.innerHTML = '<span class="material-symbols-rounded">keyboard_double_arrow_right</span><span>Deslizar</span>';
+            outer.appendChild(badge);
+
+            function check() {
+                var overflows = container.scrollWidth > container.clientWidth + 2;
+                var atEnd = container.scrollLeft >= container.scrollWidth - container.clientWidth - 4;
+                outer.classList.toggle('has-overflow', overflows && !atEnd);
+            }
+            check();
+            container.addEventListener('scroll', check, { passive: true });
+            window.addEventListener('resize', check, { passive: true });
+        })();
     </script>
 </body>
 

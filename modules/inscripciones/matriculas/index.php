@@ -157,9 +157,14 @@ $open_modal = isset($_GET['open_modal']) && $_GET['open_modal'] === '1';
 
     <!-- Encabezado -->
     <div class="dashboard-header">
-        <div class="dashboard-title">
-            <h1>Matrículas</h1>
-            <p>Gestiona los estudiantes matriculados, sus grupos y pagos</p>
+        <div class="header-left">
+            <button class="btn-back" onclick="window.history.back()">
+                <span class="material-symbols-rounded">arrow_back</span>
+            </button>
+            <div class="dashboard-title">
+                <h1>Matrículas</h1>
+                <p>Gestiona los estudiantes matriculados, sus grupos y pagos</p>
+            </div>
         </div>
         <div class="header-actions">
             <button type="button" class="btn-primary" onclick="abrirModalNuevaMatricula()">
