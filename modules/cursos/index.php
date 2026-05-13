@@ -144,6 +144,15 @@ try {
     $cursos = [];
 }
 
+$profesores_ng = [];
+if ($es_admin) {
+    try {
+        $profesores_ng = $pdo->query("SELECT id, nombre FROM usuarios WHERE rol='profesor' AND estado='activo' ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        $profesores_ng = [];
+    }
+}
+
 function get_nivel_badge($nivel) {
     $badges = [
         'basico'     => ['texto' => 'Básico',    'clase' => 'nivel-basico'],
@@ -225,6 +234,10 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
     <main class="main-content">
         <div class="page-header">
             <div class="header-content">
+                <div class="header-left">
+                <button class="btn-back" onclick="window.history.back()">
+                    <span class="material-symbols-rounded">arrow_back</span>
+                </button>
                 <div class="title-section">
                     <?php if ($es_admin): ?>
                         <h1>Gestión de Cursos</h1>
@@ -236,6 +249,7 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
                         <h1>Mis Cursos</h1>
                         <p>Cursos en los que estás matriculado</p>
                     <?php endif; ?>
+                </div>
                 </div>
 
                 <?php if ($es_admin): ?>
@@ -522,15 +536,123 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
                             <span class="material-symbols-rounded">group_work</span>
                             <span id="mv_grupos_titulo">Grupos del Curso</span>
                         </div>
-                        <a id="mv_btn_nuevo_grupo" href="../grupos/admin.php" class="btn-nuevo-grupo" style="display:none">
+                        <button id="mv_btn_nuevo_grupo" type="button" class="btn-nuevo-grupo" style="display:none" onclick="abrirModalNuevoGrupo()">
                             <span class="material-symbols-rounded">add</span> Nuevo Grupo
-                        </a>
+                        </button>
                     </div>
                     <div id="mv_grupos_lista"></div>
                 </div>
             </div>
         </div>
     </div>
+
+    <?php if ($es_admin): ?>
+    <!-- ── Modal Nuevo Grupo (desde ver curso) ───────────── -->
+    <div id="modalNuevoGrupo" class="modal" style="z-index:10001">
+        <div class="modal-content modal-crear-content">
+
+            <div class="modal-header modal-header-crear">
+                <div class="modal-title-group">
+                    <h2>Nuevo Grupo</h2>
+                    <p id="ng_subtitulo">Registrar sección académica</p>
+                </div>
+                <button class="modal-close-btn" type="button" onclick="cerrarModalNuevoGrupo()" title="Cerrar">
+                    <span class="material-symbols-rounded">close</span>
+                </button>
+            </div>
+
+            <div class="modal-body-scroll">
+
+                <div class="alert alert-error" id="ng_alerta_error" style="display:none">
+                    <span class="material-symbols-rounded">error</span>
+                    <span id="ng_alerta_msg"></span>
+                </div>
+                <div class="alert alert-success" id="ng_alerta_ok" style="display:none">
+                    <span class="material-symbols-rounded">check_circle</span>
+                    <span>Grupo creado exitosamente.</span>
+                </div>
+
+                <form id="formNuevoGrupo" novalidate>
+                    <input type="hidden" name="action"   value="crear_grupo">
+                    <input type="hidden" name="estado"   value="planificado">
+                    <input type="hidden" name="curso_id" id="ng_curso_id">
+
+                    <div class="form-group">
+                        <label for="ng_nombre">Nombre del grupo <span class="required">*</span></label>
+                        <input type="text" id="ng_nombre" name="nombre" placeholder="Ej: Piano Básico A">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="ng_profesor">Profesor</label>
+                            <select id="ng_profesor" name="profesor_id">
+                                <option value="">Sin asignar</option>
+                                <?php foreach ($profesores_ng as $p): ?>
+                                <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['nombre']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="ng_cupo">Cupo Máximo</label>
+                            <input type="number" id="ng_cupo" name="cupo_maximo" value="20" min="1">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="ng_fecha_inicio">Fecha de Inicio <span class="required">*</span></label>
+                            <input type="date" id="ng_fecha_inicio" name="fecha_inicio">
+                        </div>
+                        <div class="form-group">
+                            <label for="ng_aula">Aula</label>
+                            <input type="text" id="ng_aula" name="aula" placeholder="Ej: Salón 1">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="ng_dia">Día de la clase <span class="required">*</span></label>
+                            <select id="ng_dia" name="dia_semana">
+                                <option value="">Seleccionar día...</option>
+                                <option value="lunes">Lunes</option>
+                                <option value="martes">Martes</option>
+                                <option value="miercoles">Miércoles</option>
+                                <option value="jueves">Jueves</option>
+                                <option value="viernes">Viernes</option>
+                                <option value="sabado">Sábado</option>
+                                <option value="domingo">Domingo</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="ng_hora_inicio">Hora Inicio <span class="required">*</span></label>
+                            <input type="time" id="ng_hora_inicio" name="hora_inicio">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="ng_hora_fin">Hora Fin <span class="required">*</span></label>
+                            <input type="time" id="ng_hora_fin" name="hora_fin">
+                        </div>
+                        <div class="form-group"></div>
+                    </div>
+
+                </form>
+            </div>
+
+            <div class="modal-footer-crear">
+                <div class="nc-footer-step">
+                    <button type="button" class="btn-cancelar" onclick="cerrarModalNuevoGrupo()">Cancelar</button>
+                    <button type="button" class="btn-primario" id="ng_btn_submit" onclick="submitNuevoGrupo()">
+                        <span class="material-symbols-rounded">add_circle</span>
+                        Crear Grupo
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <?php endif; ?>
 
     <script>
     /* ── Modal Ver Curso ─────────────────────────────────── */
@@ -1309,6 +1431,88 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
                 if (cropper) { cropper.destroy(); cropper = null; }
             }
         })();
+
+        /* ── Modal Nuevo Grupo ───────────────────────────────── */
+        function abrirModalNuevoGrupo() {
+            if (!mv_datos) return;
+            const c = mv_datos.curso;
+            document.getElementById('formNuevoGrupo').reset();
+            document.getElementById('ng_curso_id').value      = c.id;
+            document.getElementById('ng_fecha_inicio').value  = new Date().toISOString().split('T')[0];
+            document.getElementById('ng_subtitulo').textContent = 'Curso: ' + c.nombre;
+            document.getElementById('ng_alerta_error').style.display = 'none';
+            document.getElementById('ng_alerta_ok').style.display    = 'none';
+            document.getElementById('ng_btn_submit').disabled = false;
+            document.getElementById('ng_btn_submit').innerHTML =
+                '<span class="material-symbols-rounded">add_circle</span> Crear Grupo';
+            document.getElementById('modalNuevoGrupo').style.display = 'flex';
+        }
+
+        function cerrarModalNuevoGrupo() {
+            document.getElementById('modalNuevoGrupo').style.display = 'none';
+        }
+
+        async function submitNuevoGrupo() {
+            const btn        = document.getElementById('ng_btn_submit');
+            const nombre     = document.getElementById('ng_nombre').value.trim();
+            const fechaIni   = document.getElementById('ng_fecha_inicio').value;
+            const dia        = document.getElementById('ng_dia').value;
+            const horaInicio = document.getElementById('ng_hora_inicio').value;
+            const horaFin    = document.getElementById('ng_hora_fin').value;
+
+            const mostrarError = (msg) => {
+                document.getElementById('ng_alerta_msg').textContent = msg;
+                document.getElementById('ng_alerta_error').style.display = 'flex';
+                document.getElementById('ng_alerta_ok').style.display    = 'none';
+                document.querySelector('#modalNuevoGrupo .modal-body-scroll').scrollTop = 0;
+            };
+
+            if (!nombre)     { mostrarError('El nombre del grupo es obligatorio.'); return; }
+            if (!fechaIni)   { mostrarError('La fecha de inicio es obligatoria.'); return; }
+            if (!dia)        { mostrarError('Selecciona el día de la clase.'); return; }
+            if (!horaInicio) { mostrarError('La hora de inicio es obligatoria.'); return; }
+            if (!horaFin)    { mostrarError('La hora de fin es obligatoria.'); return; }
+            if (horaFin <= horaInicio) {
+                mostrarError('La hora de fin debe ser posterior a la hora de inicio.');
+                return;
+            }
+
+            document.getElementById('ng_alerta_error').style.display = 'none';
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-rounded">hourglass_top</span> Guardando...';
+
+            try {
+                const res  = await fetch('../grupos/admin.php', {
+                    method:  'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body:    new FormData(document.getElementById('formNuevoGrupo'))
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    document.getElementById('ng_alerta_ok').style.display    = 'flex';
+                    document.getElementById('ng_alerta_error').style.display = 'none';
+                    document.querySelector('#modalNuevoGrupo .modal-body-scroll').scrollTop = 0;
+                    setTimeout(() => {
+                        cerrarModalNuevoGrupo();
+                        abrirModalVer(mv_datos.curso.id);
+                    }, 1400);
+                } else {
+                    mostrarError(data.error || 'Error al crear el grupo. Intenta nuevamente.');
+                    btn.disabled = false;
+                    btn.innerHTML = '<span class="material-symbols-rounded">add_circle</span> Crear Grupo';
+                }
+            } catch (err) {
+                console.error(err);
+                mostrarError('Error de conexión. Intenta nuevamente.');
+                btn.disabled = false;
+                btn.innerHTML = '<span class="material-symbols-rounded">add_circle</span> Crear Grupo';
+            }
+        }
+
+        document.getElementById('modalNuevoGrupo').addEventListener('click', function(e) {
+            if (e.target === this) cerrarModalNuevoGrupo();
+        });
 
         /* ── Cierre por clic en backdrop (modales admin) ────── */
         window.addEventListener('click', function (event) {

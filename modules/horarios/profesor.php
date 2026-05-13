@@ -129,9 +129,14 @@ function formatearHora($hora)
 
         <!-- ── Encabezado ── -->
         <div class="dashboard-header">
-            <div class="dashboard-title">
-                <h1>Mi Agenda Docente</h1>
-                <p>Consulta tus sesiones y aulas asignadas</p>
+            <div class="header-left">
+                <button class="btn-back" onclick="window.history.back()">
+                    <span class="material-symbols-rounded">arrow_back</span>
+                </button>
+                <div class="dashboard-title">
+                    <h1>Mi Agenda Docente</h1>
+                    <p>Consulta tus sesiones y aulas asignadas</p>
+                </div>
             </div>
             <div class="dashboard-date">
                 <span class="material-symbols-rounded">calendar_month</span>
@@ -343,31 +348,33 @@ function formatearHora($hora)
             if (e.target === m) m.style.display = 'none';
         });
 
-        /* ── Sincronizar margin-left con el sidebar colapsable ── */
+        /* ── Sincronizar layout con el sidebar colapsable ── */
         (function() {
             const main = document.querySelector('.main-content');
-            const EXPANDED = '270px';
-            const COLLAPSED = '80px';
+            const EXPANDED  = 270;
+            const COLLAPSED = 85;
 
-            function syncMargin() {
-                const collapsed =
+            function syncLayout() {
+                if (window.innerWidth <= 1024) {
+                    main.style.marginLeft = '';
+                    main.style.width = '';
+                    return;
+                }
+                const isCollapsed =
                     document.body.classList.contains('sidebar-collapsed') ||
                     document.querySelector('.sidebar')?.classList.contains('collapsed');
-                main.style.marginLeft = collapsed ? COLLAPSED : EXPANDED;
+                const w = isCollapsed ? COLLAPSED : EXPANDED;
+                main.style.marginLeft = w + 'px';
+                main.style.width = `calc(100% - ${w}px)`;
             }
 
-            const observer = new MutationObserver(syncMargin);
-            observer.observe(document.body, {
-                attributes: true,
-                attributeFilter: ['class']
-            });
+            const observer = new MutationObserver(syncLayout);
+            observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
             const sidebar = document.querySelector('.sidebar');
-            if (sidebar) observer.observe(sidebar, {
-                attributes: true,
-                attributeFilter: ['class']
-            });
+            if (sidebar) observer.observe(sidebar, { attributes: true, attributeFilter: ['class'] });
 
-            syncMargin();
+            window.addEventListener('resize', syncLayout);
+            syncLayout();
         })();
 
         window.onclick = function(e) {

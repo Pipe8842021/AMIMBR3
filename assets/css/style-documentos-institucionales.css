@@ -988,3 +988,18 @@ body {
 .acta-footer-text { font-size: 8.5px; color: #6b7280; line-height: 1.6; }
 .acta-footer-text strong { color: #1479b0; }
 .acta-footer-logo { width: 34px; height: 34px; object-fit: contain; opacity: .4; }
+
+/* ── Generar responsive (móvil) ──────────────────────────── */
+@media screen and (max-width: 640px) {
+    .action-bar {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 10px 14px;
+        gap: 8px;
+    }
+    .action-bar-info { min-width: 0; }
+    .action-bar-info strong { font-size: .85rem; }
+    .action-bar-actions { display: flex; gap: 8px; }
+    .btn-print, .btn-close { flex: 1; justify-content: center; padding: 9px 10px; }
+    .doc-wrapper { padding: 12px 0 40px; overflow-x: hidden; }
+}

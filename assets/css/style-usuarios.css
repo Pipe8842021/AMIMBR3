@@ -1260,3 +1260,53 @@ body {
     border-color: transparent;
     font-weight: 600;
 }
+
+/* ── Indicador de scroll horizontal en tabla de usuarios ── */
+.table-scroll-outer { position: relative; }
+
+.table-scroll-outer.has-overflow::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0; bottom: 0; width: 100px;
+    background: linear-gradient(to right, transparent 0%, var(--dark-bg) 60%);
+    pointer-events: none;
+    z-index: 2;
+}
+
+.table-scroll-badge {
+    position: absolute;
+    right: 10px; top: 50%;
+    transform: translateY(-50%) translateX(14px);
+    display: flex; align-items: center; gap: 4px;
+    background: var(--primary-blue);
+    color: #fff;
+    border-radius: 20px;
+    padding: 5px 11px 5px 8px;
+    font-size: .7rem; font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 4;
+    opacity: 0;
+    transition: opacity .35s ease, transform .35s ease;
+    box-shadow: 0 3px 18px rgba(59,130,246,.55);
+}
+
+.table-scroll-badge .material-symbols-rounded { font-size: 1rem; line-height: 1; }
+
+.table-scroll-outer.has-overflow .table-scroll-badge {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+    animation: tbl-badge-usr 2s ease-in-out .5s infinite;
+}
+
+@keyframes tbl-badge-usr {
+    0%, 100% {
+        transform: translateY(-50%) translateX(0);
+        box-shadow: 0 3px 18px rgba(59,130,246,.45);
+    }
+    40% {
+        transform: translateY(-50%) translateX(-7px);
+        box-shadow: 0 3px 28px rgba(59,130,246,.85);
+    }
+}

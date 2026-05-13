@@ -377,9 +377,14 @@ try {
 <main class="main-content" id="mainContent">
 
     <div class="page-header">
-        <div>
-            <h1 class="page-title">Prematrículas</h1>
-            <p class="page-subtitle">Gestiona las solicitudes de preinscripción recibidas</p>
+        <div class="header-left">
+            <button class="btn-back" onclick="window.history.back()">
+                <span class="material-symbols-rounded">arrow_back</span>
+            </button>
+            <div>
+                <h1 class="page-title">Prematrículas</h1>
+                <p class="page-subtitle">Gestiona las solicitudes de preinscripción recibidas</p>
+            </div>
         </div>
         <button class="btn-primary" onclick="abrirModal('modalCrear')">
             <span class="material-symbols-rounded">person_add</span>

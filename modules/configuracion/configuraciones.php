@@ -229,11 +229,18 @@ function get_foto_url(?string $foto): string {
     <main class="main-content">
 
         <div class="page-header">
-            <h1>
-                <span class="material-symbols-rounded">settings</span>
-                Configuración
-            </h1>
-            <p>Ajustes de cuenta, apariencia y control de acceso</p>
+            <div class="header-left">
+                <button class="btn-back" onclick="window.history.back()">
+                    <span class="material-symbols-rounded">arrow_back</span>
+                </button>
+                <div>
+                    <h1>
+                        <span class="material-symbols-rounded">settings</span>
+                        Configuración
+                    </h1>
+                    <p>Ajustes de cuenta, apariencia y control de acceso</p>
+                </div>
+            </div>
         </div>
 
         <?php if ($mensaje_feedback): ?>

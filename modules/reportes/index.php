@@ -411,8 +411,13 @@ $metodo_counts = array_map(fn($x) => (int)$x['cantidad'], $metodos_pago);
     <!-- Header -->
     <div class="page-header">
         <div class="header-left">
-            <h1>Reportes</h1>
-            <p>Análisis, estadísticas y reportes descargables del sistema</p>
+            <button class="btn-back" onclick="window.history.back()">
+                <span class="material-symbols-rounded">arrow_back</span>
+            </button>
+            <div>
+                <h1>Reportes</h1>
+                <p>Análisis, estadísticas y reportes descargables del sistema</p>
+            </div>
         </div>
         <div class="header-controls">
             <select class="year-select" id="yearSelect" onchange="changeYear(this.value)">
@@ -1810,12 +1815,8 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 });
 
 function switchTab(id) {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     const btn = document.querySelector(`[data-tab="${id}"]`);
-    if (btn) btn.classList.add('active');
-    const tab = document.getElementById(id);
-    if (tab) tab.classList.add('active');
+    if (btn) btn.click();
 }
 
 function changeYear(y) { window.location.href = '?year=' + y; }
@@ -2424,6 +2425,83 @@ async function exportarPDFGeneral() {
         hideOverlay();
     }
 }
+
+// ══════════════════════════════════════════════
+//  TABLE HORIZONTAL SCROLL INDICATORS
+// ══════════════════════════════════════════════
+(function () {
+    function initTableHints() {
+        document.querySelectorAll('.table-wrap').forEach(wrap => {
+            // Skip if already wrapped
+            if (wrap.parentElement.classList.contains('table-scroll-outer')) return;
+
+            const outer = document.createElement('div');
+            outer.className = 'table-scroll-outer';
+            wrap.parentNode.insertBefore(outer, wrap);
+            outer.appendChild(wrap);
+
+            // Pill badge
+            const badge = document.createElement('div');
+            badge.className = 'table-scroll-badge';
+            badge.innerHTML = '<span class="material-symbols-rounded">keyboard_double_arrow_right</span><span>Deslizar</span>';
+            outer.appendChild(badge);
+
+            const check = () => {
+                const overflows = wrap.scrollWidth > wrap.clientWidth + 2;
+                const atEnd    = wrap.scrollLeft >= wrap.scrollWidth - wrap.clientWidth - 4;
+                outer.classList.toggle('has-overflow', overflows && !atEnd);
+            };
+            check();
+            wrap.addEventListener('scroll', check, { passive: true });
+            window.addEventListener('resize', check, { passive: true });
+        });
+    }
+
+    initTableHints();
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => requestAnimationFrame(initTableHints));
+    });
+})();
+
+// ══════════════════════════════════════════════
+//  SCROLL REVEAL (IntersectionObserver)
+// ══════════════════════════════════════════════
+(function () {
+    const SELECTORS = '.stat-card,.chart-card,.kpi-card,.table-scroll-outer,.reporte-card,.section-title,.alert-info';
+
+    function attachObserver(root) {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.07, rootMargin: '0px 0px -20px 0px' });
+
+        root.querySelectorAll(SELECTORS).forEach(el => {
+            if (!el.classList.contains('animate-on-scroll')) {
+                el.classList.add('animate-on-scroll');
+            }
+            observer.observe(el);
+        });
+        return observer;
+    }
+
+    // Animar elementos visibles al cargar la página
+    attachObserver(document);
+
+    // Re-animar nuevos elementos al cambiar de tab
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tabId = btn.dataset.tab;
+            const tab = document.getElementById(tabId);
+            if (!tab) return;
+            requestAnimationFrame(() => attachObserver(tab));
+        });
+    });
+})();
 </script>
 </body>
 </html>

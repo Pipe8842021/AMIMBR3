@@ -231,21 +231,20 @@ $categorias = array_values(array_filter(
     <main class="main-content">
         <!-- Header -->
         <div class="help-header">
-            <div class="help-header-content">
-                <h1>Centro de Ayuda</h1>
-                <p>
-                    <?php
-                    if ($es_admin)      echo 'Recursos y guías para Administradores';
-                    elseif ($es_profesor) echo 'Recursos y guías para Profesores';
-                    else                 echo 'Recursos y guías para Estudiantes';
-                    ?>
-                </p>
-            </div>
-            <div class="help-header-actions">
-                <button class="btn-secondary" onclick="window.location.href='../dashboard/'">
+            <div class="help-header-left">
+                <button class="btn-back" onclick="window.history.back()">
                     <span class="material-symbols-rounded">arrow_back</span>
-                    Volver al Dashboard
                 </button>
+                <div class="help-header-content">
+                    <h1>Centro de Ayuda</h1>
+                    <p>
+                        <?php
+                        if ($es_admin)      echo 'Recursos y guías para Administradores';
+                        elseif ($es_profesor) echo 'Recursos y guías para Profesores';
+                        else                 echo 'Recursos y guías para Estudiantes';
+                        ?>
+                    </p>
+                </div>
             </div>
         </div>
 
@@ -427,7 +426,7 @@ $categorias = array_values(array_filter(
             </div>
             <div class="support-actions">
                 <a 
-                    href="https://wa.me/573001234567?text=Hola,%20necesito%20ayuda%20con%20el%20sistema%20Amimbré" 
+                    href="https://wa.me/573122867297?text=Hola,%20necesito%20ayuda%20con%20el%20sistema%20Amimbré" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     class="btn-contact"

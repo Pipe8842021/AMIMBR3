@@ -342,5 +342,31 @@ $page_title   = [
 </div><!-- doc-page -->
 </div><!-- doc-wrapper -->
 
+<script>
+(function () {
+    function scaleDocPage() {
+        var wrapper = document.querySelector('.doc-wrapper');
+        var page    = document.querySelector('.doc-page');
+        if (!wrapper || !page) return;
+        page.style.transform    = '';
+        page.style.marginBottom = '';
+        var avail = wrapper.clientWidth - 32;
+        var nat   = page.offsetWidth;
+        if (nat > avail && avail > 0) {
+            var s = avail / nat;
+            page.style.transformOrigin = 'top center';
+            page.style.transform       = 'scale(' + s + ')';
+            page.style.marginBottom    = '-' + Math.round(page.offsetHeight * (1 - s)) + 'px';
+        }
+    }
+    document.addEventListener('DOMContentLoaded', scaleDocPage);
+    window.addEventListener('resize', scaleDocPage);
+    window.addEventListener('beforeprint', function () {
+        var p = document.querySelector('.doc-page');
+        if (p) { p.style.transform = ''; p.style.marginBottom = ''; }
+    });
+    window.addEventListener('afterprint', scaleDocPage);
+})();
+</script>
 </body>
 </html>

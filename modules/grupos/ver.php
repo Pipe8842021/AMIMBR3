@@ -14,12 +14,166 @@ $uid = (int)$_SESSION['user_id'];
 
 if (!$id) { header("Location: index.php"); exit; }
 
+$inline_error   = null;
+$inline_success = null;
+$open_modal     = null; // nombre del modal a reabrir en error
+
+// ── Handler: eliminar grupo ───────────────────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'eliminar_grupo') {
+    $id_del = (int)($_POST['id_del'] ?? 0);
+    if ($id_del === $id) {
+        try {
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM matriculas WHERE grupo_id = ? AND estado = 'activa'");
+            $stmt->execute([$id_del]);
+            if ((int)$stmt->fetchColumn() > 0) {
+                $inline_error = "No se puede eliminar: el grupo tiene matrículas activas. Cambia el estado a <strong>Cancelado</strong> primero.";
+                $open_modal = 'modalEliminar';
+            } else {
+                $pdo->prepare("DELETE FROM horarios WHERE grupo_id = ?")->execute([$id_del]);
+                $pdo->prepare("DELETE FROM grupos   WHERE id = ?")->execute([$id_del]);
+                header("Location: " . ($rol === 'admin' ? 'admin.php' : 'profesor.php') . "?msg=eliminado");
+                exit;
+            }
+        } catch (PDOException $e) {
+            error_log($e->getMessage());
+            $inline_error = "Error al eliminar el grupo.";
+            $open_modal = 'modalEliminar';
+        }
+    }
+}
+
+// ── Handler: editar grupo ─────────────────────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'editar_grupo') {
+    $nombre       = trim($_POST['nombre']       ?? '');
+    $curso_id     = (int)($_POST['curso_id']    ?? 0);
+    $profesor_id  = (int)($_POST['profesor_id'] ?? 0);
+    $cupo_maximo  = (int)($_POST['cupo_maximo'] ?? 20);
+    $horario      = trim($_POST['horario']      ?? '');
+    $aula         = trim($_POST['aula']         ?? '');
+    $fecha_inicio = $_POST['fecha_inicio']      ?? '';
+    $fecha_fin    = $_POST['fecha_fin']         ?: null;
+    $estado       = $_POST['estado']            ?? 'planificado';
+    if (!$nombre || !$curso_id || !$fecha_inicio) {
+        $inline_error = "Completa los campos obligatorios: nombre, curso y fecha de inicio.";
+        $open_modal = 'modalEditarGrupo';
+    } else {
+        try {
+            $pdo->prepare("
+                UPDATE grupos SET nombre=?, curso_id=?, profesor_id=?, cupo_maximo=?,
+                    horario=?, aula=?, fecha_inicio=?, fecha_fin=?, estado=?
+                WHERE id=?
+            ")->execute([$nombre, $curso_id, $profesor_id ?: null, $cupo_maximo,
+                         $horario, $aula ?: null, $fecha_inicio, $fecha_fin, $estado, $id]);
+            header("Location: ver.php?id=$id&msg=editado");
+            exit;
+        } catch (PDOException $e) {
+            error_log($e->getMessage());
+            $inline_error = "Error al actualizar el grupo.";
+            $open_modal = 'modalEditarGrupo';
+        }
+    }
+}
+
+// ── Handler: guardar asistencia / bitácora ────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'guardar_asistencia') {
+    $titulo           = trim($_POST['titulo']        ?? '');
+    $fecha_clase      = $_POST['fecha_clase']        ?? '';
+    $hora_inicio      = $_POST['hora_inicio']        ?? '';
+    $hora_fin         = $_POST['hora_fin']           ?? '';
+    $temas            = trim($_POST['temas']         ?? '');
+    $descripcion      = trim($_POST['descripcion']   ?? '');
+    $observaciones_b  = trim($_POST['observaciones'] ?? '');
+    $compromisos      = trim($_POST['compromisos']   ?? '');
+    $asistencias_post = $_POST['asistencia']         ?? [];
+    $obs_est_post     = $_POST['obs_est']            ?? [];
+
+    if (!$titulo || !$fecha_clase || !$hora_inicio || !$hora_fin || !$temas) {
+        $inline_error = "Completa los campos obligatorios de la bitácora (título, fecha, horas y temas).";
+        $open_modal = 'modalAsistencia';
+    } elseif (empty($asistencias_post)) {
+        $inline_error = "Registra la asistencia de al menos un estudiante.";
+        $open_modal = 'modalAsistencia';
+    } else {
+        try {
+            $pdo->beginTransaction();
+            $stmt_g = $pdo->prepare("SELECT curso_id, profesor_id FROM grupos WHERE id = ?");
+            $stmt_g->execute([$id]);
+            $g_data = $stmt_g->fetch(PDO::FETCH_ASSOC);
+            $prof_id_b = ($rol === 'profesor') ? $uid : (int)($g_data['profesor_id'] ?? 0);
+
+            $stmt_b = $pdo->prepare("
+                INSERT INTO bitacoras
+                    (grupo_id, curso_id, profesor_id, titulo, fecha_clase, hora_inicio, hora_fin,
+                     temas_tratados, descripcion_clase, observaciones, compromisos_proxima_clase)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            $stmt_b->execute([$id, $g_data['curso_id'], $prof_id_b ?: null, $titulo, $fecha_clase,
+                              $hora_inicio, $hora_fin, $temas, $descripcion,
+                              $observaciones_b ?: null, $compromisos ?: null]);
+            $bitacora_id = $pdo->lastInsertId();
+
+            $stmt_m = $pdo->prepare("SELECT estudiante_id, id AS matricula_id FROM matriculas WHERE grupo_id = ? AND estado = 'activa'");
+            $stmt_m->execute([$id]);
+            $mat_map = [];
+            foreach ($stmt_m->fetchAll(PDO::FETCH_ASSOC) as $m) {
+                $mat_map[$m['estudiante_id']] = $m['matricula_id'];
+            }
+
+            $stmt_ba = $pdo->prepare("INSERT INTO bitacoras_asistencias (bitacora_id, estudiante_id, estado, observacion) VALUES (?, ?, ?, ?)");
+            $stmt_as = $pdo->prepare("INSERT INTO asistencias (matricula_id, fecha, estado, observaciones, registrado_por) VALUES (?, ?, ?, ?, ?)");
+
+            foreach ($asistencias_post as $est_id => $est_estado) {
+                $est_id = (int)$est_id;
+                $obs_e  = trim($obs_est_post[$est_id] ?? '');
+                if (!in_array($est_estado, ['presente','ausente','justificado','tardanza'])) $est_estado = 'ausente';
+                $stmt_ba->execute([$bitacora_id, $est_id, $est_estado, $obs_e ?: null]);
+                if (isset($mat_map[$est_id])) {
+                    $stmt_as->execute([$mat_map[$est_id], $fecha_clase, $est_estado, $obs_e ?: null, $uid]);
+                }
+            }
+
+            $pdo->commit();
+
+            // Evidencias fotográficas
+            if (!empty($_FILES['evidencias']['name'][0])) {
+                $upload_dir    = '../../assets/uploads/bitacoras/';
+                if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+                $tipos_validos = ['image/jpeg','image/png','image/webp'];
+                $total_ev      = min(count($_FILES['evidencias']['name']), 5);
+                $stmt_ev = $pdo->prepare("INSERT INTO bitacoras_evidencias (bitacora_id, nombre_archivo, ruta_archivo, descripcion, orden) VALUES (?, ?, ?, ?, ?)");
+                for ($i = 0; $i < $total_ev; $i++) {
+                    $arch = $_FILES['evidencias'];
+                    if ($arch['error'][$i] !== UPLOAD_ERR_OK || $arch['size'][$i] > 5*1024*1024 || !in_array($arch['type'][$i], $tipos_validos)) continue;
+                    $ext  = strtolower(pathinfo($arch['name'][$i], PATHINFO_EXTENSION));
+                    $unic = 'ev_' . $bitacora_id . '_' . $i . '_' . time() . '.' . $ext;
+                    $ruta = 'assets/uploads/bitacoras/' . $unic;
+                    $desc_ev = trim($_POST['ev_desc'][$i] ?? '');
+                    if (move_uploaded_file($arch['tmp_name'][$i], '../../' . $ruta)) {
+                        $stmt_ev->execute([$bitacora_id, $arch['name'][$i], $ruta, $desc_ev ?: null, $i]);
+                    }
+                }
+            }
+
+            header("Location: ver.php?id=$id&msg=asistencia");
+            exit;
+        } catch (PDOException $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            error_log($e->getMessage());
+            $inline_error = "Error al guardar la asistencia: " . $e->getMessage();
+            $open_modal = 'modalAsistencia';
+        }
+    }
+}
+
 // Mensajes flash GET
 $msg_map = [
-    'creado'  => ['type' => 'success', 'text' => 'Grupo creado correctamente.'],
-    'editado' => ['type' => 'success', 'text' => 'Grupo actualizado correctamente.'],
+    'creado'     => ['type' => 'success', 'text' => 'Grupo creado correctamente.'],
+    'editado'    => ['type' => 'success', 'text' => 'Grupo actualizado correctamente.'],
+    'asistencia' => ['type' => 'success', 'text' => 'Asistencia y bitácora registradas correctamente.'],
 ];
 $flash_msg = $msg_map[$_GET['msg'] ?? ''] ?? null;
+if (!$flash_msg && $inline_error)   $flash_msg = ['type' => 'danger',  'text' => $inline_error];
+if (!$flash_msg && $inline_success) $flash_msg = ['type' => 'success', 'text' => $inline_success];
 
 try {
     $stmt = $pdo->prepare("
@@ -39,6 +193,10 @@ try {
     if ($rol === 'profesor' && $grupo['profesor_id'] != $uid) {
         header("Location: index.php"); exit;
     }
+
+    // Datos para modales
+    $cursos_edit    = $pdo->query("SELECT id, nombre, nivel FROM cursos WHERE estado='activo' ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
+    $profesores_edit = $pdo->query("SELECT id, nombre FROM usuarios WHERE rol='profesor' AND estado='activo' ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
 
     // Estudiantes matriculados
     $stmt = $pdo->prepare("
@@ -212,21 +370,21 @@ function iniciales($nombre) {
         </div>
         <?php if ($rol === 'admin'): ?>
         <div class="detalle-actions">
-            <a href="asistencia.php?grupo=<?php echo $id; ?>" class="btn-action">
+            <button type="button" class="btn-action" onclick="abrirModalAsistencia()">
                 <span class="material-symbols-rounded">fact_check</span> Registrar asistencia
-            </a>
-            <a href="editar.php?id=<?php echo $id; ?>" class="btn-action edit">
+            </button>
+            <button type="button" class="btn-action edit" onclick="abrirModalEditar()">
                 <span class="material-symbols-rounded">edit</span> Editar
-            </a>
-            <a href="eliminar.php?id=<?php echo $id; ?>" class="btn-action danger">
+            </button>
+            <button type="button" class="btn-action danger" onclick="abrirModalEliminar(<?php echo $id; ?>, '<?php echo addslashes(htmlspecialchars($grupo['nombre'])); ?>')">
                 <span class="material-symbols-rounded">delete</span>
-            </a>
+            </button>
         </div>
         <?php else: ?>
         <div class="detalle-actions">
-            <a href="asistencia.php?grupo=<?php echo $id; ?>" class="btn-action">
+            <button type="button" class="btn-action" onclick="abrirModalAsistencia()">
                 <span class="material-symbols-rounded">fact_check</span> Registrar asistencia
-            </a>
+            </button>
         </div>
         <?php endif; ?>
     </div>
@@ -363,9 +521,9 @@ function iniciales($nombre) {
                     <p class="section-subtitle">Clases registradas</p>
                 </div>
                 <?php if ($rol === 'profesor' || $rol === 'admin'): ?>
-                <a href="../bitacoras/crear.php?grupo=<?php echo $id; ?>" class="btn-link">
+                <button type="button" class="btn-link" onclick="abrirModalAsistencia()">
                     + Nueva <span class="material-symbols-rounded">arrow_forward</span>
-                </a>
+                </button>
                 <?php endif; ?>
             </div>
 
@@ -417,9 +575,9 @@ function iniciales($nombre) {
                 </p>
             </div>
             <?php if ($rol === 'admin' || $rol === 'profesor'): ?>
-            <a href="asistencia.php?grupo=<?php echo $id; ?>" class="btn-submit" style="font-size:0.82rem; padding:8px 16px;">
+            <button type="button" class="btn-submit" style="font-size:0.82rem; padding:8px 16px;" onclick="abrirModalAsistencia()">
                 <span class="material-symbols-rounded">fact_check</span> Registrar clase
-            </a>
+            </button>
             <?php endif; ?>
         </div>
 
@@ -571,9 +729,9 @@ function iniciales($nombre) {
             <span class="material-symbols-rounded">fact_check</span>
             <p>Aún no se han registrado clases con asistencia</p>
             <?php if ($rol === 'admin' || $rol === 'profesor'): ?>
-            <a href="asistencia.php?grupo=<?php echo $id; ?>" class="btn-submit" style="margin-top:12px; font-size:0.82rem; padding:8px 16px;">
+            <button type="button" class="btn-submit" style="margin-top:12px; font-size:0.82rem; padding:8px 16px;" onclick="abrirModalAsistencia()">
                 <span class="material-symbols-rounded">add_circle</span> Registrar primera clase
-            </a>
+            </button>
             <?php endif; ?>
         </div>
         <?php endif; ?>
@@ -582,8 +740,310 @@ function iniciales($nombre) {
 
 </main>
 
+<!-- ══════════════════════════════════════════════════════
+     MODAL: Eliminar Grupo
+═══════════════════════════════════════════════════════ -->
+<div id="modalEliminar" class="modal-overlay">
+    <div class="modal-content" style="max-width:460px;">
+        <div class="modal-header">
+            <div>
+                <h3>Eliminar Grupo</h3>
+                <p style="font-size:0.85rem;color:var(--text-secondary);">Esta acción no se puede deshacer</p>
+            </div>
+            <button onclick="cerrarModalEliminar()" class="btn-close-modal">
+                <span class="material-symbols-rounded">close</span>
+            </button>
+        </div>
+        <div class="modal-body" style="text-align:center;padding:16px 0 4px;">
+            <div style="width:64px;height:64px;border-radius:16px;background:var(--subtle-red);color:var(--primary-red);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                <span class="material-symbols-rounded" style="font-size:32px;">delete_forever</span>
+            </div>
+            <p style="font-size:0.95rem;color:var(--text-primary);margin-bottom:8px;">
+                ¿Eliminar el grupo<br>
+                <strong id="del-nombre-grupo" style="color:var(--primary-red);"></strong>?
+            </p>
+            <p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:20px;">
+                Se eliminarán los horarios asociados. Acción permanente.
+            </p>
+            <form method="POST">
+                <input type="hidden" name="action" value="eliminar_grupo">
+                <input type="hidden" name="id_del" id="del-id">
+                <div style="display:flex;gap:10px;justify-content:center;">
+                    <button type="button" onclick="cerrarModalEliminar()" class="btn-cancel">Cancelar</button>
+                    <button type="submit" class="btn-submit danger">
+                        <span class="material-symbols-rounded">delete_forever</span> Sí, eliminar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     MODAL: Editar Grupo
+═══════════════════════════════════════════════════════ -->
+<div id="modalEditarGrupo" class="modal-overlay">
+    <div class="modal-content" style="max-width:660px;">
+        <div class="modal-header">
+            <div>
+                <h3>Editar Grupo</h3>
+                <p style="font-size:0.85rem;color:var(--text-secondary);">ID #<?php echo $id; ?> · Los campos con <span style="color:var(--primary-orange);">*</span> son obligatorios</p>
+            </div>
+            <button onclick="cerrarModalEditar()" class="btn-close-modal">
+                <span class="material-symbols-rounded">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form method="POST" id="formEditarModal" novalidate>
+                <input type="hidden" name="action" value="editar_grupo">
+
+                <div class="form-row">
+                    <div class="input-group">
+                        <label>Nombre del grupo <span class="req">*</span></label>
+                        <input type="text" name="nombre" id="ver-edit-nombre" value="<?php echo htmlspecialchars($grupo['nombre']); ?>">
+                    </div>
+                </div>
+
+                <div class="form-row form-row--2">
+                    <div class="input-group">
+                        <label>Curso <span class="req">*</span></label>
+                        <select name="curso_id" id="ver-edit-curso_id">
+                            <option value="">Seleccionar...</option>
+                            <?php foreach ($cursos_edit as $c): ?>
+                                <option value="<?= $c['id'] ?>" <?= $c['id'] == $grupo['curso_id'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($c['nombre']) ?> (<?= ucfirst($c['nivel']) ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Profesor</label>
+                        <select name="profesor_id">
+                            <option value="">Sin asignar</option>
+                            <?php foreach ($profesores_edit as $p): ?>
+                                <option value="<?= $p['id'] ?>" <?= $p['id'] == $grupo['profesor_id'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($p['nombre']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row form-row--2">
+                    <div class="input-group">
+                        <label>Horario (texto)</label>
+                        <input type="text" name="horario" value="<?= htmlspecialchars($grupo['horario'] ?? '') ?>" placeholder="Ej: Lun y Mié 08:00–10:00">
+                    </div>
+                    <div class="input-group">
+                        <label>Aula</label>
+                        <input type="text" name="aula" value="<?= htmlspecialchars($grupo['aula'] ?? '') ?>">
+                    </div>
+                </div>
+
+                <div class="form-row form-row--3">
+                    <div class="input-group">
+                        <label>Cupo máximo</label>
+                        <input type="number" name="cupo_maximo" min="1" value="<?= $grupo['cupo_maximo'] ?>">
+                    </div>
+                    <div class="input-group">
+                        <label>Fecha inicio <span class="req">*</span></label>
+                        <input type="date" name="fecha_inicio" id="ver-edit-fecha_inicio" value="<?= $grupo['fecha_inicio'] ?>">
+                    </div>
+                    <div class="input-group">
+                        <label>Fecha fin</label>
+                        <input type="date" name="fecha_fin" value="<?= $grupo['fecha_fin'] ?? '' ?>">
+                    </div>
+                </div>
+
+                <div class="form-row" style="max-width:200px;">
+                    <div class="input-group">
+                        <label>Estado</label>
+                        <select name="estado">
+                            <?php foreach (['planificado'=>'Planificado','activo'=>'Activo','finalizado'=>'Finalizado','cancelado'=>'Cancelado'] as $val=>$lbl): ?>
+                                <option value="<?= $val ?>" <?= $val === $grupo['estado'] ? 'selected' : '' ?>><?= $lbl ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="modal-alert-editar-ver" class="modal-alert"></div>
+
+                <div class="form-actions">
+                    <button type="button" onclick="cerrarModalEditar()" class="btn-cancel">Cancelar</button>
+                    <button type="submit" class="btn-submit">
+                        <span class="material-symbols-rounded">save</span> Guardar cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     MODAL: Registrar Asistencia / Nueva Bitácora
+═══════════════════════════════════════════════════════ -->
+<div id="modalAsistencia" class="modal-overlay">
+    <div class="modal-content" style="max-width:860px;">
+        <div class="modal-header">
+            <div>
+                <h3>Registrar Asistencia</h3>
+                <p style="font-size:0.85rem;color:var(--text-secondary);"><?= htmlspecialchars($grupo['nombre']) ?> · <?= htmlspecialchars($grupo['curso_nombre'] ?? '') ?></p>
+            </div>
+            <button onclick="cerrarModalAsistencia()" class="btn-close-modal">
+                <span class="material-symbols-rounded">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <?php if (count($estudiantes) === 0): ?>
+                <div class="empty-state">
+                    <span class="material-symbols-rounded">person_off</span>
+                    <p>No hay estudiantes matriculados en este grupo.</p>
+                </div>
+            <?php else: ?>
+            <form method="POST" id="formAsistenciaModal" enctype="multipart/form-data" novalidate>
+                <input type="hidden" name="action" value="guardar_asistencia">
+
+                <!-- Sección 1: Datos de la clase -->
+                <div style="background:var(--hover-bg);border:1px solid var(--border-color);border-radius:14px;padding:18px;margin-bottom:16px;">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border-color);">
+                        <span class="material-symbols-rounded" style="color:var(--primary-green);font-size:22px;">edit_note</span>
+                        <div>
+                            <div style="font-weight:600;font-size:0.95rem;">Datos de la Clase</div>
+                            <div style="font-size:0.78rem;color:var(--text-secondary);">Se guardará como bitácora</div>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Título de la clase <span class="req">*</span></label>
+                        <input type="text" name="titulo" id="asist-titulo" placeholder="Ej: Introducción a los acordes">
+                    </div>
+
+                    <div class="form-row form-row--3">
+                        <div class="input-group">
+                            <label>Fecha <span class="req">*</span></label>
+                            <input type="date" name="fecha_clase" id="asist-fecha" value="<?= date('Y-m-d') ?>">
+                        </div>
+                        <div class="input-group">
+                            <label>Hora inicio <span class="req">*</span></label>
+                            <input type="time" name="hora_inicio" id="asist-hora-inicio">
+                        </div>
+                        <div class="input-group">
+                            <label>Hora fin <span class="req">*</span></label>
+                            <input type="time" name="hora_fin" id="asist-hora-fin">
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Temas tratados <span class="req">*</span></label>
+                        <textarea name="temas" id="asist-temas" placeholder="Temas vistos en la clase..." style="min-height:70px;"></textarea>
+                    </div>
+
+                    <div class="form-row form-row--2">
+                        <div class="input-group">
+                            <label>Descripción de la clase</label>
+                            <textarea name="descripcion" placeholder="Descripción general..." style="min-height:60px;"></textarea>
+                        </div>
+                        <div class="input-group">
+                            <label>Observaciones</label>
+                            <input type="text" name="observaciones" placeholder="Observaciones generales (opcional)">
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Compromisos / Tarea próxima clase</label>
+                        <input type="text" name="compromisos" placeholder="Tareas o compromisos (opcional)">
+                    </div>
+
+                    <div class="evidencias-section">
+                        <div class="evidencias-header">
+                            <span class="material-symbols-rounded">photo_camera</span>
+                            <div>
+                                <span class="evidencias-title">Evidencias fotográficas</span>
+                                <span class="evidencias-sub">Máx. 5 imágenes · JPG, PNG, WEBP · 5MB c/u</span>
+                            </div>
+                        </div>
+                        <div class="evidencias-dropzone" id="dropzone-modal">
+                            <span class="material-symbols-rounded">cloud_upload</span>
+                            <p>Arrastra imágenes aquí o <strong>haz clic para seleccionar</strong></p>
+                            <input type="file" name="evidencias[]" id="evidencias-input-modal"
+                                   accept="image/jpeg,image/png,image/webp" multiple style="display:none;">
+                        </div>
+                        <div class="evidencias-preview" id="evidencias-preview-modal"></div>
+                        <div id="evidencias-descripciones-modal"></div>
+                    </div>
+                </div>
+
+                <!-- Sección 2: Lista de asistencia -->
+                <div style="background:var(--hover-bg);border:1px solid var(--border-color);border-radius:14px;padding:18px;">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border-color);">
+                        <span class="material-symbols-rounded" style="color:var(--primary-blue);font-size:22px;">fact_check</span>
+                        <div>
+                            <div style="font-weight:600;font-size:0.95rem;">Lista de Asistencia</div>
+                            <div style="font-size:0.78rem;color:var(--text-secondary);"><?= count($estudiantes) ?> estudiante<?= count($estudiantes) != 1 ? 's' : '' ?></div>
+                        </div>
+                    </div>
+
+                    <div class="asistencia-resumen" style="margin-bottom:14px;">
+                        <div class="asist-chip presente"><span class="material-symbols-rounded">check_circle</span><span class="asist-count" id="modal-cnt-presente">0</span> Presentes</div>
+                        <div class="asist-chip ausente"><span class="material-symbols-rounded">cancel</span><span class="asist-count" id="modal-cnt-ausente">0</span> Ausentes</div>
+                        <div class="asist-chip justificado"><span class="material-symbols-rounded">description</span><span class="asist-count" id="modal-cnt-justificado">0</span> Justif.</div>
+                        <div class="asist-chip tardanza"><span class="material-symbols-rounded">schedule</span><span class="asist-count" id="modal-cnt-tardanza">0</span> Tardanza</div>
+                    </div>
+
+                    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+                        <button type="button" class="btn-cancel" style="font-size:0.78rem;padding:6px 12px;" onclick="marcarTodosModal('presente')">
+                            <span class="material-symbols-rounded" style="font-size:14px;">done_all</span> Todos presentes
+                        </button>
+                        <button type="button" class="btn-cancel" style="font-size:0.78rem;padding:6px 12px;" onclick="marcarTodosModal('ausente')">
+                            <span class="material-symbols-rounded" style="font-size:14px;">remove_done</span> Todos ausentes
+                        </button>
+                    </div>
+
+                    <div style="display:flex;flex-direction:column;gap:10px;">
+                        <?php foreach ($estudiantes as $est): ?>
+                        <div class="asistencia-estudiante-row" data-mid="<?= $est['id'] ?>">
+                            <div class="est-avatar"><?= iniciales($est['nombre']) ?></div>
+                            <div class="est-info">
+                                <div class="est-nombre"><?= htmlspecialchars($est['nombre']) ?></div>
+                                <input type="text" name="obs_est[<?= $est['id'] ?>]"
+                                       class="obs-input" placeholder="Observación (opcional)...">
+                            </div>
+                            <input type="hidden" name="asistencia[<?= $est['id'] ?>]" id="m-estado-<?= $est['id'] ?>" value="ausente">
+                            <div class="asistencia-selector">
+                                <button type="button" class="asist-btn modal-asist-btn" data-estado="presente" data-mid="<?= $est['id'] ?>" title="Presente">
+                                    <span class="material-symbols-rounded">check_circle</span>
+                                </button>
+                                <button type="button" class="asist-btn modal-asist-btn" data-estado="ausente" data-mid="<?= $est['id'] ?>" title="Ausente">
+                                    <span class="material-symbols-rounded">cancel</span>
+                                </button>
+                                <button type="button" class="asist-btn modal-asist-btn" data-estado="justificado" data-mid="<?= $est['id'] ?>" title="Justificado">
+                                    <span class="material-symbols-rounded">description</span>
+                                </button>
+                                <button type="button" class="asist-btn modal-asist-btn" data-estado="tardanza" data-mid="<?= $est['id'] ?>" title="Tardanza">
+                                    <span class="material-symbols-rounded">schedule</span>
+                                </button>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+
+                    <div id="modal-alert-asistencia" class="modal-alert"></div>
+
+                    <div class="form-actions" style="margin-top:16px;">
+                        <button type="button" onclick="cerrarModalAsistencia()" class="btn-cancel">Cancelar</button>
+                        <button type="submit" class="btn-submit">
+                            <span class="material-symbols-rounded">save</span> Guardar asistencia
+                        </button>
+                    </div>
+                </div>
+            </form>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
+
 <script>
-// Auto-ocultar flash
+// ── Auto-ocultar flash ────────────────────────────────────────────────────
 setTimeout(() => {
     document.querySelectorAll('.alert').forEach(a => {
         a.style.transition = 'opacity 0.5s ease';
@@ -591,6 +1051,219 @@ setTimeout(() => {
         setTimeout(() => a.remove(), 500);
     });
 }, 4000);
+
+// ── Cerrar modales al clic en overlay ────────────────────────────────────
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', function(e) {
+        if (e.target === this) this.classList.remove('active');
+    });
+});
+
+// ── Modal Eliminar ────────────────────────────────────────────────────────
+function abrirModalEliminar(id, nombre) {
+    document.getElementById('del-id').value = id;
+    document.getElementById('del-nombre-grupo').textContent = nombre;
+    document.getElementById('modalEliminar').classList.add('active');
+}
+function cerrarModalEliminar() {
+    document.getElementById('modalEliminar').classList.remove('active');
+}
+
+// ── Alertas personalizadas dentro de modales ─────────────────────────────
+function mostrarAlertaModal(divId, msg) {
+    const div = document.getElementById(divId);
+    if (!div) return;
+    div.innerHTML = `<span class="material-symbols-rounded">error</span>${msg}`;
+    div.style.display = 'flex';
+    div.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function ocultarAlertaModal(divId) {
+    const div = document.getElementById(divId);
+    if (div) div.style.display = 'none';
+}
+
+// ── Modal Editar ──────────────────────────────────────────────────────────
+function abrirModalEditar() {
+    ocultarAlertaModal('modal-alert-editar-ver');
+    document.getElementById('modalEditarGrupo').classList.add('active');
+}
+function cerrarModalEditar() {
+    document.getElementById('modalEditarGrupo').classList.remove('active');
+}
+
+document.getElementById('formEditarModal').addEventListener('submit', function(e) {
+    const nombre    = document.getElementById('ver-edit-nombre').value.trim();
+    const curso_id  = document.getElementById('ver-edit-curso_id').value;
+    const fecha_ini = document.getElementById('ver-edit-fecha_inicio').value;
+
+    if (!nombre) {
+        e.preventDefault();
+        mostrarAlertaModal('modal-alert-editar-ver', 'El nombre del grupo es obligatorio.');
+        return;
+    }
+    if (!curso_id) {
+        e.preventDefault();
+        mostrarAlertaModal('modal-alert-editar-ver', 'Debes seleccionar un curso.');
+        return;
+    }
+    if (!fecha_ini) {
+        e.preventDefault();
+        mostrarAlertaModal('modal-alert-editar-ver', 'La fecha de inicio es obligatoria.');
+        return;
+    }
+    ocultarAlertaModal('modal-alert-editar-ver');
+});
+
+// ── Modal Asistencia ──────────────────────────────────────────────────────
+function abrirModalAsistencia() {
+    ocultarAlertaModal('modal-alert-asistencia');
+    document.getElementById('modalAsistencia').classList.add('active');
+}
+function cerrarModalAsistencia() {
+    document.getElementById('modalAsistencia').classList.remove('active');
+}
+
+document.getElementById('formAsistenciaModal').addEventListener('submit', function(e) {
+    const titulo     = document.getElementById('asist-titulo').value.trim();
+    const fecha      = document.getElementById('asist-fecha').value;
+    const horaInicio = document.getElementById('asist-hora-inicio').value;
+    const horaFin    = document.getElementById('asist-hora-fin').value;
+    const temas      = document.getElementById('asist-temas').value.trim();
+
+    if (!titulo) {
+        e.preventDefault();
+        mostrarAlertaModal('modal-alert-asistencia', 'El título de la clase es obligatorio.');
+        return;
+    }
+    if (!fecha) {
+        e.preventDefault();
+        mostrarAlertaModal('modal-alert-asistencia', 'La fecha de la clase es obligatoria.');
+        return;
+    }
+    if (!horaInicio || !horaFin) {
+        e.preventDefault();
+        mostrarAlertaModal('modal-alert-asistencia', 'Las horas de inicio y fin son obligatorias.');
+        return;
+    }
+    if (horaFin <= horaInicio) {
+        e.preventDefault();
+        mostrarAlertaModal('modal-alert-asistencia', 'La hora de fin debe ser posterior a la hora de inicio.');
+        return;
+    }
+    if (!temas) {
+        e.preventDefault();
+        mostrarAlertaModal('modal-alert-asistencia', 'Los temas tratados son obligatorios.');
+        return;
+    }
+    ocultarAlertaModal('modal-alert-asistencia');
+});
+
+// ── Auto-abrir modal si hubo error en POST ────────────────────────────────
+<?php if ($open_modal): ?>
+document.getElementById('<?= $open_modal ?>').classList.add('active');
+<?php endif; ?>
+
+// ── Botones de asistencia en modal ────────────────────────────────────────
+document.querySelectorAll('.modal-asist-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const mid    = btn.dataset.mid;
+        const estado = btn.dataset.estado;
+        document.querySelectorAll(`.modal-asist-btn[data-mid="${mid}"]`).forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(`m-estado-${mid}`).value = estado;
+        const obs = document.querySelector(`.asistencia-estudiante-row[data-mid="${mid}"] .obs-input`);
+        if (obs) obs.classList.toggle('visible', estado !== 'presente');
+        actualizarContadoresModal();
+    });
+});
+
+function marcarTodosModal(estado) {
+    document.querySelectorAll(`.modal-asist-btn[data-estado="${estado}"]`).forEach(btn => btn.click());
+}
+
+function actualizarContadoresModal() {
+    ['presente','ausente','justificado','tardanza'].forEach(e => {
+        const n  = document.querySelectorAll(`.modal-asist-btn[data-estado="${e}"].active`).length;
+        const el = document.getElementById(`modal-cnt-${e}`);
+        if (el) el.textContent = n;
+    });
+}
+
+// Marcar todos ausentes por defecto
+document.querySelectorAll('.modal-asist-btn[data-estado="ausente"]').forEach(btn => btn.classList.add('active'));
+actualizarContadoresModal();
+
+// ── Evidencias fotográficas en modal ──────────────────────────────────────
+(function () {
+    const dropzone  = document.getElementById('dropzone-modal');
+    const fileInput = document.getElementById('evidencias-input-modal');
+    const preview   = document.getElementById('evidencias-preview-modal');
+    const descWrap  = document.getElementById('evidencias-descripciones-modal');
+    const MAX_FILES = 5;
+    let archivos    = [];
+    if (!dropzone) return;
+
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('dragover',  e  => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+    dropzone.addEventListener('dragleave', ()  => dropzone.classList.remove('drag-over'));
+    dropzone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropzone.classList.remove('drag-over');
+        agregarArchivos(e.dataTransfer.files);
+    });
+    fileInput.addEventListener('change', () => { agregarArchivos(fileInput.files); fileInput.value = ''; });
+
+    function agregarArchivos(nuevos) {
+        const tiposValidos = ['image/jpeg','image/png','image/webp'];
+        for (const f of nuevos) {
+            if (archivos.length >= MAX_FILES) break;
+            if (!tiposValidos.includes(f.type) || f.size > 5*1024*1024) continue;
+            archivos.push(f);
+        }
+        renderizar();
+        sincronizarInput();
+    }
+
+    function renderizar() {
+        preview.innerHTML  = '';
+        descWrap.innerHTML = '';
+        archivos.forEach((f, i) => {
+            const thumb = document.createElement('div');
+            thumb.className = 'ev-thumb';
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(f);
+            img.onload = () => URL.revokeObjectURL(img.src);
+            const orden = document.createElement('span');
+            orden.className = 'ev-orden';
+            orden.textContent = `#${i + 1}`;
+            const btn = document.createElement('button');
+            btn.type = 'button'; btn.className = 'ev-remove'; btn.title = 'Quitar';
+            btn.innerHTML = '<span class="material-symbols-rounded">close</span>';
+            btn.addEventListener('click', () => { archivos.splice(i, 1); renderizar(); sincronizarInput(); });
+            thumb.append(img, orden, btn);
+            preview.appendChild(thumb);
+
+            const group = document.createElement('div');
+            group.className = 'ev-desc-group';
+            const lbl = document.createElement('label');
+            lbl.textContent = `Descripción imagen #${i+1} (${f.name})`;
+            const inp = document.createElement('input');
+            inp.type = 'text'; inp.name = `ev_desc[${i}]`; inp.placeholder = 'Descripción opcional...';
+            group.append(lbl, inp);
+            descWrap.appendChild(group);
+        });
+        const hint = dropzone.querySelector('p');
+        hint.innerHTML = archivos.length > 0
+            ? `<strong>${archivos.length}/${MAX_FILES}</strong> imagen${archivos.length > 1 ? 'es' : ''} seleccionada${archivos.length > 1 ? 's' : ''}`
+            : 'Arrastra imágenes aquí o <strong>haz clic para seleccionar</strong>';
+    }
+
+    function sincronizarInput() {
+        const dt = new DataTransfer();
+        archivos.forEach(f => dt.items.add(f));
+        fileInput.files = dt.files;
+    }
+})();
 </script>
 
 </body>
