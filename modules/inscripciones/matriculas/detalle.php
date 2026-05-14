@@ -20,6 +20,9 @@ $tab_activa    = (int)($_GET['tab'] ?? 0);
 if (!$estudiante_id) { header("Location: index.php"); exit; }
 
 try {
+    // Marcar como vencidos todos los pagos pendientes cuya fecha ya pasó
+    $pdo->exec("UPDATE pagos SET estado = 'vencido' WHERE estado = 'pendiente' AND fecha_vencimiento < CURDATE()");
+
     // Datos del estudiante
     $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE id = ? AND rol = 'estudiante'");
     $stmt->execute([$estudiante_id]);

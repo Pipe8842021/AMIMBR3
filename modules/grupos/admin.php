@@ -8,8 +8,36 @@ require_role('admin');
 $success = null;
 $error   = null;
 
-if (isset($_GET['msg']) && $_GET['msg'] === 'eliminado') {
-    $success = "Grupo eliminado correctamente.";
+if (isset($_GET['msg'])) {
+    if ($_GET['msg'] === 'eliminado') {
+        $success = "Grupo eliminado correctamente.";
+    } elseif ($_GET['msg'] === 'finalizado') {
+        $n = (int)($_GET['generados'] ?? 0);
+        $success = "Grupo finalizado. Se " . ($n === 1 ? "generó 1 certificado" : "generaron $n certificados") . " automáticamente.";
+    }
+}
+
+// AJAX GET: obtener estudiantes activos de un grupo
+if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])
+    && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest'
+    && $_SERVER['REQUEST_METHOD'] === 'GET'
+    && ($_GET['action'] ?? '') === 'get_estudiantes_grupo') {
+    $id_ajax = (int)($_GET['id'] ?? 0);
+    header('Content-Type: application/json');
+    if ($id_ajax) {
+        $st = $pdo->prepare("
+            SELECT m.id AS matricula_id, m.estudiante_id, u.nombre AS estudiante_nombre
+            FROM matriculas m
+            JOIN usuarios u ON m.estudiante_id = u.id
+            WHERE m.grupo_id = ? AND m.estado = 'activa'
+            ORDER BY u.nombre
+        ");
+        $st->execute([$id_ajax]);
+        echo json_encode(['success' => true, 'estudiantes' => $st->fetchAll(PDO::FETCH_ASSOC)]);
+    } else {
+        echo json_encode(['success' => false, 'estudiantes' => []]);
+    }
+    exit;
 }
 
 // En la sección de manejo de POST de admin.php
@@ -179,6 +207,94 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cambi
     }
 }
 
+// Finalizar grupo con generación automática de certificados
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'finalizar_grupo') {
+    $id_grupo = (int)($_POST['id'] ?? 0);
+    $is_ajax_fin = !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
+                && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+
+    // Mapa de calificaciones por estudiante enviadas desde el modal
+    $cal_map = [];
+    $cals_raw = json_decode($_POST['calificaciones_json'] ?? '[]', true) ?: [];
+    foreach ($cals_raw as $c) {
+        $cal_map[(int)$c['estudiante_id']] = max(0.1, min(5.0, (float)$c['calificacion']));
+    }
+
+    if ($id_grupo) {
+        try {
+            $pdo->beginTransaction();
+
+            $stmtGrupo = $pdo->prepare("
+                SELECT g.*, c.nivel AS curso_nivel
+                FROM grupos g JOIN cursos c ON g.curso_id = c.id
+                WHERE g.id = ?
+            ");
+            $stmtGrupo->execute([$id_grupo]);
+            $grupo_info = $stmtGrupo->fetch(PDO::FETCH_ASSOC);
+            if (!$grupo_info) throw new Exception("Grupo no encontrado");
+
+            $pdo->prepare("UPDATE grupos SET estado = 'finalizado' WHERE id = ?")
+                ->execute([$id_grupo]);
+
+            $stmtMats = $pdo->prepare("
+                SELECT m.id, m.estudiante_id
+                FROM matriculas m
+                WHERE m.grupo_id = ? AND m.estado = 'activa'
+            ");
+            $stmtMats->execute([$id_grupo]);
+            $matriculas = $stmtMats->fetchAll(PDO::FETCH_ASSOC);
+
+            $year = date('Y');
+            $generados = 0;
+
+            foreach ($matriculas as $mat) {
+                $chk = $pdo->prepare("SELECT id FROM calificaciones_certificados WHERE estudiante_id = ? AND grupo_id = ?");
+                $chk->execute([$mat['estudiante_id'], $id_grupo]);
+                if ($chk->fetch()) continue;
+
+                // Calificación individual del estudiante; si no se envió, usa 5.0
+                $cal_est = $cal_map[(int)$mat['estudiante_id']] ?? 5.0;
+
+                $cnt = (int)$pdo->query("SELECT COUNT(*) FROM calificaciones_certificados WHERE YEAR(fecha_aprobacion) = $year")->fetchColumn();
+                $codigo = sprintf("AMB-%s-%04d-%03d-%03d", $year, $cnt + 1 + $generados, $mat['estudiante_id'], $grupo_info['curso_id']);
+
+                $pdo->prepare("
+                    INSERT INTO calificaciones_certificados (
+                        estudiante_id, curso_id, grupo_id, matricula_id,
+                        nivel_aprobado, calificacion_final,
+                        fecha_inicio_curso, fecha_fin_curso, fecha_aprobacion,
+                        aprobado_por, codigo_certificado, ruta_pdf, estado
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURDATE(), ?, ?, '', 'aprobado')
+                ")->execute([
+                    $mat['estudiante_id'], $grupo_info['curso_id'], $id_grupo, $mat['id'],
+                    $grupo_info['curso_nivel'], $cal_est,
+                    $grupo_info['fecha_inicio'], $grupo_info['fecha_fin'],
+                    $_SESSION['user_id'], $codigo
+                ]);
+                $generados++;
+            }
+
+            $pdo->commit();
+
+            if ($is_ajax_fin) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'generados' => $generados, 'total' => count($matriculas)]);
+                exit;
+            }
+            $success = "Grupo finalizado. Se generaron $generados certificado" . ($generados !== 1 ? 's' : '') . " automáticamente.";
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            error_log($e->getMessage());
+            if ($is_ajax_fin) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => 'Error al finalizar el grupo']);
+                exit;
+            }
+            $error = "Error al finalizar el grupo.";
+        }
+    }
+}
+
 try {
     // Filtros GET
     $filtro_estado = $_GET['estado'] ?? '';
@@ -217,7 +333,8 @@ try {
             g.curso_id, g.profesor_id,
             c.nombre AS curso_nombre,
             c.nivel  AS curso_nivel,
-            u.nombre AS profesor_nombre
+            u.nombre AS profesor_nombre,
+            (SELECT COUNT(*) FROM matriculas WHERE grupo_id = g.id AND estado = 'activa') AS estudiantes_activos
         FROM grupos g
         JOIN cursos c        ON g.curso_id   = c.id
         LEFT JOIN usuarios u ON g.profesor_id = u.id
@@ -479,7 +596,14 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
                                                 </button>
                                                 <div class="dropdown-estado-menu">
                                                     <?php foreach ($estado_cfg as $est_k => $est_v):
-                                                        if ($est_k === $g['estado']) continue; ?>
+                                                        if ($est_k === $g['estado']) continue;
+                                                        if ($est_k === 'finalizado'): ?>
+                                                        <button type="button" class="estado-option"
+                                                            onclick="abrirModalFinalizar(<?php echo $g['id']; ?>, '<?php echo addslashes(htmlspecialchars($g['nombre'])); ?>', <?php echo (int)$g['estudiantes_activos']; ?>)">
+                                                            <span class="material-symbols-rounded"><?php echo $est_v['icon']; ?></span>
+                                                            <?php echo $est_v['txt']; ?>
+                                                        </button>
+                                                        <?php else: ?>
                                                         <form method="POST" style="margin:0;">
                                                             <input type="hidden" name="action" value="cambiar_estado">
                                                             <input type="hidden" name="id" value="<?php echo $g['id']; ?>">
@@ -489,6 +613,7 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
                                                                 <?php echo $est_v['txt']; ?>
                                                             </button>
                                                         </form>
+                                                        <?php endif; ?>
                                                     <?php endforeach; ?>
                                                 </div>
                                             </div>
@@ -829,6 +954,67 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
         </div>
     </div>
 
+    <!-- Modal Finalizar Grupo con generación de certificados -->
+    <div id="modalFinalizarGrupo" class="modal-overlay">
+        <div class="modal-content" style="max-width: 580px;">
+            <div class="modal-header">
+                <div>
+                    <h3>Finalizar Grupo</h3>
+                    <p style="font-size:0.85rem; color:var(--text-secondary);">Asigna la calificación final a cada estudiante</p>
+                </div>
+                <button onclick="cerrarModalFinalizar()" class="btn-close-modal">
+                    <span class="material-symbols-rounded">close</span>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: 8px 0;">
+
+                <!-- Encabezado del grupo -->
+                <div style="background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.2); border-radius:12px; padding:14px 16px; margin-bottom:14px; display:flex; align-items:center; gap:12px;">
+                    <span class="material-symbols-rounded" style="color:var(--primary-green); font-size:26px; flex-shrink:0;">workspace_premium</span>
+                    <div>
+                        <div style="font-weight:600; font-size:0.95rem;" id="finalizar-grupo-nombre"></div>
+                        <div style="font-size:0.82rem; color:var(--text-secondary); margin-top:2px;" id="finalizar-header-sub"></div>
+                    </div>
+                </div>
+
+                <!-- Rellenar todos a la vez -->
+                <div id="finalizar-fill-all" style="display:none; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+                    <span style="font-size:0.83rem; color:var(--text-secondary);">Aplicar misma nota a todos:</span>
+                    <input type="number" id="finalizar-cal-todos" min="0.1" max="5.0" step="0.1" placeholder="0.0–5.0"
+                        style="width:88px; padding:5px 8px; border-radius:8px; border:1px solid var(--border-color); background:var(--card-bg); color:var(--text-main); font-size:0.88rem;">
+                    <button type="button" onclick="aplicarCalATodos()"
+                        style="padding:5px 14px; border-radius:8px; border:1px solid var(--primary-green); color:var(--primary-green); background:none; font-size:0.83rem; cursor:pointer; font-weight:600;">
+                        Aplicar
+                    </button>
+                </div>
+
+                <!-- Cargando -->
+                <div id="finalizar-loading" style="text-align:center; padding:28px 16px; color:var(--text-secondary); font-size:0.9rem;">
+                    <span class="material-symbols-rounded" style="font-size:30px; display:block; margin-bottom:8px; opacity:0.4;">hourglass_empty</span>
+                    Cargando estudiantes...
+                </div>
+
+                <!-- Lista de estudiantes con calificación individual -->
+                <div id="finalizar-lista" style="display:none; max-height:340px; overflow-y:auto; border:1px solid var(--border-color); border-radius:12px; margin-bottom:4px;"></div>
+
+                <!-- Sin estudiantes -->
+                <div id="finalizar-sin-estudiantes" style="display:none; border-radius:10px; padding:12px 14px; font-size:0.86rem; color:var(--text-secondary); background:rgba(249,115,22,0.08); border:1px solid rgba(249,115,22,0.2);">
+                    <span class="material-symbols-rounded" style="vertical-align:middle; font-size:18px; margin-right:4px;">info</span>
+                    Este grupo no tiene estudiantes activos. Solo se cambiará el estado a Finalizado.
+                </div>
+
+                <div id="finalizar-alert" style="display:none; border-radius:10px; padding:12px 14px; font-size:0.86rem; color:var(--primary-orange, #f97316); background:rgba(249,115,22,0.08); border:1px solid rgba(249,115,22,0.2); margin-top:10px;"></div>
+            </div>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:18px;">
+                <button type="button" class="btn-cancel" onclick="cerrarModalFinalizar()">Cancelar</button>
+                <button type="button" class="btn-submit" id="btn-confirmar-finalizar" onclick="confirmarFinalizarGrupo()" disabled>
+                    <span class="material-symbols-rounded">check_circle</span> Finalizar y generar
+                </button>
+            </div>
+            <input type="hidden" id="finalizar-grupo-id">
+        </div>
+    </div>
+
     <!-- Modal Confirmación Eliminar -->
     <div id="modalEliminar" class="modal-overlay">
         <div class="modal-content" style="max-width: 460px;">
@@ -1050,6 +1236,157 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
         }
         function cerrarModalEliminar() {
             document.getElementById('modalEliminar').classList.remove('active');
+        }
+
+        // ── Modal Finalizar Grupo ────────────────────────────
+        function abrirModalFinalizar(id, nombre, estudiantesActivos) {
+            document.getElementById('finalizar-grupo-id').value = id;
+            document.getElementById('finalizar-grupo-nombre').textContent = nombre;
+            document.getElementById('finalizar-header-sub').textContent =
+                estudiantesActivos + ' estudiante' + (estudiantesActivos !== 1 ? 's' : '') + ' activo' + (estudiantesActivos !== 1 ? 's' : '');
+            document.getElementById('finalizar-alert').style.display = 'none';
+            document.getElementById('finalizar-loading').style.display = 'block';
+            document.getElementById('finalizar-lista').style.display = 'none';
+            document.getElementById('finalizar-sin-estudiantes').style.display = 'none';
+            document.getElementById('finalizar-fill-all').style.display = 'none';
+
+            const btn = document.getElementById('btn-confirmar-finalizar');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-rounded">check_circle</span> Finalizar y generar';
+
+            document.getElementById('modalFinalizarGrupo').classList.add('active');
+
+            fetch('admin.php?action=get_estudiantes_grupo&id=' + id, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('finalizar-loading').style.display = 'none';
+                const estudiantes = data.estudiantes || [];
+
+                if (estudiantes.length === 0) {
+                    document.getElementById('finalizar-sin-estudiantes').style.display = 'block';
+                    document.getElementById('finalizar-header-sub').textContent = 'Sin estudiantes activos';
+                } else {
+                    renderListaEstudiantes(estudiantes);
+                    document.getElementById('finalizar-lista').style.display = 'block';
+                    document.getElementById('finalizar-fill-all').style.display = 'flex';
+                    document.getElementById('finalizar-header-sub').textContent =
+                        estudiantes.length + ' estudiante' + (estudiantes.length !== 1 ? 's' : '') + ' recibirán certificado';
+                }
+                btn.disabled = false;
+            })
+            .catch(() => {
+                document.getElementById('finalizar-loading').style.display = 'none';
+                document.getElementById('finalizar-alert').textContent = 'No se pudieron cargar los estudiantes. Intenta de nuevo.';
+                document.getElementById('finalizar-alert').style.display = 'block';
+            });
+        }
+
+        function renderListaEstudiantes(estudiantes) {
+            const lista = document.getElementById('finalizar-lista');
+            let html = '';
+            estudiantes.forEach((e, i) => {
+                const borde = i < estudiantes.length - 1 ? 'border-bottom:1px solid var(--border-color);' : '';
+                html += `<div style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; ${borde}">
+                    <div style="display:flex; align-items:center; gap:10px; min-width:0; flex:1;">
+                        <span class="material-symbols-rounded" style="color:var(--primary-green); font-size:20px; flex-shrink:0;">person</span>
+                        <span style="font-size:0.88rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escHtml(e.estudiante_nombre)}</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:6px; flex-shrink:0; margin-left:12px;">
+                        <input type="number" class="cal-input"
+                            data-estudiante-id="${e.estudiante_id}"
+                            data-matricula-id="${e.matricula_id}"
+                            min="0.1" max="5.0" step="0.1" value="5.0"
+                            style="width:74px; padding:5px 8px; border-radius:8px; border:1px solid var(--border-color); background:var(--card-bg); color:var(--text-main); font-size:0.9rem; text-align:center;">
+                        <span style="font-size:0.78rem; color:var(--text-secondary); white-space:nowrap;">/ 5.0</span>
+                    </div>
+                </div>`;
+            });
+            lista.innerHTML = html;
+        }
+
+        function escHtml(str) {
+            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function aplicarCalATodos() {
+            const cal = parseFloat(document.getElementById('finalizar-cal-todos').value);
+            if (isNaN(cal) || cal < 0.1 || cal > 5.0) return;
+            document.querySelectorAll('#finalizar-lista .cal-input').forEach(inp => {
+                inp.value = cal.toFixed(1);
+                inp.style.borderColor = '';
+            });
+        }
+
+        function cerrarModalFinalizar() {
+            document.getElementById('modalFinalizarGrupo').classList.remove('active');
+        }
+
+        function confirmarFinalizarGrupo() {
+            const id = document.getElementById('finalizar-grupo-id').value;
+            const alertDiv = document.getElementById('finalizar-alert');
+            const btn = document.getElementById('btn-confirmar-finalizar');
+            alertDiv.style.display = 'none';
+
+            // Recoger calificación por estudiante
+            const calificaciones = [];
+            let valido = true;
+            document.querySelectorAll('#finalizar-lista .cal-input').forEach(inp => {
+                const cal = parseFloat(inp.value);
+                if (isNaN(cal) || cal < 0.1 || cal > 5.0) {
+                    valido = false;
+                    inp.style.borderColor = '#f97316';
+                } else {
+                    inp.style.borderColor = '';
+                    calificaciones.push({
+                        estudiante_id: inp.dataset.estudianteId,
+                        matricula_id:  inp.dataset.matriculaId,
+                        calificacion:  cal
+                    });
+                }
+            });
+
+            if (!valido) {
+                alertDiv.textContent = 'Revisa las calificaciones marcadas: deben estar entre 0.1 y 5.0';
+                alertDiv.style.display = 'block';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-rounded">hourglass_empty</span> Procesando...';
+
+            const formData = new FormData();
+            formData.append('action', 'finalizar_grupo');
+            formData.append('id', id);
+            formData.append('calificaciones_json', JSON.stringify(calificaciones));
+
+            fetch('admin.php', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    cerrarModalFinalizar();
+                    const params = new URLSearchParams(window.location.search);
+                    params.set('msg', 'finalizado');
+                    params.set('generados', data.generados);
+                    window.location.href = 'admin.php?' + params.toString();
+                } else {
+                    alertDiv.textContent = data.error || 'Error al finalizar el grupo';
+                    alertDiv.style.display = 'block';
+                    btn.disabled = false;
+                    btn.innerHTML = '<span class="material-symbols-rounded">check_circle</span> Finalizar y generar';
+                }
+            })
+            .catch(() => {
+                alertDiv.textContent = 'Error de conexión. Intenta de nuevo.';
+                alertDiv.style.display = 'block';
+                btn.disabled = false;
+                btn.innerHTML = '<span class="material-symbols-rounded">check_circle</span> Finalizar y generar';
+            });
         }
 
         // ── Cerrar al clic en overlay ────────────────────────
