@@ -29,6 +29,43 @@ try {
     $estudiante = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$estudiante) { header("Location: index.php"); exit; }
 
+    // Auto-generar próxima cuota si faltan ≤ 7 días para el siguiente vencimiento
+    $rows_auto = $pdo->prepare("
+        SELECT m.id AS mat_id, m.estudiante_id, c.precio_mensual, c.nombre AS curso_nombre,
+               MAX(p.fecha_vencimiento) AS ultima_fv
+        FROM matriculas m
+        JOIN grupos g ON m.grupo_id = g.id
+        JOIN cursos c ON g.curso_id = c.id
+        JOIN pagos p ON p.matricula_id = m.id AND p.estado != 'anulado'
+        WHERE m.estudiante_id = ? AND m.estado = 'activa' AND c.precio_mensual > 0
+        GROUP BY m.id, m.estudiante_id, c.precio_mensual, c.nombre
+    ");
+    $rows_auto->execute([$estudiante_id]);
+    $meses_auto = [1=>'Enero',2=>'Febrero',3=>'Marzo',4=>'Abril',5=>'Mayo',6=>'Junio',
+                   7=>'Julio',8=>'Agosto',9=>'Septiembre',10=>'Octubre',11=>'Noviembre',12=>'Diciembre'];
+    $chk_auto = $pdo->prepare("SELECT COUNT(*) FROM pagos WHERE matricula_id=? AND YEAR(fecha_vencimiento)=? AND MONTH(fecha_vencimiento)=? AND estado!='anulado'");
+    $ins_auto = $pdo->prepare("INSERT INTO pagos (estudiante_id,matricula_id,monto,concepto,metodo_pago,estado,fecha_vencimiento,registrado_por) VALUES (?,?,?,?,'efectivo',?,?,?)");
+    $hoy_auto = new DateTime();
+    foreach ($rows_auto->fetchAll(PDO::FETCH_ASSOC) as $row_auto) {
+        $ultimo_dt = new DateTime($row_auto['ultima_fv']);
+        $dia_base  = (int)$ultimo_dt->format('j');
+        $prox_dt   = clone $ultimo_dt;
+        $prox_dt->modify('first day of next month');
+        $prox_dt->setDate((int)$prox_dt->format('Y'), (int)$prox_dt->format('n'), min($dia_base, (int)$prox_dt->format('t')));
+        $umbral_dt = clone $prox_dt;
+        $umbral_dt->modify('-7 days');
+        if ($hoy_auto >= $umbral_dt) {
+            $ay = (int)$prox_dt->format('Y'); $am = (int)$prox_dt->format('n');
+            $chk_auto->execute([$row_auto['mat_id'], $ay, $am]);
+            if ((int)$chk_auto->fetchColumn() === 0) {
+                $fv_auto = $prox_dt->format('Y-m-d');
+                $es_auto = ($fv_auto < $hoy_auto->format('Y-m-d')) ? 'vencido' : 'pendiente';
+                $co_auto = "Mensualidad {$meses_auto[$am]} $ay — {$row_auto['curso_nombre']}";
+                $ins_auto->execute([$row_auto['estudiante_id'], $row_auto['mat_id'], $row_auto['precio_mensual'], $co_auto, $es_auto, $fv_auto, $_SESSION['usuario_id'] ?? 1]);
+            }
+        }
+    }
+
     // Todas las matrículas del estudiante
     $stmt = $pdo->prepare("
         SELECT m.*,
@@ -465,17 +502,12 @@ function nivel_label($n)  { return ['basico'=>'Básico','intermedio'=>'Intermedi
                             <h3>Registro de Pagos</h3>
                             <div class="ml-auto" style="display:flex; gap:8px;">
                                 <?php if ($m['grupo_id'] && $m['precio_mensual']): ?>
-                                <form method="POST" action="acciones.php" style="margin:0;">
-                                    <input type="hidden" name="accion" value="regenerar_pagos">
-                                    <input type="hidden" name="matricula_id" value="<?= $m['id'] ?>">
-                                    <input type="hidden" name="redir_estudiante" value="<?= $estudiante_id ?>">
-                                    <button type="submit" class="btn-outline"
-                                            title="Elimina pagos pendientes y regenera las cuotas desde la fecha de matrícula"
-                                            onclick="return confirm('¿Regenerar las cuotas pendientes? Se eliminarán los pagos pendientes actuales y se crearán de nuevo.')">
-                                        <span class="material-symbols-rounded">refresh</span>
-                                        Regenerar cuotas
-                                    </button>
-                                </form>
+                                <button type="button" class="btn-outline"
+                                        title="Elimina pagos pendientes y regenera las cuotas desde la fecha de matrícula"
+                                        onclick="abrirModalRegenerarCuotas(<?= $m['id'] ?>)">
+                                    <span class="material-symbols-rounded">refresh</span>
+                                    Regenerar cuotas
+                                </button>
                                 <?php endif; ?>
                                 <button class="btn-primary btn-sm"
                                         onclick="toggleSection('pago-<?= $m['id'] ?>')">
@@ -636,6 +668,48 @@ function nivel_label($n)  { return ['basico'=>'Básico','intermedio'=>'Intermedi
     </div><!-- /tabs-wrap -->
 
 </main>
+
+<!-- ══ Modal: Regenerar Cuotas ══════════════════════════════ -->
+<div class="modal-overlay" id="modalRegenerarCuotas">
+    <div class="modal" style="max-width:460px; text-align:left; padding:0;">
+        <div style="display:flex; align-items:center; gap:10px; padding:20px 24px;
+                    border-bottom:1px solid var(--border-color); background:var(--hover-bg);
+                    border-radius:18px 18px 0 0;">
+            <div class="modal-icon" style="width:40px;height:40px;border-radius:10px;flex-shrink:0;
+                         background:rgba(234,179,8,0.12); color:#eab308;">
+                <span class="material-symbols-rounded">refresh</span>
+            </div>
+            <div>
+                <div class="modal-title" style="margin:0; font-size:1rem;">Regenerar Cuotas</div>
+                <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:2px;">
+                    Cuotas desde la fecha de matrícula hasta el mes actual
+                </div>
+            </div>
+            <button class="modal-close" style="margin-left:auto;" onclick="cerrarModalRegenerarCuotas()">
+                <span class="material-symbols-rounded">close</span>
+            </button>
+        </div>
+        <div style="padding:20px 24px;">
+            <div class="alert alert-danger" style="margin-bottom:0;">
+                <span class="material-symbols-rounded">warning</span>
+                <span>Se eliminarán los pagos <strong>pendientes</strong> y <strong>vencidos</strong>, y se recrearán desde la fecha de matrícula. Los pagos <strong>pagados</strong> no se modificarán.</span>
+            </div>
+        </div>
+        <form method="POST" action="acciones.php" id="formRegenerarCuotas">
+            <input type="hidden" name="accion" value="regenerar_pagos">
+            <input type="hidden" name="matricula_id" id="regenerarMatriculaId">
+            <input type="hidden" name="redir_estudiante" value="<?= $estudiante_id ?>">
+            <div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;
+                        padding:16px 24px; border-top:1px solid var(--border-color);
+                        background:var(--hover-bg); border-radius:0 0 18px 18px;">
+                <button type="button" class="btn-secondary" onclick="cerrarModalRegenerarCuotas()">Cancelar</button>
+                <button type="submit" class="btn-primary">
+                    <span class="material-symbols-rounded">refresh</span> Sí, regenerar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <!-- ══ MODALES de asignación de grupo (uno por matrícula) ═══ -->
 <?php foreach ($matriculas as $m):
@@ -1102,6 +1176,20 @@ function filtrarGrupos(matId) {
     document.getElementById('mgEmpty-' + matId).style.display = vis === 0 ? 'flex' : 'none';
 }
 
+// ── Modal regenerar cuotas ───────────────────────────────────
+function abrirModalRegenerarCuotas(matriculaId) {
+    document.getElementById('regenerarMatriculaId').value = matriculaId;
+    document.getElementById('modalRegenerarCuotas').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+function cerrarModalRegenerarCuotas() {
+    document.getElementById('modalRegenerarCuotas').classList.remove('active');
+    document.body.style.overflow = '';
+}
+document.getElementById('modalRegenerarCuotas')?.addEventListener('click', e => {
+    if (e.target === e.currentTarget) cerrarModalRegenerarCuotas();
+});
+
 // ── Modal eliminar matrícula ─────────────────────────────────
 function abrirModalEliminar(matriculaId, estudianteId, cursoNombre) {
     document.getElementById('eliminarMatriculaId').value  = matriculaId;
@@ -1170,6 +1258,7 @@ document.addEventListener('keydown', e => {
     if (document.getElementById('modalNuevaMatricula').classList.contains('active'))   cerrarModalNuevaMatricula();
     if (document.getElementById('modalEditarPago').classList.contains('active'))       cerrarEditarPago();
     if (document.getElementById('modalEliminarMatricula').classList.contains('active')) cerrarModalEliminar();
+    if (document.getElementById('modalRegenerarCuotas').classList.contains('active'))  cerrarModalRegenerarCuotas();
 });
 
 // Reabrir modal si nueva.php redirige con ?open_modal=1
