@@ -34,8 +34,19 @@ try {
 
     if (!$bitacora) { echo json_encode(['success' => false, 'error' => 'Bitácora no encontrada']); exit; }
 
-    if ($rol !== 'admin' && $bitacora['profesor_id'] != $uid) {
+    if ($rol === 'profesor' && $bitacora['profesor_id'] != $uid) {
         echo json_encode(['success' => false, 'error' => 'Sin permisos']); exit;
+    }
+    if ($rol === 'estudiante') {
+        $chk = $pdo->prepare("
+            SELECT 1 FROM matriculas
+            WHERE estudiante_id = ? AND grupo_id = ? AND estado = 'activa'
+            LIMIT 1
+        ");
+        $chk->execute([$uid, $bitacora['grupo_id']]);
+        if (!$chk->fetch()) {
+            echo json_encode(['success' => false, 'error' => 'Sin permisos']); exit;
+        }
     }
 
     // Asistencias con nombre de estudiante

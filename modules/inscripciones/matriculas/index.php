@@ -39,6 +39,9 @@ $having_sql = match($filtro_pago) {
 };
 
 try {
+    // Marcar como vencidos todos los pagos pendientes cuya fecha ya pasó
+    $pdo->exec("UPDATE pagos SET estado = 'vencido' WHERE estado = 'pendiente' AND fecha_vencimiento < CURDATE()");
+
     // Stats generales
     $total_activas    = (int)$pdo->query("SELECT COUNT(*) FROM matriculas WHERE estado='activa'")->fetchColumn();
     $total_al_dia     = (int)$pdo->query("SELECT COUNT(*) FROM (SELECT m.id FROM matriculas m LEFT JOIN pagos p ON p.matricula_id=m.id AND p.estado IN('pendiente','vencido') WHERE m.estado='activa' GROUP BY m.id HAVING COUNT(p.id)=0) s")->fetchColumn();
