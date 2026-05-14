@@ -1,3 +1,90 @@
+<?php
+if (isset($_GET['action'])) {
+    require_once __DIR__ . '/../config/session.php';
+    require_once __DIR__ . '/../config/database.php';
+    header('Content-Type: application/json');
+
+    if (!is_logged_in()) {
+        http_response_code(401);
+        echo json_encode([]);
+        exit;
+    }
+
+    if ($_GET['action'] === 'notificaciones_recientes') {
+        $tipo_map = [
+            'sistema'        => 'warning',
+            'preinscripcion' => 'success',
+            'evento'         => 'info',
+            'general'        => 'info',
+        ];
+        function tiempo_transcurrido_header(string $fecha): string {
+            $diff = (new DateTime())->diff(new DateTime($fecha));
+            if ($diff->days > 0) return "Hace {$diff->days} día" . ($diff->days > 1 ? 's' : '');
+            if ($diff->h   > 0) return "Hace {$diff->h} hora"   . ($diff->h   > 1 ? 's' : '');
+            if ($diff->i   > 0) return "Hace {$diff->i} minuto"  . ($diff->i   > 1 ? 's' : '');
+            return "Hace unos segundos";
+        }
+        try {
+            $stmt = $pdo->prepare("
+                SELECT id, tipo, mensaje, enlace, leida, fecha_creacion
+                FROM notificaciones
+                WHERE usuario_id = ?
+                ORDER BY leida ASC, fecha_creacion DESC
+                LIMIT 5
+            ");
+            $stmt->execute([$_SESSION['user_id']]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $result = array_map(function($n) use ($tipo_map) {
+                return [
+                    'id'                  => (int)$n['id'],
+                    'tipo'                => $tipo_map[$n['tipo']] ?? 'info',
+                    'mensaje'             => $n['mensaje'],
+                    'url'                 => $n['enlace'] ?? null,
+                    'leida'               => (int)$n['leida'],
+                    'tiempo_transcurrido' => tiempo_transcurrido_header($n['fecha_creacion']),
+                ];
+            }, $rows);
+            echo json_encode($result);
+        } catch (PDOException $e) {
+            error_log("notificaciones_recientes: " . $e->getMessage());
+            http_response_code(500);
+            echo json_encode([]);
+        }
+        exit;
+    }
+
+    if ($_GET['action'] === 'marcar_leida') {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['success' => false]);
+            exit;
+        }
+        $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+        if ($id <= 0) {
+            echo json_encode(['success' => false, 'message' => 'ID inválido']);
+            exit;
+        }
+        try {
+            $stmt = $pdo->prepare("
+                UPDATE notificaciones
+                SET leida = 1, fecha_lectura = NOW()
+                WHERE id = ? AND usuario_id = ?
+            ");
+            $stmt->execute([$id, $_SESSION['user_id']]);
+            echo json_encode(['success' => $stmt->rowCount() > 0]);
+        } catch (PDOException $e) {
+            error_log("notificacion_marcar_leida: " . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['success' => false]);
+        }
+        exit;
+    }
+
+    http_response_code(400);
+    echo json_encode(['error' => 'Acción no reconocida']);
+    exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -323,6 +410,7 @@
         flex-direction: column-reverse; /* los items crecen hacia arriba */
         align-items: flex-end;
         gap: 10px;
+        pointer-events: none; /* el contenedor nunca bloquea clics */
     }
 
     /* Botón principal (hamburguesa del FAB) */
@@ -342,6 +430,7 @@
         flex-shrink: 0;
         position: relative;
         z-index: 2;
+        pointer-events: auto; /* siempre clickeable */
     }
 
     .fab-main:hover {
@@ -1078,7 +1167,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
         fabNotifModal.addEventListener('click', (e) => e.stopPropagation());
 
         function loadNotificaciones() {
-            fetch('/AMIMBR3/api/notificaciones_recientes.php')
+            fetch('/AMIMBR3/includes/header.php?action=notificaciones_recientes')
                 .then(r => r.json())
                 .then(data => {
                     notifLoaded = true;
@@ -1133,7 +1222,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                 el.addEventListener('click', () => {
                     const id = el.dataset.id;
                     el.classList.remove('unread');
-                    fetch(`/AMIMBR3/api/notificacion_marcar_leida.php?id=${id}`, { method: 'POST' });
+                    fetch(`/AMIMBR3/includes/header.php?action=marcar_leida&id=${id}`, { method: 'POST' });
                     // Reducir badge
                     const badge = document.getElementById('fabBadge');
                     if (badge) {

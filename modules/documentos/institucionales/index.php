@@ -91,7 +91,6 @@ try {
 // ── Filtros de búsqueda ───────────────────────────────────────────────────────
 $search           = isset($_GET['search'])    ? trim($_GET['search'])    : '';
 $tipo_filter      = isset($_GET['tipo'])      ? $_GET['tipo']            : 'todos';
-$categoria_filter = isset($_GET['categoria']) ? $_GET['categoria']       : 'todas';
 
 // ── Helper: formatear fecha ───────────────────────────────────────────────────
 function formatear_fecha($fecha) {
@@ -531,9 +530,6 @@ usort($documentos, fn($a, $b) => strtotime($b['fecha']) - strtotime($a['fecha'])
                     <option value="acta"        <?php echo $tipo_filter === 'acta'        ? 'selected' : ''; ?>>Actas</option>
                 </select>
 
-                <select id="categoriaFilter" class="filter-select">
-                    <option value="todas" <?php echo $categoria_filter === 'todas' ? 'selected' : ''; ?>>Todas las categorías</option>
-                </select>
             </div>
 
             <div class="view-toggle">
@@ -1096,7 +1092,6 @@ usort($documentos, fn($a, $b) => strtotime($b['fecha']) - strtotime($a['fecha'])
             const url = new URL(window.location.href);
             url.searchParams.set('search',    document.getElementById('searchInput').value);
             url.searchParams.set('tipo',      document.getElementById('tipoFilter').value);
-            url.searchParams.set('categoria', document.getElementById('categoriaFilter').value);
             window.location.href = url.toString();
         }
 
@@ -1104,7 +1099,6 @@ usort($documentos, fn($a, $b) => strtotime($b['fecha']) - strtotime($a['fecha'])
             if (e.key === 'Enter') applyFilters();
         });
         document.getElementById('tipoFilter').addEventListener('change', applyFilters);
-        document.getElementById('categoriaFilter').addEventListener('change', applyFilters);
 
         // Toggle vista grid / list
         document.querySelectorAll('.view-btn').forEach(btn => {
