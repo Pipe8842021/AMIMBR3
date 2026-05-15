@@ -44,11 +44,13 @@ $todos_los_videos = [
     ['id'=>1,'roles'=>['admin'],
      'titulo'=>'Gestión completa de usuarios',
      'descripcion'=>'Aprende a crear, editar y gestionar usuarios del sistema, asignar roles y permisos.',
-     'duracion'=>'12:30','categoria'=>'Usuarios'],
+     'duracion'=>'12:30','categoria'=>'Usuarios',
+     'archivo'=>'../../assets/video/Video_Modulo_GUsuario.mp4'],
     ['id'=>2,'roles'=>['admin'],
      'titulo'=>'Configuración de cursos y asignaciones',
      'descripcion'=>'Tutorial completo para crear cursos, asignar profesores y gestionar inscripciones.',
-     'duracion'=>'15:48','categoria'=>'Cursos'],
+     'duracion'=>'15:48','categoria'=>'Cursos',
+     'archivo'=>'../../assets/video/Video_Modulo_GCursos.mp4'],
     // Profesor
     ['id'=>3,'roles'=>['profesor'],
      'titulo'=>'Cómo gestionar tu lista de estudiantes',
@@ -307,9 +309,21 @@ $categorias = array_values(array_filter(
 
             <div class="videos-grid">
                 <?php foreach ($videos_tutoriales as $video): ?>
-                <div class="video-card" data-video-id="<?php echo $video['id']; ?>">
+                <div class="video-card<?php echo !empty($video['archivo']) ? ' has-video' : ''; ?>"
+                     data-video-id="<?php echo $video['id']; ?>"
+                     data-video-src="<?php echo !empty($video['archivo']) ? htmlspecialchars($video['archivo']) : ''; ?>"
+                     data-video-title="<?php echo htmlspecialchars($video['titulo']); ?>">
                     <div class="video-thumbnail">
+                        <?php if (!empty($video['archivo'])): ?>
+                        <video class="video-preview"
+                               src="<?php echo htmlspecialchars($video['archivo']); ?>"
+                               preload="metadata" muted playsinline></video>
+                        <?php else: ?>
                         <div class="thumbnail-placeholder">
+                            <span class="material-symbols-rounded">play_circle</span>
+                        </div>
+                        <?php endif; ?>
+                        <div class="video-play-overlay">
                             <span class="material-symbols-rounded">play_circle</span>
                         </div>
                         <div class="video-duration"><?php echo $video['duracion']; ?></div>
@@ -439,6 +453,23 @@ $categorias = array_values(array_filter(
             </div>
         </div>
     </main>
+
+    <!-- Modal Video Player -->
+    <div class="video-modal-overlay" id="videoModalOverlay">
+        <div class="video-modal-box">
+            <div class="video-modal-header">
+                <h2 id="videoModalTitle"></h2>
+                <button class="video-modal-close" id="videoModalClose">
+                    <span class="material-symbols-rounded">close</span>
+                </button>
+            </div>
+            <div class="video-modal-body">
+                <video id="videoModalPlayer" controls>
+                    Tu navegador no soporta la reproducción de video.
+                </video>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal Guías Visuales -->
     <div class="guia-modal-overlay" id="guiaModalOverlay">
@@ -755,7 +786,52 @@ $categorias = array_values(array_filter(
         );
         closeBtn.addEventListener('click', closeGuia);
         overlay.addEventListener('click', e => { if (e.target === overlay) closeGuia(); });
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeGuia(); });
+
+        // ── Modal Video Player ─────────────────────────────────────
+        const videoOverlay = document.getElementById('videoModalOverlay');
+        const videoPlayer  = document.getElementById('videoModalPlayer');
+        const videoTitle   = document.getElementById('videoModalTitle');
+        const videoClose   = document.getElementById('videoModalClose');
+
+        function openVideo(card) {
+            const src = card.dataset.videoSrc;
+            if (!src) return;
+            videoTitle.textContent = card.dataset.videoTitle || '';
+            videoPlayer.src = src;
+            videoPlayer.load();
+            videoOverlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeVideo() {
+            videoPlayer.pause();
+            videoPlayer.src = '';
+            videoOverlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        document.querySelectorAll('.video-card.has-video').forEach(card => {
+            card.querySelector('.video-thumbnail').addEventListener('click', () => openVideo(card));
+            card.querySelector('.btn-play').addEventListener('click', () => openVideo(card));
+        });
+
+        // Reemplazar duración hardcodeada con la duración real del video
+        document.querySelectorAll('.video-preview').forEach(video => {
+            video.addEventListener('loadedmetadata', function () {
+                const total   = Math.round(this.duration);
+                const minutes = Math.floor(total / 60);
+                const seconds = (total % 60).toString().padStart(2, '0');
+                const badge   = this.closest('.video-thumbnail').querySelector('.video-duration');
+                if (badge) badge.textContent = `${minutes}:${seconds}`;
+            });
+        });
+
+        videoClose.addEventListener('click', closeVideo);
+        videoOverlay.addEventListener('click', e => { if (e.target === videoOverlay) closeVideo(); });
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') { closeGuia(); closeVideo(); }
+        });
 
     })();
     </script>
