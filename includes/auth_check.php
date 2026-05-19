@@ -18,14 +18,14 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_rol'])) {
     $_SESSION['redirect_after_login'] = $_SERVER['REQUEST_URI'];
     
     // Determinar la ruta al login según la ubicación actual
-    $login_path = '/AMIMBR3/auth/login.php';
+    $login_path = '/auth/login.php';
     
     // Si estamos en una subcarpeta diferente, ajustar la ruta
     $current_dir = dirname($_SERVER['PHP_SELF']);
     if (strpos($current_dir, '/modules/') !== false) {
-        $login_path = '/AMIMBR3/auth/login.php';
+        $login_path = '/auth/login.php';
     } elseif (strpos($current_dir, '/auth/') !== false) {
-        $login_path = '/AMIMBR3/auth/login.php';
+        $login_path = '/auth/login.php';
     }
     
     header("Location: $login_path");

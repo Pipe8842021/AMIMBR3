@@ -516,7 +516,7 @@ if (file_exists('../../includes/header.php')) require_once '../../includes/heade
             <div class="modal-form-group">
                 <label>Enlace <span style="font-size:0.78rem;color:var(--text-secondary);">(opcional)</span></label>
                 <input type="text" name="enlace" class="modal-form-control"
-                       placeholder="/AMIMBR3/modules/...">
+                       placeholder="/modules/...">
             </div>
 
             <div class="modal-form-group">

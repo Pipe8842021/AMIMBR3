@@ -95,7 +95,7 @@ class NotificacionesHelper {
             "Se ha registrado un nuevo $rol_texto: $nombre_nuevo.",
             $emisor,
             'normal',
-            '/AMIMBR3/modules/usuarios/index.php'
+            '/modules/usuarios/index.php'
         );
     }
 
@@ -115,7 +115,7 @@ class NotificacionesHelper {
             "El usuario $nombre_usuario ha sido actualizado.",
             $emisor,
             'baja',
-            '/AMIMBR3/modules/usuarios/index.php'
+            '/modules/usuarios/index.php'
         );
     }
 
@@ -135,7 +135,7 @@ class NotificacionesHelper {
             "El usuario $nombre_usuario ha sido eliminado del sistema.",
             $emisor,
             'alta',
-            '/AMIMBR3/modules/usuarios/index.php'
+            '/modules/usuarios/index.php'
         );
     }
 
@@ -157,7 +157,7 @@ class NotificacionesHelper {
             "Se recibió una preinscripción de $nombre_solicitante para el curso: $curso.",
             'Sistema',
             'alta',
-            '/AMIMBR3/modules/inscripciones/prematriculas/index.php'
+            '/modules/inscripciones/prematriculas/index.php'
         );
     }
 
