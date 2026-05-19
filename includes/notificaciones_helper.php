@@ -53,7 +53,6 @@ class NotificacionesHelper {
         ?string $enlace = null
     ): void {
         try {
-            // Construir placeholders para IN (?,?,?)
             $placeholders = implode(',', array_fill(0, count($roles), '?'));
             $stmt = $pdo->prepare("
                 SELECT id FROM usuarios
@@ -69,9 +68,6 @@ class NotificacionesHelper {
             error_log("[NotificacionesHelper::crearParaRoles] " . $e->getMessage());
         }
     }
-
-
-    // EVENTOS DE USUARIO
 
 
     public static function usuarioCreado(
@@ -99,9 +95,6 @@ class NotificacionesHelper {
         );
     }
 
-    /**
-     * Notifica a los admins cuando se edita un usuario.
-     */
     public static function usuarioEditado(
         PDO $pdo,
         string $nombre_usuario,
@@ -119,9 +112,6 @@ class NotificacionesHelper {
         );
     }
 
-    /**
-     * Notifica a los admins cuando se elimina un usuario.
-     */
     public static function usuarioEliminado(
         PDO $pdo,
         string $nombre_usuario,
@@ -139,11 +129,6 @@ class NotificacionesHelper {
         );
     }
 
-    // EVENTOS DE PREINSCRIPCIÓN
-
-    /**
-     * Notifica a los admins cuando llega una nueva preinscripción.
-     */
     public static function nuevaPreinscripcion(
         PDO $pdo,
         string $nombre_solicitante,
@@ -161,9 +146,6 @@ class NotificacionesHelper {
         );
     }
 
-    /**
-     * Notifica al alumno cuando su preinscripción cambia de estado.
-     */
     public static function estadoPreinscripcionCambiado(
         PDO $pdo,
         int $usuario_id,
@@ -191,11 +173,6 @@ class NotificacionesHelper {
         );
     }
 
-    // EVENTOS DE EVENTO / ACTIVIDAD
-
-    /**
-     * Notifica a todos los usuarios activos sobre un nuevo evento.
-     */
     public static function nuevoEvento(
         PDO $pdo,
         string $titulo_evento,
@@ -215,9 +192,6 @@ class NotificacionesHelper {
         );
     }
 
-    /**
-     * Notifica a todos los usuarios activos sobre un evento editado.
-     */
     public static function eventoEditado(
         PDO $pdo,
         string $titulo_evento,
@@ -236,9 +210,6 @@ class NotificacionesHelper {
         );
     }
 
-    // CONTADORES PARA EL MÓDULO DE NOTIFICACIONES
-
-    
     public static function obtenerEstadisticas(PDO $pdo, int $usuario_id): array {
         try {
             $stmt = $pdo->prepare("
@@ -265,9 +236,6 @@ class NotificacionesHelper {
         }
     }
 
-    /**
-     * Devuelve solo el número de notificaciones sin leer de un usuario.
-     */
     public static function contarSinLeer(PDO $pdo, int $usuario_id): int {
         try {
             $stmt = $pdo->prepare("

@@ -1,7 +1,4 @@
 <?php
-/**
- * cron_pagos.php — Amimbré
- */
 
 if (PHP_SAPI !== 'cli') {
     $token_esperado = 'CAMBIA_ESTE_TOKEN_SECRETO';
@@ -19,11 +16,9 @@ $meses_es = [1=>'Enero',2=>'Febrero',3=>'Marzo',4=>'Abril',5=>'Mayo',6=>'Junio',
              7=>'Julio',8=>'Agosto',9=>'Septiembre',10=>'Octubre',11=>'Noviembre',12=>'Diciembre'];
 
 try {
-    // 1. Marcar pendientes vencidos
     $n = $pdo->exec("UPDATE pagos SET estado='vencido' WHERE estado='pendiente' AND fecha_vencimiento < CURDATE()");
     $log[] = "Pagos marcados como vencidos: $n";
 
-    // 2. Solo matrículas ACTIVAS con grupo y precio
     $matriculas = $pdo->query("
         SELECT m.id AS matricula_id, m.estudiante_id, m.fecha_matricula,
                c.precio_mensual, c.nombre AS curso_nombre

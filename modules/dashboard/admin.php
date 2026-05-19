@@ -1,16 +1,10 @@
 <?php
-/**
- * Dashboard Administrador - Amimbré
- * Vista completa del panel de administración
- */
-
 require_once '../../config/session.php';
 require_once '../../config/database.php';
 require_once '../../includes/auth_check.php';
 
 require_role('admin');
 
-// Obtener datos del usuario actual
 try {
     $stmt = $pdo->prepare("
         SELECT id, nombre, email, rol, estado, foto_perfil 
@@ -30,19 +24,15 @@ try {
     die("Error del sistema. Por favor, intenta más tarde.");
 }
 
-// Mensaje flash
 $flash = null;
 if (function_exists('get_flash_message')) {
     $flash = get_flash_message();
 }
 
-// ─── Estadísticas principales ───────────────────────────────────────────────
 try {
-    // Estudiantes activos
     $stmt = $pdo->query("SELECT COUNT(*) FROM usuarios WHERE rol='estudiante' AND estado='activo'");
     $estudiantes_activos = (int)$stmt->fetchColumn();
 
-    // Estudiantes mes anterior (para calcular cambio)
     $stmt = $pdo->query("
         SELECT COUNT(*) FROM usuarios 
         WHERE rol='estudiante' AND estado='activo'
@@ -53,37 +43,30 @@ try {
         ? round((($estudiantes_activos - $estudiantes_mes_pasado) / $estudiantes_mes_pasado) * 100)
         : 0;
 
-    // Cursos y grupos activos
     $stmt = $pdo->query("SELECT COUNT(*) FROM cursos WHERE estado='activo'");
     $cursos_activos = (int)$stmt->fetchColumn();
 
     $stmt = $pdo->query("SELECT COUNT(*) FROM grupos WHERE estado='activo'");
     $grupos_activos = (int)$stmt->fetchColumn();
 
-    // Profesores activos
     $stmt = $pdo->query("SELECT COUNT(*) FROM usuarios WHERE rol='profesor' AND estado='activo'");
     $profesores_activos = (int)$stmt->fetchColumn();
 
-    // Prematrículas pendientes
     $stmt = $pdo->query("SELECT COUNT(*) FROM preinscripciones WHERE estado='pendiente'");
     $prematriculas_pendientes = (int)$stmt->fetchColumn();
 
-    // Ingresos del mes actual (pagos confirmados)
     $stmt = $pdo->query("
         SELECT COALESCE(SUM(monto), 0) FROM pagos 
         WHERE estado='pagado' AND MONTH(fecha_pago)=MONTH(NOW()) AND YEAR(fecha_pago)=YEAR(NOW())
     ");
     $ingresos_mes = (float)$stmt->fetchColumn();
 
-    // Pagos vencidos
     $stmt = $pdo->query("SELECT COUNT(*) FROM pagos WHERE estado='vencido'");
     $pagos_vencidos = (int)$stmt->fetchColumn();
 
-    // Matrículas activas
     $stmt = $pdo->query("SELECT COUNT(*) FROM matriculas WHERE estado='activa'");
     $matriculas_activas = (int)$stmt->fetchColumn();
 
-    // ─── Actividad reciente (logs_actividad + logs_acceso combinados) ────────
     $stmt = $pdo->query("
         SELECT 
             la.fecha AS fecha,
@@ -98,7 +81,6 @@ try {
     ");
     $actividades = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // ─── Últimas prematrículas ───────────────────────────────────────────────
     $stmt = $pdo->query("
         SELECT nombres_apellidos, programa, taller, estado, fecha_preinscripcion
         FROM preinscripciones
@@ -107,7 +89,6 @@ try {
     ");
     $ultimas_prematriculas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // ─── Grupos con mayor ocupación ─────────────────────────────────────────
     $stmt = $pdo->query("
         SELECT 
             g.nombre AS grupo,
@@ -125,7 +106,6 @@ try {
     ");
     $grupos_ocupacion = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // ─── Nuevos estudiantes por mes (últimos 6 meses) ────────────────────────
     $stmt = $pdo->query("
         SELECT
             DATE_FORMAT(MIN(fecha_registro), '%b') AS mes_label,
@@ -146,7 +126,6 @@ try {
     $actividades = $ultimas_prematriculas = $grupos_ocupacion = $nuevos_por_mes = [];
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
 function tiempo_transcurrido($fecha) {
     $ahora  = new DateTime();
     $tiempo = new DateTime($fecha);
@@ -180,7 +159,6 @@ function estado_badge($estado) {
     return $mapa[$estado] ?? ['txt' => ucfirst($estado), 'cls' => 'badge-info'];
 }
 
-// Fecha en español
 date_default_timezone_set('America/Bogota');
 $dias   = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 $meses  = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -214,7 +192,6 @@ if (file_exists('../../includes/header.php')) {
 
 <main class="main-content">
 
-    <!-- ── Encabezado ────────────────────────────────────────────────────── -->
     <div class="dashboard-header">
         <div class="dashboard-title">
             <h1>Menú principal</h1>
@@ -233,7 +210,6 @@ if (file_exists('../../includes/header.php')) {
     </div>
     <?php endif; ?>
 
-    <!-- ── Alertas rápidas ───────────────────────────────────────────────── -->
     <?php if ($prematriculas_pendientes > 0 || $pagos_vencidos > 0): ?>
     <div class="alert-strip">
         <?php if ($prematriculas_pendientes > 0): ?>
@@ -253,7 +229,6 @@ if (file_exists('../../includes/header.php')) {
     </div>
     <?php endif; ?>
 
-    <!-- ── Tarjetas de estadísticas ─────────────────────────────────────── -->
     <div class="stats-grid">
 
         <div class="stat-card">
@@ -318,10 +293,8 @@ if (file_exists('../../includes/header.php')) {
 
     </div><!-- /stats-grid -->
 
-    <!-- ── Fila principal: Actividad + Acciones rápidas ─────────────────── -->
     <div class="content-grid">
 
-        <!-- Actividad reciente -->
         <div class="card activity-container">
             <div class="section-header">
                 <div>
@@ -365,7 +338,6 @@ if (file_exists('../../includes/header.php')) {
             </div>
         </div>
 
-        <!-- Acciones rápidas -->
         <div class="card quick-actions-container">
             <div class="section-header">
                 <div>
@@ -435,10 +407,8 @@ if (file_exists('../../includes/header.php')) {
 
     </div><!-- /content-grid -->
 
-    <!-- ── Fila secundaria: Prematrículas recientes + Ocupación grupos ───── -->
     <div class="content-grid content-grid--secondary">
 
-        <!-- Últimas prematrículas -->
         <div class="card">
             <div class="section-header">
                 <div>
@@ -479,7 +449,6 @@ if (file_exists('../../includes/header.php')) {
             </div>
         </div>
 
-        <!-- Ocupación de grupos -->
         <div class="card">
             <div class="section-header">
                 <div>
@@ -520,7 +489,6 @@ if (file_exists('../../includes/header.php')) {
 
     </div><!-- /content-grid secondary -->
 
-    <!-- ── Mini resumen de personal ─────────────────────────────────────── -->
     <div class="content-grid content-grid--thirds">
 
         <div class="card mini-stat">

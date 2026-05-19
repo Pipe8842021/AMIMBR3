@@ -17,7 +17,6 @@ if (isset($_GET['msg'])) {
     }
 }
 
-// AJAX GET: obtener estudiantes activos de un grupo
 if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])
     && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest'
     && $_SERVER['REQUEST_METHOD'] === 'GET'
@@ -40,9 +39,7 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])
     exit;
 }
 
-// En la sección de manejo de POST de admin.php
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'crear_grupo') {
-    // Datos del Grupo
     $nombre       = trim($_POST['nombre']       ?? '');
     $curso_id     = (int)($_POST['curso_id']    ?? 0);
     $profesor_id  = (int)($_POST['profesor_id'] ?? 0);
@@ -52,7 +49,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'crear
     $fecha_fin    = ($_POST['fecha_fin'] ?? '')  ?: null;
     $estado       = $_POST['estado']            ?? 'planificado';
 
-    // Datos del Horario (Nuevos campos)
     $dia_semana   = $_POST['dia_semana']        ?? '';
     $hora_inicio  = $_POST['hora_inicio']       ?? '';
     $hora_fin     = $_POST['hora_fin']          ?? '';
@@ -63,10 +59,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'crear
         try {
             $pdo->beginTransaction();
 
-            // 1. Validar conflictos de Horario/Aula/Profesor antes de insertar
             $conflictos = [];
 
-            // Conflicto de AULA
             if (!empty($aula_input)) {
                 $stmt = $pdo->prepare("
                     SELECT g.nombre FROM horarios h 
@@ -78,7 +72,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'crear
                 if ($stmt->fetch()) $conflictos[] = "El aula ya está ocupada en ese horario.";
             }
 
-            // Conflicto de PROFESOR
             if ($profesor_id) {
                 $stmt = $pdo->prepare("
                     SELECT g.nombre FROM horarios h 
@@ -94,7 +87,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'crear
                 throw new Exception(implode(" ", $conflictos));
             }
 
-            // 2. Insertar Grupo
             $stmt = $pdo->prepare("
                 INSERT INTO grupos (nombre, curso_id, profesor_id, cupo_maximo, aula, fecha_inicio, fecha_fin, estado, horario)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -102,7 +94,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'crear
             $stmt->execute([$nombre, $curso_id, $profesor_id ?: null, $cupo_maximo, $aula_input ?: null, $fecha_inicio, $fecha_fin, $estado, $horario_texto]);
             $nuevo_id = $pdo->lastInsertId();
 
-            // 3. Insertar Horario vinculado
             $stmtHorario = $pdo->prepare("
                 INSERT INTO horarios (grupo_id, dia_semana, hora_inicio, hora_fin, aula) 
                 VALUES (?, ?, ?, ?, ?)
@@ -118,7 +109,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'crear
         }
     }
 }
-// Respuesta AJAX para crear_grupo
 if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
     strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest' &&
     ($_POST['action'] ?? '') === 'crear_grupo') {
@@ -131,7 +121,6 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
     exit;
 }
 
-// Manejo de edición de grupo
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'editar') {
     $id_edit      = (int)($_POST['id']           ?? 0);
     $nombre       = trim($_POST['nombre']        ?? '');
@@ -167,7 +156,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edita
     }
 }
 
-// Manejo de eliminación de grupo
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'eliminar_grupo') {
     $id_del = (int)($_POST['id_del'] ?? 0);
     if ($id_del) {
@@ -189,7 +177,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'elimi
     }
 }
 
-// Manejo de cambio de estado
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cambiar_estado') {
     $id_grupo     = (int)($_POST['id']           ?? 0);
     $nuevo_estado = $_POST['nuevo_estado']        ?? '';
@@ -207,13 +194,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cambi
     }
 }
 
-// Finalizar grupo con generación automática de certificados
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'finalizar_grupo') {
     $id_grupo = (int)($_POST['id'] ?? 0);
     $is_ajax_fin = !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
                 && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
 
-    // Mapa de calificaciones por estudiante enviadas desde el modal
     $cal_map = [];
     $cals_raw = json_decode($_POST['calificaciones_json'] ?? '[]', true) ?: [];
     foreach ($cals_raw as $c) {
@@ -252,7 +237,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'final
                 $chk->execute([$mat['estudiante_id'], $id_grupo]);
                 if ($chk->fetch()) continue;
 
-                // Calificación individual del estudiante; si no se envió, usa 5.0
                 $cal_est = $cal_map[(int)$mat['estudiante_id']] ?? 5.0;
 
                 $cnt = (int)$pdo->query("SELECT COUNT(*) FROM calificaciones_certificados WHERE YEAR(fecha_aprobacion) = $year")->fetchColumn();
@@ -296,7 +280,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'final
 }
 
 try {
-    // Filtros GET
     $filtro_estado = $_GET['estado'] ?? '';
     $filtro_buscar = trim($_GET['buscar'] ?? '');
 
@@ -345,7 +328,6 @@ try {
     $stmt->execute($params);
     $grupos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // --- NUEVA LÓGICA: Obtener horarios para el MODAL ---
     $horarios_modal = [];
     if (!empty($grupos)) {
         $ids = array_column($grupos, 'id');
@@ -357,9 +339,7 @@ try {
         }
     }
     $dias_esp = ['mon' => 'Lunes', 'tue' => 'Martes', 'wed' => 'Miércoles', 'thu' => 'Jueves', 'fri' => 'Viernes', 'sat' => 'Sábado', 'sun' => 'Domingo'];
-    // ----------------------------------------------------
 
-    // Totales por estado para los chips
     $totales = [];
     foreach ($pdo->query("SELECT estado, COUNT(*) AS n FROM grupos GROUP BY estado")->fetchAll(PDO::FETCH_ASSOC) as $r) {
         $totales[$r['estado']] = $r['n'];
@@ -763,7 +743,6 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
             color: var(--primary-green);
         }
     </style>
-    <!-- Modal para Crear Nuevo Grupo -->
     <div id="modalCrearGrupo" class="modal-overlay">
         <div class="modal-content" style="max-width: 600px;">
             <div class="modal-header">
@@ -860,7 +839,6 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
             </div>
         </div>
     </div>
-    <!-- Modal para Editar Grupo -->
     <div id="modalEditarGrupo" class="modal-overlay">
         <div class="modal-content" style="max-width: 700px;">
             <div class="modal-header">
@@ -954,7 +932,6 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
         </div>
     </div>
 
-    <!-- Modal Finalizar Grupo con generación de certificados -->
     <div id="modalFinalizarGrupo" class="modal-overlay">
         <div class="modal-content" style="max-width: 580px;">
             <div class="modal-header">
@@ -968,7 +945,6 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
             </div>
             <div class="modal-body" style="padding: 8px 0;">
 
-                <!-- Encabezado del grupo -->
                 <div style="background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.2); border-radius:12px; padding:14px 16px; margin-bottom:14px; display:flex; align-items:center; gap:12px;">
                     <span class="material-symbols-rounded" style="color:var(--primary-green); font-size:26px; flex-shrink:0;">workspace_premium</span>
                     <div>
@@ -977,7 +953,6 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
                     </div>
                 </div>
 
-                <!-- Rellenar todos a la vez -->
                 <div id="finalizar-fill-all" style="display:none; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
                     <span style="font-size:0.83rem; color:var(--text-secondary);">Aplicar misma nota a todos:</span>
                     <input type="number" id="finalizar-cal-todos" min="0.1" max="5.0" step="0.1" placeholder="0.0–5.0"
@@ -988,16 +963,13 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
                     </button>
                 </div>
 
-                <!-- Cargando -->
                 <div id="finalizar-loading" style="text-align:center; padding:28px 16px; color:var(--text-secondary); font-size:0.9rem;">
                     <span class="material-symbols-rounded" style="font-size:30px; display:block; margin-bottom:8px; opacity:0.4;">hourglass_empty</span>
                     Cargando estudiantes...
                 </div>
 
-                <!-- Lista de estudiantes con calificación individual -->
                 <div id="finalizar-lista" style="display:none; max-height:340px; overflow-y:auto; border:1px solid var(--border-color); border-radius:12px; margin-bottom:4px;"></div>
 
-                <!-- Sin estudiantes -->
                 <div id="finalizar-sin-estudiantes" style="display:none; border-radius:10px; padding:12px 14px; font-size:0.86rem; color:var(--text-secondary); background:rgba(249,115,22,0.08); border:1px solid rgba(249,115,22,0.2);">
                     <span class="material-symbols-rounded" style="vertical-align:middle; font-size:18px; margin-right:4px;">info</span>
                     Este grupo no tiene estudiantes activos. Solo se cambiará el estado a Finalizado.
@@ -1015,7 +987,6 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
         </div>
     </div>
 
-    <!-- Modal Confirmación Eliminar -->
     <div id="modalEliminar" class="modal-overlay">
         <div class="modal-content" style="max-width: 460px;">
             <div class="modal-header">
@@ -1053,7 +1024,6 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
     </div>
 
     <script>
-        // ── Dropdowns de estado ──────────────────────────────
         document.querySelectorAll('.dropdown-estado').forEach(dd => {
             const btn  = dd.querySelector('.tbl-btn.estado');
             const menu = dd.querySelector('.dropdown-estado-menu');
@@ -1069,7 +1039,6 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
             document.querySelectorAll('.dropdown-estado-menu.open').forEach(m => m.classList.remove('open'));
         });
 
-        // ── Modal Horarios ───────────────────────────────────
         const horariosData = <?php echo json_encode($horarios_modal); ?>;
         const diasEsp = <?php echo json_encode($dias_esp); ?>;
 
@@ -1112,7 +1081,6 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
             document.getElementById('modalHorarios').classList.remove('active');
         }
 
-        // ── Alertas personalizadas dentro de modales ─────────
         function mostrarAlertaModal(divId, msg) {
             const div = document.getElementById(divId);
             div.innerHTML = `<span class="material-symbols-rounded">error</span>${msg}`;
@@ -1124,7 +1092,6 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
             if (div) div.style.display = 'none';
         }
 
-        // ── Auto-ocultar alertas de página ───────────────────
         setTimeout(() => {
             document.querySelectorAll('.alert').forEach(a => {
                 a.style.transition = 'opacity 0.5s ease';
@@ -1133,7 +1100,6 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
             });
         }, 4000);
 
-        // ── Modal Crear ──────────────────────────────────────
         function abrirModalCrear() {
             ocultarAlertaModal('modal-alert-crear');
             document.getElementById('modalCrearGrupo').classList.add('active');
@@ -1183,7 +1149,6 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
             ocultarAlertaModal('modal-alert-crear');
         });
 
-        // ── Modal Editar ─────────────────────────────────────
         function abrirModalEditar(datos) {
             ocultarAlertaModal('modal-alert-editar');
 
@@ -1228,7 +1193,6 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
             ocultarAlertaModal('modal-alert-editar');
         });
 
-        // ── Modal Eliminar ───────────────────────────────────
         function abrirModalEliminar(id, nombre) {
             document.getElementById('del-id').value = id;
             document.getElementById('del-nombre-grupo').textContent = nombre;
@@ -1238,7 +1202,6 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
             document.getElementById('modalEliminar').classList.remove('active');
         }
 
-        // ── Modal Finalizar Grupo ────────────────────────────
         function abrirModalFinalizar(id, nombre, estudiantesActivos) {
             document.getElementById('finalizar-grupo-id').value = id;
             document.getElementById('finalizar-grupo-nombre').textContent = nombre;
@@ -1329,7 +1292,6 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
             const btn = document.getElementById('btn-confirmar-finalizar');
             alertDiv.style.display = 'none';
 
-            // Recoger calificación por estudiante
             const calificaciones = [];
             let valido = true;
             document.querySelectorAll('#finalizar-lista .cal-input').forEach(inp => {
@@ -1389,14 +1351,12 @@ $fecha_hoy = $dias[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . 
             });
         }
 
-        // ── Cerrar al clic en overlay ────────────────────────
         document.querySelectorAll('.modal-overlay').forEach(overlay => {
             overlay.addEventListener('click', function(e) {
                 if (e.target === this) this.classList.remove('active');
             });
         });
 
-        // ── Indicador scroll horizontal tabla de grupos ──────
         (function () {
             var container = document.querySelector('.table-wrapper');
             if (!container) return;

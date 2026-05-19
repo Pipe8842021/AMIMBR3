@@ -1,8 +1,4 @@
 <?php
-/**
- * Grupos – Ver detalle del grupo
- * Accesible por admin y profesor (solo su grupo)
- */
 require_once '../../config/session.php';
 require_once '../../config/database.php';
 require_once '../../includes/auth_check.php';
@@ -18,7 +14,6 @@ $inline_error   = null;
 $inline_success = null;
 $open_modal     = null; // nombre del modal a reabrir en error
 
-// ── Handler: eliminar grupo ───────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'eliminar_grupo') {
     $id_del = (int)($_POST['id_del'] ?? 0);
     if ($id_del === $id) {
@@ -42,7 +37,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'elimi
     }
 }
 
-// ── Handler: editar grupo ─────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'editar_grupo') {
     $nombre       = trim($_POST['nombre']       ?? '');
     $curso_id     = (int)($_POST['curso_id']    ?? 0);
@@ -74,7 +68,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edita
     }
 }
 
-// ── Handler: guardar asistencia / bitácora ────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'guardar_asistencia') {
     $titulo           = trim($_POST['titulo']        ?? '');
     $fecha_clase      = $_POST['fecha_clase']        ?? '';
@@ -134,7 +127,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'guard
 
             $pdo->commit();
 
-            // Evidencias fotográficas
             if (!empty($_FILES['evidencias']['name'][0])) {
                 $upload_dir    = '../../assets/uploads/bitacoras/';
                 if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
@@ -165,7 +157,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'guard
     }
 }
 
-// Mensajes flash GET
 $msg_map = [
     'creado'     => ['type' => 'success', 'text' => 'Grupo creado correctamente.'],
     'editado'    => ['type' => 'success', 'text' => 'Grupo actualizado correctamente.'],
@@ -189,16 +180,13 @@ try {
     $grupo = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$grupo) { header("Location: index.php"); exit; }
 
-    // El profesor solo puede ver sus grupos
     if ($rol === 'profesor' && $grupo['profesor_id'] != $uid) {
         header("Location: index.php"); exit;
     }
 
-    // Datos para modales
     $cursos_edit    = $pdo->query("SELECT id, nombre, nivel FROM cursos WHERE estado='activo' ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
     $profesores_edit = $pdo->query("SELECT id, nombre FROM usuarios WHERE rol='profesor' AND estado='activo' ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
 
-    // Estudiantes matriculados
     $stmt = $pdo->prepare("
         SELECT u.id, u.nombre, u.email, u.telefono, u.foto_perfil,
                m.id AS matricula_id, m.fecha_matricula, m.estado AS estado_matricula
@@ -210,7 +198,6 @@ try {
     $stmt->execute([$id]);
     $estudiantes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Horarios del grupo
     $stmt = $pdo->prepare("
         SELECT * FROM horarios WHERE grupo_id = ?
         ORDER BY FIELD(dia_semana,'lunes','martes','miercoles','jueves','viernes','sabado','domingo')
@@ -218,7 +205,6 @@ try {
     $stmt->execute([$id]);
     $horarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Últimas bitácoras
     $stmt = $pdo->prepare("
         SELECT b.id, b.titulo, b.fecha_clase, b.hora_inicio, b.hora_fin,
                b.temas_tratados, b.estado,
@@ -232,7 +218,6 @@ try {
     $stmt->execute([$id]);
     $bitacoras = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Estadísticas de asistencia del grupo
     $stmt = $pdo->prepare("
         SELECT
             COUNT(*) AS total,
@@ -260,7 +245,6 @@ try {
     $stmt->execute([$id]);
     $bitacoras_asist = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Para cada bitácora, cargar sus registros de asistencia de una sola vez
     $registros_asist = [];
     if (count($bitacoras_asist) > 0) {
         $ids_bitacoras = array_column($bitacoras_asist, 'id');
@@ -276,7 +260,6 @@ try {
         }
     }
 
-    // Totales por estudiante (para la columna de resumen)
     $stmt = $pdo->prepare("
         SELECT
             ba.estudiante_id,
@@ -344,7 +327,6 @@ function iniciales($nombre) {
     </div>
     <?php endif; ?>
 
-    <!-- ── Encabezado del detalle ────────────────────────────────────────── -->
     <div class="detalle-header">
         <div class="detalle-titulo">
             <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
@@ -389,7 +371,6 @@ function iniciales($nombre) {
         <?php endif; ?>
     </div>
 
-    <!-- ── Fila de info rápida ───────────────────────────────────────────── -->
     <div class="detalle-grid" style="margin-bottom:20px;">
 
         <div class="info-card">
@@ -448,7 +429,6 @@ function iniciales($nombre) {
 
     </div>
 
-    <!-- ── Horarios configurados ─────────────────────────────────────────── -->
     <?php if (count($horarios) > 0): ?>
     <div class="card" style="margin-bottom:20px;">
         <div class="section-header">
@@ -480,10 +460,8 @@ function iniciales($nombre) {
     </div>
     <?php endif; ?>
 
-    <!-- ── Fila: Estudiantes + Bitácoras ─────────────────────────────────── -->
     <div class="detalle-grid">
 
-        <!-- Estudiantes -->
         <div class="card">
             <div class="section-header">
                 <div>
@@ -513,7 +491,6 @@ function iniciales($nombre) {
             <?php endif; ?>
         </div>
 
-        <!-- Bitácoras -->
         <div class="card">
             <div class="section-header">
                 <div>
@@ -561,7 +538,6 @@ function iniciales($nombre) {
 
     </div>
 
-    <!-- ── Tabla de asistencia por estudiante ───────────────────────────── -->
     <div class="card" style="margin-bottom: 24px;">
         <div class="section-header">
             <div>
@@ -584,7 +560,6 @@ function iniciales($nombre) {
         <?php if (count($bitacoras_asist) > 0 && count($estudiantes) > 0): ?>
 
         <?php
-        // Config visual por estado
         $asist_cfg = [
             'presente'    => ['icono' => 'check_circle', 'cls' => 'presente',    'title' => 'Presente'],
             'ausente'     => ['icono' => 'cancel',       'cls' => 'ausente',     'title' => 'Ausente'],
@@ -617,7 +592,6 @@ function iniciales($nombre) {
                         $bar_e = $pct_e === null ? '' : ($pct_e >= 75 ? 'bar-success' : ($pct_e >= 50 ? 'bar-warning' : 'bar-danger'));
                     ?>
                     <tr>
-                        <!-- Nombre del estudiante -->
                         <td class="asist-td-nombre">
                             <div style="display:flex; align-items:center; gap:9px;">
                                 <div class="est-avatar" style="width:30px;height:30px;font-size:0.72rem;flex-shrink:0;">
@@ -627,7 +601,6 @@ function iniciales($nombre) {
                             </div>
                         </td>
 
-                        <!-- Celda por cada bitácora -->
                         <?php foreach ($bitacoras_asist as $bit):
                             $reg = $registros_asist[$bit['id']][$est['id']] ?? null;
                             $cfg = $reg ? ($asist_cfg[$reg['estado']] ?? null) : null;
@@ -643,7 +616,6 @@ function iniciales($nombre) {
                         </td>
                         <?php endforeach; ?>
 
-                        <!-- Resumen del estudiante -->
                         <td class="asist-td-resumen">
                             <?php if ($tot['total'] > 0): ?>
                             <div class="asist-resumen-cell">
@@ -670,7 +642,6 @@ function iniciales($nombre) {
                     <?php endforeach; ?>
                 </tbody>
 
-                <!-- Fila de totales por clase -->
                 <tfoot>
                     <tr>
                         <td class="asist-td-nombre" style="font-weight:600; font-size:0.8rem; color:var(--text-secondary);">
@@ -703,7 +674,6 @@ function iniciales($nombre) {
             </table>
         </div>
 
-        <!-- Leyenda -->
         <div class="asist-leyenda">
             <?php foreach ($asist_cfg as $estado => $cfg): ?>
             <span class="asist-leyenda-item">
@@ -740,9 +710,6 @@ function iniciales($nombre) {
 
 </main>
 
-<!-- ══════════════════════════════════════════════════════
-     MODAL: Eliminar Grupo
-═══════════════════════════════════════════════════════ -->
 <div id="modalEliminar" class="modal-overlay">
     <div class="modal-content" style="max-width:460px;">
         <div class="modal-header">
@@ -779,9 +746,6 @@ function iniciales($nombre) {
     </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════
-     MODAL: Editar Grupo
-═══════════════════════════════════════════════════════ -->
 <div id="modalEditarGrupo" class="modal-overlay">
     <div class="modal-content" style="max-width:660px;">
         <div class="modal-header">
@@ -879,9 +843,6 @@ function iniciales($nombre) {
     </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════
-     MODAL: Registrar Asistencia / Nueva Bitácora
-═══════════════════════════════════════════════════════ -->
 <div id="modalAsistencia" class="modal-overlay">
     <div class="modal-content" style="max-width:860px;">
         <div class="modal-header">
@@ -903,7 +864,6 @@ function iniciales($nombre) {
             <form method="POST" id="formAsistenciaModal" enctype="multipart/form-data" novalidate>
                 <input type="hidden" name="action" value="guardar_asistencia">
 
-                <!-- Sección 1: Datos de la clase -->
                 <div style="background:var(--hover-bg);border:1px solid var(--border-color);border-radius:14px;padding:18px;margin-bottom:16px;">
                     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border-color);">
                         <span class="material-symbols-rounded" style="color:var(--primary-green);font-size:22px;">edit_note</span>
@@ -973,7 +933,6 @@ function iniciales($nombre) {
                     </div>
                 </div>
 
-                <!-- Sección 2: Lista de asistencia -->
                 <div style="background:var(--hover-bg);border:1px solid var(--border-color);border-radius:14px;padding:18px;">
                     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border-color);">
                         <span class="material-symbols-rounded" style="color:var(--primary-blue);font-size:22px;">fact_check</span>
@@ -1043,7 +1002,6 @@ function iniciales($nombre) {
 </div>
 
 <script>
-// ── Auto-ocultar flash ────────────────────────────────────────────────────
 setTimeout(() => {
     document.querySelectorAll('.alert').forEach(a => {
         a.style.transition = 'opacity 0.5s ease';
@@ -1052,14 +1010,12 @@ setTimeout(() => {
     });
 }, 4000);
 
-// ── Cerrar modales al clic en overlay ────────────────────────────────────
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', function(e) {
         if (e.target === this) this.classList.remove('active');
     });
 });
 
-// ── Modal Eliminar ────────────────────────────────────────────────────────
 function abrirModalEliminar(id, nombre) {
     document.getElementById('del-id').value = id;
     document.getElementById('del-nombre-grupo').textContent = nombre;
@@ -1069,7 +1025,6 @@ function cerrarModalEliminar() {
     document.getElementById('modalEliminar').classList.remove('active');
 }
 
-// ── Alertas personalizadas dentro de modales ─────────────────────────────
 function mostrarAlertaModal(divId, msg) {
     const div = document.getElementById(divId);
     if (!div) return;
@@ -1082,7 +1037,6 @@ function ocultarAlertaModal(divId) {
     if (div) div.style.display = 'none';
 }
 
-// ── Modal Editar ──────────────────────────────────────────────────────────
 function abrirModalEditar() {
     ocultarAlertaModal('modal-alert-editar-ver');
     document.getElementById('modalEditarGrupo').classList.add('active');
@@ -1114,7 +1068,6 @@ document.getElementById('formEditarModal').addEventListener('submit', function(e
     ocultarAlertaModal('modal-alert-editar-ver');
 });
 
-// ── Modal Asistencia ──────────────────────────────────────────────────────
 function abrirModalAsistencia() {
     ocultarAlertaModal('modal-alert-asistencia');
     document.getElementById('modalAsistencia').classList.add('active');
@@ -1158,7 +1111,6 @@ document.getElementById('formAsistenciaModal').addEventListener('submit', functi
     ocultarAlertaModal('modal-alert-asistencia');
 });
 
-// ── Auto-abrir modal si hubo error en POST ────────────────────────────────
 <?php if ($open_modal): ?>
 document.getElementById('<?= $open_modal ?>').classList.add('active');
 <?php endif; ?>

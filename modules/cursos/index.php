@@ -400,7 +400,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
                             </div>
 
                             <div class="curso-actions">
-                                <!-- Ver detalles: todos los roles -->
                                 <button onclick="abrirModalVer(<?php echo (int)$curso['id']; ?>)" class="btn-action btn-ver" title="Ver Detalles">
                                     <span class="material-symbols-rounded">visibility</span> Ver
                                 </button>
@@ -473,7 +472,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
 
     </main>
 
-    <!-- ── Modal Ver Curso (todos los roles) ─────────────── -->
     <div id="modalVerCurso" class="modal">
         <div class="modal-content modal-ver-content">
             <div class="modal-header modal-header-crear">
@@ -547,7 +545,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
     </div>
 
     <?php if ($es_admin): ?>
-    <!-- ── Modal Nuevo Grupo (desde ver curso) ───────────── -->
     <div id="modalNuevoGrupo" class="modal" style="z-index:10001">
         <div class="modal-content modal-crear-content">
 
@@ -655,7 +652,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
     <?php endif; ?>
 
     <script>
-    /* ── Modal Ver Curso ─────────────────────────────────── */
     let mv_datos = null;
 
     function _esc(str) {
@@ -783,11 +779,9 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
     </script>
 
     <?php if ($es_admin): ?>
-    <!-- ── Modal Crear Curso — Wizard ─────────────────────── -->
     <div id="modalCrearCurso" class="modal">
         <div class="modal-content modal-crear-content">
 
-            <!-- Header -->
             <div class="modal-header modal-header-crear">
                 <div class="modal-title-group">
                     <h2>Nuevo Curso</h2>
@@ -798,7 +792,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
                 </button>
             </div>
 
-            <!-- Stepper -->
             <div class="nc-stepper">
                 <div class="nc-stepper-step nc-active" id="nc_ind_1">
                     <div class="nc-step-circle">
@@ -817,7 +810,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
                 </div>
             </div>
 
-            <!-- Body scrollable -->
             <div class="modal-body-scroll">
                 <div class="alert alert-error" id="alertaErrorCrear" style="display:none">
                     <span class="material-symbols-rounded">error</span>
@@ -829,7 +821,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
 
                 <form id="formCrearCurso" method="POST" action="crear.php">
 
-                    <!-- Paso 1: Información -->
                     <div id="ncStep1" class="nc-form-step">
                         <div class="form-group">
                             <label for="nc_nombre">Nombre del Curso <span class="required">*</span></label>
@@ -862,7 +853,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
                         </div>
                     </div>
 
-                    <!-- Paso 2: Configuración -->
                     <div id="ncStep2" class="nc-form-step" style="display:none">
                         <div class="form-row">
                             <div class="form-group">
@@ -904,7 +894,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
                 </form>
             </div>
 
-            <!-- Footer con navegación por paso -->
             <div class="modal-footer-crear">
                 <div id="ncFooter1" class="nc-footer-step">
                     <button type="button" class="btn-cancelar" onclick="cerrarModalCrear()">Cancelar</button>
@@ -928,7 +917,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
         </div>
     </div>
 
-    <!-- Cropper overlay para el modal de crear -->
     <div class="cropper-modal-overlay" id="ncCropperOverlay">
         <div class="cropper-modal-box">
             <div class="cropper-modal-header">
@@ -959,7 +947,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
         </div>
     </div>
 
-    <!-- ── Modal Editar Curso ─────────────────────────────── -->
     <div id="modalEditarCurso" class="modal">
         <div class="modal-content modal-crear-content">
 
@@ -1076,7 +1063,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
         </div>
     </div>
 
-    <!-- Cropper overlay para el modal de editar -->
     <div class="cropper-modal-overlay" id="ecCropperOverlay">
         <div class="cropper-modal-box">
             <div class="cropper-modal-header">
@@ -1126,7 +1112,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
     <script>
-        /* ── Modal Eliminar ──────────────────────────────────── */
         let cursoIdEliminar = null;
 
         function confirmarEliminacion(id, nombre) {
@@ -1146,7 +1131,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
             }
         }
 
-        /* ── Modal Crear Curso — Wizard ─────────────────────── */
         function abrirModalCrear() {
             document.getElementById('modalCrearCurso').style.display = 'flex';
             document.body.style.overflow = 'hidden';
@@ -1200,7 +1184,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
             document.getElementById('nc_upload_label_text').textContent = 'Seleccionar y recortar imagen';
             document.getElementById('nc_imagen_cropped').value = '';
             document.getElementById('nc_imagen_ext').value = '';
-            // Volver al paso 1
             document.getElementById('ncStep2').style.display = 'none';
             document.getElementById('ncStep1').style.display = 'block';
             document.getElementById('ncFooter2').style.display = 'none';
@@ -1243,7 +1226,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
             }
         }
 
-        /* ── Cropper dentro del modal crear ─────────────────── */
         (function () {
             const ASPECT      = 2 / 1;
             const inputRaw    = document.getElementById('nc_imagen_raw');
@@ -1301,7 +1283,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
             }
         })();
 
-        /* ── Modal Editar Curso ──────────────────────────────── */
         function abrirModalEditar(json) {
             const c = JSON.parse(json);
 
@@ -1373,7 +1354,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
             }
         }
 
-        /* ── Cropper del modal editar ────────────────────────── */
         (function () {
             const ASPECT     = 2 / 1;
             const inputRaw   = document.getElementById('ec_imagen_raw');
@@ -1432,7 +1412,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
             }
         })();
 
-        /* ── Modal Nuevo Grupo ───────────────────────────────── */
         function abrirModalNuevoGrupo() {
             if (!mv_datos) return;
             const c = mv_datos.curso;
@@ -1514,7 +1493,6 @@ function get_imagen_curso(string $nombre, ?string $imagenBD): string {
             if (e.target === this) cerrarModalNuevoGrupo();
         });
 
-        /* ── Cierre por clic en backdrop (modales admin) ────── */
         window.addEventListener('click', function (event) {
             const t = event.target;
             if (t === document.getElementById('modalEliminar'))    cerrarModal();
