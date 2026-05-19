@@ -127,14 +127,14 @@ try {
 
     // ─── Nuevos estudiantes por mes (últimos 6 meses) ────────────────────────
     $stmt = $pdo->query("
-        SELECT 
-            DATE_FORMAT(fecha_registro, '%b') AS mes_label,
+        SELECT
+            DATE_FORMAT(MIN(fecha_registro), '%b') AS mes_label,
             COUNT(*) AS total
         FROM usuarios
         WHERE rol = 'estudiante'
           AND fecha_registro >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
         GROUP BY YEAR(fecha_registro), MONTH(fecha_registro)
-        ORDER BY fecha_registro ASC
+        ORDER BY YEAR(fecha_registro) ASC, MONTH(fecha_registro) ASC
     ");
     $nuevos_por_mes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
