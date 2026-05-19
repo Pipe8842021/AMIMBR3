@@ -1,14 +1,17 @@
 <?php
 $cfg    = [];
 $galeria = [];
+$pdo = null;
 try {
-    require_once '../config/database.php';
-    foreach ($pdo->query("SELECT clave, valor FROM configuracion_pagina")->fetchAll() as $r) {
-        $cfg[$r['clave']] = $r['valor'];
+    $pdo = require_once '../config/database.php';
+    if ($pdo instanceof PDO) {
+        foreach ($pdo->query("SELECT clave, valor FROM configuracion_pagina")->fetchAll() as $r) {
+            $cfg[$r['clave']] = $r['valor'];
+        }
+        $galeria = $pdo->query(
+            "SELECT * FROM galeria_pagina WHERE activo = 1 ORDER BY orden ASC, id ASC"
+        )->fetchAll();
     }
-    $galeria = $pdo->query(
-        "SELECT * FROM galeria_pagina WHERE activo = 1 ORDER BY orden ASC, id ASC"
-    )->fetchAll();
 } catch (Throwable $e) {}
 
 function pc(string $key, string $fallback = ''): string {
