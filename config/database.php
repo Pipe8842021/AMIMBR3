@@ -14,7 +14,7 @@ define('DB_CHARSET', 'utf8mb4');
 
 // Configuración de la aplicación
 define('APP_NAME', 'Amimbré');
-define('APP_URL', 'http://localhost/AMIMBR3'); // Ajusta según tu carpeta
+define('APP_URL', getenv('APP_URL') ?: 'http://localhost/AMIMBR3');
 define('APP_VERSION', '1.0.0');
 
 // Zona horaria
