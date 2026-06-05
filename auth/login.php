@@ -1,13 +1,10 @@
 <?php
-// Primero incluir la configuración de sesiones
 require_once '../config/session.php';
-// Luego incluir la base de datos
 require_once '../config/database.php';
 
 $login_status = '';   // 'success' | 'error' | ''
 $login_msg    = '';
 
-// Verificar si ya hay sesión activa (ANTES de procesar el POST)
 if (is_logged_in()) {
     $rol = $_SESSION['user_rol'] ?? 'estudiante';
     switch ($rol) {
@@ -19,7 +16,6 @@ if (is_logged_in()) {
     exit;
 }
 
-// Procesar el formulario si se envía
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $email    = filter_var($_POST['email']    ?? '', FILTER_SANITIZE_EMAIL);
@@ -53,13 +49,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     error_log("Login exitoso para: $email");
 
-                    // Guardar sesión
                     $_SESSION['user_id']     = $user['id'];
                     $_SESSION['user_nombre'] = $user['nombre'];
                     $_SESSION['user_email']  = $user['email'];
                     $_SESSION['user_rol']    = $user['rol'];
 
-                    // Cookie "Recordarme"
                     if ($remember) {
                         $token = bin2hex(random_bytes(32));
                         setcookie('remember_token', $token, time() + (86400 * 30), '/', '', false, true);
@@ -67,7 +61,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stmt->execute([$token, $user['id']]);
                     }
 
-                    // Log de acceso
                     try {
                         $stmt = $pdo->prepare("INSERT INTO logs_acceso (usuario_id, ip_address, user_agent) VALUES (?, ?, ?)");
                         $stmt->execute([
@@ -79,12 +72,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         error_log("Error al registrar log de acceso: " . $e->getMessage());
                     }
 
-                    // Estado de éxito para la modal
                     $nombre_corto = explode(' ', trim($user['nombre']))[0];
                     $login_status = 'success';
                     $login_msg    = "¡Hola, $nombre_corto! Tu sesión ha sido iniciada correctamente.";
 
-                    // Determinar URL de destino según rol
                     switch ($user['rol']) {
                         case 'admin':     $redirect = '../modules/dashboard/admin.php';    break;
                         case 'profesor':  $redirect = '../modules/dashboard/profesor.php'; break;
@@ -140,11 +131,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 
 <?php
-/* Pasar estado al JS de forma segura mediante data-attributes en <body> */
 $data_status = htmlspecialchars($login_status, ENT_QUOTES, 'UTF-8');
 $data_msg    = htmlspecialchars($login_msg,    ENT_QUOTES, 'UTF-8');
-
-/* Si el login fue exitoso, también pasar la URL de destino */
 $data_redirect = '';
 if ($login_status === 'success' && isset($redirect)) {
     $data_redirect = htmlspecialchars($redirect, ENT_QUOTES, 'UTF-8');
@@ -157,7 +145,6 @@ if ($login_status === 'success' && isset($redirect)) {
 >
     <div class="container">
 
-        <!-- ── LADO IZQUIERDO — 3D ───────────────────── -->
         <div class="left-side">
             <div class="gradient-overlay-1"></div>
             <div class="gradient-overlay-2"></div>
@@ -170,7 +157,6 @@ if ($login_status === 'success' && isset($redirect)) {
             </div>
         </div>
 
-        <!-- ── LADO DERECHO — FORMULARIO ─────────────── -->
         <div class="right-side">
             <div class="form-container">
 

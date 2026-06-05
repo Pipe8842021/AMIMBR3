@@ -1,15 +1,10 @@
 <?php
-/**
- * Dashboard Estudiante – Amimbré
- */
-
 require_once '../../config/session.php';
 require_once '../../config/database.php';
 require_once '../../includes/auth_check.php';
 
 require_role('estudiante');
 
-// ─── Datos del usuario ───────────────────────────────────────────────────────
 try {
     $stmt = $pdo->prepare("
         SELECT id, nombre, email, rol, estado, foto_perfil
@@ -31,11 +26,9 @@ try {
 
 $flash = function_exists('get_flash_message') ? get_flash_message() : null;
 
-// ─── Estadísticas del estudiante ─────────────────────────────────────────────
 try {
     $eid = $user['id'];
 
-    // Matrículas activas
     $stmt = $pdo->prepare("
         SELECT COUNT(*) FROM matriculas
         WHERE estudiante_id = ? AND estado = 'activa'
@@ -43,7 +36,6 @@ try {
     $stmt->execute([$eid]);
     $cursos_activos = (int)$stmt->fetchColumn();
 
-    // Notificaciones no leídas
     $stmt = $pdo->prepare("
         SELECT COUNT(*) FROM notificaciones
         WHERE usuario_id = ? AND leida = 0
@@ -51,7 +43,6 @@ try {
     $stmt->execute([$eid]);
     $notif_no_leidas = (int)$stmt->fetchColumn();
 
-    // Asistencia propia desde bitacoras_asistencias
     $stmt = $pdo->prepare("
         SELECT
             COUNT(*) AS total,
@@ -65,7 +56,6 @@ try {
         ? round(($row_asi['presentes'] / $row_asi['total']) * 100)
         : 0;
 
-    // ─── Mis grupos / cursos activos con detalle ──────────────────────────
     $stmt = $pdo->prepare("
         SELECT
             m.id AS matricula_id,
@@ -89,7 +79,6 @@ try {
     $stmt->execute([$eid]);
     $mis_cursos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // ─── Calificaciones finales del estudiante (desde certificados) ──────
     $stmt = $pdo->prepare("
         SELECT
             cc.calificacion_final,
@@ -108,7 +97,6 @@ try {
     $stmt->execute([$eid]);
     $calificaciones = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Promedio general desde calificaciones_certificados
     $stmt = $pdo->prepare("
         SELECT ROUND(AVG(calificacion_final), 1)
         FROM calificaciones_certificados
@@ -117,7 +105,6 @@ try {
     $stmt->execute([$eid]);
     $promedio_general = $stmt->fetchColumn() ?: null;
 
-    // ─── Certificados obtenidos ───────────────────────────────────────────
     $stmt = $pdo->prepare("
         SELECT
             cc.codigo_certificado,
@@ -134,7 +121,6 @@ try {
     $stmt->execute([$eid]);
     $certificados = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // ─── Próximas clases (horarios de sus grupos) ─────────────────────────
     $stmt = $pdo->prepare("
         SELECT
             h.dia_semana,
@@ -157,7 +143,6 @@ try {
     $stmt->execute([$eid]);
     $proximas_clases = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // ─── Notificaciones recientes ─────────────────────────────────────────
     $stmt = $pdo->prepare("
         SELECT titulo, mensaje, tipo, prioridad, leida, fecha_creacion
         FROM notificaciones
@@ -168,7 +153,6 @@ try {
     $stmt->execute([$eid]);
     $notificaciones = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // ─── Mi asistencia por grupo ──────────────────────────────────────────
     $stmt = $pdo->prepare("
         SELECT
             c.nombre AS curso,
@@ -194,7 +178,6 @@ try {
     $mis_cursos = $calificaciones = $certificados = $proximas_clases = $notificaciones = $asistencia_por_grupo = [];
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
 $dias_es = [
     'lunes'     => 'Lun', 'martes'    => 'Mar', 'miercoles' => 'Mié',
     'jueves'    => 'Jue', 'viernes'   => 'Vie', 'sabado'    => 'Sáb', 'domingo' => 'Dom',
@@ -235,7 +218,6 @@ function tiempo_transcurrido_e($fecha) {
     return "Hace unos segundos";
 }
 
-// Fecha en español
 date_default_timezone_set('America/Bogota');
 $dias_semana = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 $meses       = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -267,7 +249,6 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
 
 <main class="main-content">
 
-    <!-- ── Encabezado ────────────────────────────────────────────────────── -->
     <div class="dashboard-header">
         <div class="dashboard-title">
             <h1>Menú principal</h1>
@@ -286,7 +267,6 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
     </div>
     <?php endif; ?>
 
-    <!-- ── Tarjetas de estadísticas ─────────────────────────────────────── -->
     <div class="stats-grid">
 
         <div class="stat-card">
@@ -355,10 +335,8 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
 
     </div><!-- /stats-grid -->
 
-    <!-- ── Fila 1: Mis cursos + Perfil/Acciones ──────────────────────────── -->
     <div class="content-grid">
 
-        <!-- Mis cursos -->
         <div class="card">
             <div class="section-header">
                 <div>
@@ -422,10 +400,8 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
             <?php endif; ?>
         </div>
 
-        <!-- Columna derecha: Perfil + Acciones rápidas -->
         <div style="display: flex; flex-direction: column; gap: 20px;">
 
-            <!-- Perfil del estudiante -->
             <div class="card profile-card">
                 <?php
                 $foto_path = !empty($user['foto_perfil'])
@@ -464,10 +440,8 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
         </div>
     </div><!-- /content-grid -->
 
-    <!-- ── Fila 2: Horario + Notificaciones ─────────────────────────────── -->
     <div class="content-grid content-grid--halves">
 
-        <!-- Próximas clases -->
         <div class="card">
             <div class="section-header">
                 <div>
@@ -513,7 +487,6 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
             <?php endif; ?>
         </div>
 
-        <!-- Notificaciones -->
         <div class="card">
             <div class="section-header">
                 <div>
@@ -557,10 +530,8 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
 
     </div><!-- /content-grid halves -->
 
-    <!-- ── Fila 3: Calificaciones + Asistencia por grupo ────────────────── -->
     <div class="content-grid content-grid--halves">
 
-        <!-- Calificaciones finales -->
         <div class="card">
             <div class="section-header">
                 <div>
@@ -611,7 +582,6 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
             <?php endif; ?>
         </div>
 
-        <!-- Asistencia por grupo -->
         <div class="card">
             <div class="section-header">
                 <div>
@@ -653,7 +623,6 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
 
     </div><!-- /content-grid halves -->
 
-    <!-- ── Fila 4: Certificados obtenidos ───────────────────────────────── -->
     <?php if (count($certificados) > 0): ?>
     <div class="card" style="margin-bottom: 24px;">
         <div class="section-header">

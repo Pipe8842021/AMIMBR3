@@ -1,39 +1,31 @@
 <?php
 
-/**
- * Configuración de Base de Datos - Amimbré
- * Sistema de Gestión de Escuela Musical
- */
-
-// Configuración de la base de datos
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'amimbre_db');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
+define('DB_PORT', getenv('DB_PORT') ?: '3306');
+define('DB_NAME', getenv('DB_NAME') ?: 'amimbre_db');
+define('DB_USER', getenv('DB_USER') ?: 'root');
+define('DB_PASS', getenv('DB_PASS') ?: '');
 define('DB_CHARSET', 'utf8mb4');
 
-// Configuración de la aplicación
 define('APP_NAME', 'Amimbré');
-define('APP_URL', 'http://localhost/AMIMBR3'); // Ajusta según tu carpeta
+define('APP_URL', getenv('APP_URL') ?: 'http://localhost/AMIMBR3');
 define('APP_VERSION', '1.0.0');
 
-// Zona horaria
 date_default_timezone_set('America/Bogota');
 
 try {
-    // Crear conexión PDO
-    $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
+    ini_set('default_socket_timeout', 10);
+    $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
 
     $options = [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false,
-        PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES " . DB_CHARSET
+        PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES " . DB_CHARSET,
     ];
 
     $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
 } catch (PDOException $e) {
-    // En producción, no mostrar detalles del error
     if (getenv('ENVIRONMENT') === 'production') {
         die('Error de conexión a la base de datos. Contacte al administrador.');
     } else {
@@ -41,9 +33,6 @@ try {
     }
 }
 
-/**
- * Función helper para sanitizar entrada
- */
 function sanitize_input($data)
 {
     $data = trim($data);
@@ -52,25 +41,16 @@ function sanitize_input($data)
     return $data;
 }
 
-/**
- * Función helper para validar email
- */
 function validate_email($email)
 {
     return filter_var($email, FILTER_VALIDATE_EMAIL);
 }
 
-/**
- * Función helper para generar token seguro
- */
 function generate_token($length = 32)
 {
     return bin2hex(random_bytes($length));
 }
 
-/**
- * Función para registrar logs
- */
 function log_activity($pdo, $user_id, $action, $details = null)
 {
     try {
@@ -94,9 +74,6 @@ function log_activity($pdo, $user_id, $action, $details = null)
     }
 }
 
-/**
- * Función para verificar permisos de usuario
- */
 function check_permission($role, $required_role)
 {
     $roles_hierarchy = [

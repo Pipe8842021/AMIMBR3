@@ -1,16 +1,10 @@
 <?php
-/**
- * Gestión de Usuarios – Vista Principal
- * El formulario de creación de usuario se abre en un modal inline.
- */
-
 require_once '../../config/session.php';
 require_once '../../config/database.php';
 require_once '../../includes/auth_check.php';
 
 require_role('admin');
 
-// ── Usuario actual ────────────────────────────────────────────────────────
 try {
     $stmt = $pdo->prepare("SELECT id, nombre, email, rol, estado, foto_perfil FROM usuarios WHERE id = ? AND estado = 'activo'");
     $stmt->execute([$_SESSION['user_id']]);
@@ -25,7 +19,6 @@ try {
     die("Error del sistema. Por favor, intenta más tarde.");
 }
 
-// ── Procesar formulario de creación (modal) ───────────────────────────────
 $modal_errors   = [];
 $modal_open     = false;
 $form = [
@@ -40,7 +33,7 @@ $form = [
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_action']) && $_POST['_action'] === 'crear_usuario') {
 
-    $modal_open = true; // volver a abrir modal si hay errores
+    $modal_open = true;
 
     foreach (['nombre', 'email', 'documento', 'telefono', 'direccion', 'fecha_nacimiento', 'rol'] as $f) {
         $form[$f] = trim($_POST[$f] ?? '');
@@ -99,7 +92,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_action']) && $_POST[
     }
 }
 
-// ── Procesar formulario de edición (modal) ────────────────────────────────
 $edit_errors  = [];
 $edit_open    = false;
 $edit_form    = [];
@@ -110,7 +102,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_action']) && $_POST[
     $edit_id = (int)($_POST['edit_id'] ?? 0);
     $edit_open = true;
 
-    // Cargar el usuario objetivo para volver a mostrarlo si hay errores
     try {
         $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE id = ?");
         $stmt->execute([$edit_id]);
@@ -200,28 +191,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['_action']) && $_POST[
     }
 }
 
-// ── Flash ─────────────────────────────────────────────────────────────────
 $flash = null;
 if (isset($_SESSION['flash'])) {
     $flash = $_SESSION['flash'];
     unset($_SESSION['flash']);
 }
 
-// ── Filtros ───────────────────────────────────────────────────────────────
 $filtro_rol    = $_GET['rol']      ?? '';
 $filtro_estado = $_GET['estado']   ?? '';
 $busqueda      = $_GET['busqueda'] ?? '';
 $pagina        = max(1, (int)($_GET['pagina'] ?? 1));
 $por_pagina    = 15;
 
-// ── Stats ─────────────────────────────────────────────────────────────────
 try {
     $total_usuarios = (int) $pdo->query("SELECT COUNT(*) FROM usuarios")->fetchColumn();
 } catch (PDOException $e) {
     $total_usuarios = 0;
 }
 
-// ── Consulta con filtros ──────────────────────────────────────────────────
 try {
     $sql_where = "WHERE 1=1";
     $params    = [];
@@ -252,7 +239,6 @@ try {
     $offset          = 0;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────
 function badge_rol($r) {
     return ['admin' => 'badge-admin', 'profesor' => 'badge-profesor', 'estudiante' => 'badge-estudiante'][$r] ?? '';
 }
@@ -291,7 +277,6 @@ function get_foto_url(?string $foto): string {
 
 <main class="main-content">
 
-    <!-- Flash -->
     <?php if ($flash): ?>
     <div class="alert alert-<?= htmlspecialchars($flash['type']) ?>" id="alertFlash">
         <span class="material-symbols-rounded"><?= $flash['type'] === 'success' ? 'check_circle' : 'error' ?></span>
@@ -299,7 +284,6 @@ function get_foto_url(?string $foto): string {
     </div>
     <?php endif; ?>
 
-    <!-- Page header -->
     <div class="page-header">
         <div class="header-left">
             <button class="back-button" onclick="window.location.href='../dashboard/'">
@@ -310,13 +294,11 @@ function get_foto_url(?string $foto): string {
                 <p>Administra todos los usuarios del sistema</p>
             </div>
         </div>
-        <!-- Botón abre el modal de creación -->
         <button class="btn-primary" onclick="abrirModalCrear()">
             <span class="material-symbols-rounded">person_add</span> Nuevo Usuario
         </button>
     </div>
 
-    <!-- Stat card -->
     <div class="stat-card">
         <div class="stat-icon total">
             <span class="material-symbols-rounded">group</span>
@@ -327,7 +309,6 @@ function get_foto_url(?string $foto): string {
         </div>
     </div>
 
-    <!-- Filtros -->
     <div class="filters-card">
         <div class="filters-header">
             <span class="material-symbols-rounded">filter_list</span>
@@ -369,7 +350,6 @@ function get_foto_url(?string $foto): string {
         </form>
     </div>
 
-    <!-- Tabla -->
     <div class="users-card">
         <div class="users-card-header">
             <h3>Lista de usuarios</h3>
@@ -499,7 +479,6 @@ function get_foto_url(?string $foto): string {
         <?php endif; ?>
     </div>
 
-    <!-- Paginación -->
     <?php if ($total_paginas > 1): ?>
     <div class="pagination">
         <span class="pag-info">
@@ -526,9 +505,6 @@ function get_foto_url(?string $foto): string {
 
 </main>
 
-<!-- ═══════════════════════════════════════════════════════════
-     MODAL: Desactivar usuario
-════════════════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="modalDesactivar">
     <div class="modal">
         <div class="modal-icon">
@@ -548,13 +524,9 @@ function get_foto_url(?string $foto): string {
     </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════
-     MODAL: Crear nuevo usuario
-════════════════════════════════════════════════════════════ -->
 <div class="modal-overlay modal-crear-overlay" id="modalCrearUsuario">
     <div class="modal modal-crear">
 
-        <!-- Cabecera del modal -->
         <div class="modal-crear-header">
             <div class="modal-crear-title-group">
                 <div class="modal-crear-icon-wrap">
@@ -570,7 +542,6 @@ function get_foto_url(?string $foto): string {
             </button>
         </div>
 
-        <!-- Cuerpo del modal con el formulario -->
         <div class="modal-crear-body">
 
             <?php if (!empty($modal_errors)): ?>
@@ -599,7 +570,6 @@ function get_foto_url(?string $foto): string {
                     <span id="msgValidarCrear"></span>
                 </div>
 
-                <!-- Selector de rol -->
                 <div class="field" style="margin-bottom:20px">
                     <label>Rol del usuario <span class="required">*</span></label>
                     <div class="role-cards">
@@ -696,7 +666,6 @@ function get_foto_url(?string $foto): string {
                     </div>
                 </div>
 
-                <!-- Acciones del formulario -->
                 <div class="form-actions">
                     <button type="button" class="btn-cancel" onclick="cerrarModalCrear()">Cancelar</button>
                     <button type="submit" class="btn-submit">
@@ -709,13 +678,9 @@ function get_foto_url(?string $foto): string {
     </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════
-     MODAL: Editar usuario
-════════════════════════════════════════════════════════════ -->
 <div class="modal-overlay modal-crear-overlay" id="modalEditarUsuario">
     <div class="modal modal-crear">
 
-        <!-- Cabecera -->
         <div class="modal-crear-header">
             <div class="modal-crear-title-group">
                 <div class="modal-crear-icon-wrap" style="background:var(--subtle-orange);color:var(--primary-orange)">
@@ -731,7 +696,6 @@ function get_foto_url(?string $foto): string {
             </button>
         </div>
 
-        <!-- Tarjeta de info del usuario -->
         <div class="modal-editar-info-card" id="e_info_bar">
             <div class="modal-editar-avatar-wrap" id="e_avatar_wrap">
                 <div class="avatar-initials">??</div>
@@ -755,7 +719,6 @@ function get_foto_url(?string $foto): string {
             </div>
         </div>
 
-        <!-- Cuerpo del formulario -->
         <div class="modal-crear-body">
 
             <?php if (!empty($edit_errors)): ?>
@@ -840,7 +803,6 @@ function get_foto_url(?string $foto): string {
                         </select>
                     </div>
                 </div>
-                <!-- Aviso cuando el usuario edita su propia cuenta -->
                 <p class="info-notice" id="e_self_notice" style="display:none">
                     <span class="material-symbols-rounded">info</span>
                     No puedes cambiar el rol ni el estado de tu propia cuenta.
@@ -891,7 +853,6 @@ function get_foto_url(?string $foto): string {
 </div>
 
 <script>
-/* ── Menú de acciones ─────────────────────────────────── */
 function toggleMenu(btn, e) {
     e.stopPropagation();
     document.querySelectorAll('.dropdown-menu').forEach(function(m) {
@@ -906,7 +867,6 @@ window.addEventListener('click', function() {
     });
 });
 
-/* ── Modal: Desactivar ────────────────────────────────── */
 function abrirModal(id, nombre) {
     document.querySelectorAll('.dropdown-menu').forEach(function(m) { m.classList.remove('show'); });
     document.getElementById('modalNombre').textContent = nombre;
@@ -922,7 +882,6 @@ document.getElementById('modalDesactivar').addEventListener('click', function(e)
     if (e.target === this) cerrarModal();
 });
 
-/* ── Modal: Crear usuario ─────────────────────────────── */
 function abrirModalCrear() {
     const overlay = document.getElementById('modalCrearUsuario');
     const body    = overlay.querySelector('.modal-crear-body');
@@ -941,12 +900,10 @@ function cerrarModalCrear() {
     document.body.style.overflow = '';
 }
 
-// Cerrar al hacer clic en el overlay (fuera del modal)
 document.getElementById('modalCrearUsuario').addEventListener('click', function(e) {
     if (e.target === this) cerrarModalCrear();
 });
 
-// Abrir automáticamente si hubo errores de validación (PHP lo indica)
 <?php if ($modal_open): ?>
 document.addEventListener('DOMContentLoaded', function() {
     abrirModalCrear();
@@ -956,13 +913,11 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 <?php endif; ?>
 
-/* ── Modal: Editar usuario ────────────────────────────── */
 function abrirModalEditar(id, sessionUserId, data) {
     document.querySelectorAll('.dropdown-menu').forEach(function(m) { m.classList.remove('show'); });
 
     var isSelf = (id === sessionUserId);
 
-    // Rellenar campos ocultos e inputs
     document.getElementById('e_edit_id').value          = id;
     document.getElementById('e_nombre').value           = data.nombre           || '';
     document.getElementById('e_email').value            = data.email            || '';
@@ -973,18 +928,15 @@ function abrirModalEditar(id, sessionUserId, data) {
     document.getElementById('e_new_password').value         = '';
     document.getElementById('e_new_password_confirm').value = '';
 
-    // Selects: rol y estado
     var rolSel    = document.getElementById('e_rol');
     var estadoSel = document.getElementById('e_estado');
     rolSel.value    = data.rol    || 'profesor';
     estadoSel.value = data.estado || 'activo';
 
-    // Bloquear rol/estado si es la propia cuenta
     rolSel.disabled    = isSelf;
     estadoSel.disabled = isSelf;
     document.getElementById('e_self_notice').style.display = isSelf ? 'flex' : 'none';
 
-    // Avatar: foto real o iniciales
     var initials   = (data.nombre || '??').substring(0, 2).toUpperCase();
     var avatarWrap = document.getElementById('e_avatar_wrap');
     avatarWrap.className = 'modal-editar-avatar-wrap avatar-' + (data.rol || '');
@@ -997,11 +949,9 @@ function abrirModalEditar(id, sessionUserId, data) {
         avatarWrap.innerHTML = '<div class="avatar-initials">' + initials + '</div>';
     }
 
-    // Info card: nombre y subtítulo
     document.getElementById('e_chip_nombre').textContent = data.nombre || '—';
     document.getElementById('e_subtitle').textContent    = 'Modifica los datos de ' + (data.nombre || 'este usuario');
 
-    // Badges de rol y estado
     var badgeMap          = { admin: 'Administrador', profesor: 'Profesor', estudiante: 'Estudiante' };
     var estadoMap         = { activo: 'Activo', inactivo: 'Inactivo', suspendido: 'Suspendido' };
     var badgeRolClsMap    = { admin: 'badge-admin', profesor: 'badge-profesor', estudiante: 'badge-estudiante' };
@@ -1015,13 +965,11 @@ function abrirModalEditar(id, sessionUserId, data) {
     badgeEstadoEl.className   = 'badge ' + (badgeEstadoClsMap[data.estado] || '');
     badgeEstadoEl.textContent = estadoMap[data.estado] || data.estado || '—';
 
-    // Fechas
     document.getElementById('e_fecha_registro').textContent =
         data.fecha_registro ? formatDate(data.fecha_registro) : '—';
     document.getElementById('e_ultima_conexion').textContent =
         data.ultima_conexion ? formatDateTime(data.ultima_conexion) : 'Nunca';
 
-    // Abrir overlay
     var overlay = document.getElementById('modalEditarUsuario');
     var body    = overlay.querySelector('.modal-crear-body');
     overlay.scrollTop = 0;
@@ -1041,7 +989,6 @@ document.getElementById('modalEditarUsuario').addEventListener('click', function
     if (e.target === this) cerrarModalEditar();
 });
 
-// Helpers de fecha
 function formatDate(str) {
     var d = new Date(str);
     if (isNaN(d)) return str;
@@ -1054,7 +1001,6 @@ function formatDateTime(str) {
          + d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
 }
 
-/* ── Abrir modal editar automáticamente si hubo errores ── */
 <?php if ($edit_open && $edit_target): ?>
 document.addEventListener('DOMContentLoaded', function() {
     abrirModalEditar(
@@ -1079,7 +1025,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 <?php endif; ?>
 
-// ── Validación modal Crear ────────────────────────────────────
 document.getElementById('formCrearUsuario').addEventListener('submit', function(e) {
     const alertEl = document.getElementById('alertValidarCrear');
     const msgEl   = document.getElementById('msgValidarCrear');
@@ -1123,7 +1068,6 @@ document.querySelectorAll('#formCrearUsuario [required]').forEach(function(el) {
     });
 });
 
-// ── Auto-ocultar flash ────────────────────────────────────────
 setTimeout(function() {
     var a = document.getElementById('alertFlash');
     if (a) { a.style.transition = 'opacity .5s'; a.style.opacity = '0'; setTimeout(function() { a.remove(); }, 500); }
@@ -1136,7 +1080,6 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-/* ── Formulario: helpers ──────────────────────────────── */
 function selectRole(radio) {
     document.querySelectorAll('.role-card').forEach(function(c) {
         c.classList.remove('selected-admin', 'selected-profesor');

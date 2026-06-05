@@ -93,7 +93,7 @@ if (isset($_GET['action'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Responsive Sidebar with Dropdown Menu by AbdulDev</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
-    <link rel="stylesheet" href="/AMIMBR3/assets/css/colores.css">
+    <link rel="stylesheet" href="/assets/css/colores.css">
 </head>
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
@@ -841,7 +841,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
         <!-- Sidebar Header -->
         <header class="sidebar-header">
             <div class="header-logo">
-                <img src="/AMIMBR3/assets/img/3.png" alt="Amimbré">
+                <img src="/assets/img/3.png" alt="Amimbré">
             </div>
             <button class="sidebar-toggler">
                 <span class="material-symbols-rounded">chevron_left</span>
@@ -854,7 +854,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
 
                 <?php if (has_any_role(['admin', 'profesor', 'estudiante'])): ?>
                 <li class="nav-item">
-                    <a href="/AMIMBR3/modules/dashboard/" class="nav-link">
+                    <a href="/modules/dashboard/" class="nav-link">
                         <span class="material-symbols-rounded">dashboard</span>
                         <span class="nav-label">Menú principal</span>
                     </a>
@@ -873,15 +873,15 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                     </a>
                     <ul class="header-dropdown-menu">
                         <li class="nav-item"><a class="nav-link dropdown-title">Inscripciones</a></li>
-                        <li class="nav-item"><a href="/AMIMBR3/modules/inscripciones/prematriculas/index.php" class="nav-link dropdown-link">Prematrículas</a></li>
-                        <li class="nav-item"><a href="/AMIMBR3/modules/inscripciones/matriculas/index.php" class="nav-link dropdown-link">Matrículas</a></li>
+                        <li class="nav-item"><a href="/modules/inscripciones/prematriculas/index.php" class="nav-link dropdown-link">Prematrículas</a></li>
+                        <li class="nav-item"><a href="/modules/inscripciones/matriculas/index.php" class="nav-link dropdown-link">Matrículas</a></li>
                     </ul>
                 </li>
                 <?php endif; ?>
 
                 <?php if (has_any_role(['admin'])): ?>
                 <li class="nav-item">
-                    <a href="/AMIMBR3/modules/usuarios/index.php" class="nav-link">
+                    <a href="/modules/usuarios/index.php" class="nav-link">
                         <span class="material-symbols-rounded">group</span>
                         <span class="nav-label">Usuarios</span>
                     </a>
@@ -893,7 +893,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
 
                 <?php if (has_any_role(['admin', 'profesor', 'estudiante'])): ?>
                 <li class="nav-item">
-                    <a href="/AMIMBR3/modules/cursos/index.php" class="nav-link">
+                    <a href="/modules/cursos/index.php" class="nav-link">
                         <span class="material-symbols-rounded">menu_book</span>
                         <span class="nav-label">Cursos</span>
                     </a>
@@ -913,16 +913,16 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                     <ul class="header-dropdown-menu">
                         <li class="nav-item"><a class="nav-link dropdown-title">Documentación</a></li>
                         <?php if (has_any_role(['admin', 'profesor'])): ?>
-                        <li class="nav-item"><a href="/AMIMBR3/modules/documentos/administrativos/index.php" class="nav-link dropdown-link">Administrativa</a></li>
+                        <li class="nav-item"><a href="/modules/documentos/administrativos/index.php" class="nav-link dropdown-link">Administrativa</a></li>
                         <?php endif; ?>
-                        <li class="nav-item"><a href="/AMIMBR3/modules/documentos/institucionales/index.php" class="nav-link dropdown-link">Institucional</a></li>
+                        <li class="nav-item"><a href="/modules/documentos/institucionales/index.php" class="nav-link dropdown-link">Institucional</a></li>
                     </ul>
                 </li>
                 <?php endif; ?>
 
                 <?php if (has_any_role(['admin', 'profesor'])): ?>
                 <li class="nav-item">
-                    <a href="/AMIMBR3/modules/grupos/index.php" class="nav-link">
+                    <a href="/modules/grupos/index.php" class="nav-link">
                         <span class="material-symbols-rounded">group_add</span>
                         <span class="nav-label">Grupos</span>
                     </a>
@@ -934,7 +934,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
 
                 <?php if (has_any_role(['admin', 'profesor', 'estudiante'])): ?>
                 <li class="nav-item">
-                    <a href="/AMIMBR3/modules/notificaciones/index.php" class="nav-link">
+                    <a href="/modules/notificaciones/index.php" class="nav-link">
                         <span class="material-symbols-rounded">notifications</span>
                         <span class="nav-label">Notificaciones</span>
                         <?php if ($badge_sin_leer > 0): ?>
@@ -951,7 +951,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
 
                 <?php if (has_any_role(['admin'])): ?>
                 <li class="nav-item">
-                    <a href="/AMIMBR3/modules/reportes/index.php" class="nav-link">
+                    <a href="/modules/reportes/index.php" class="nav-link">
                         <span class="material-symbols-rounded">assessment</span>
                         <span class="nav-label">Reportes</span>
                     </a>
@@ -963,7 +963,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
 
                 <?php if (has_any_role(['admin', 'profesor', 'estudiante'])): ?>
                 <li class="nav-item">
-                    <a href="/AMIMBR3/modules/horarios/index.php" class="nav-link">
+                    <a href="/modules/horarios/index.php" class="nav-link">
                         <span class="material-symbols-rounded">calendar_today</span>
                         <span class="nav-label">Horario</span>
                     </a>
@@ -975,7 +975,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
 
                 <?php if (has_any_role(['admin', 'profesor', 'estudiante'])): ?>
                 <li class="nav-item">
-                    <a href="/AMIMBR3/modules/configuracion/configuraciones.php" class="nav-link">
+                    <a href="/modules/configuracion/configuraciones.php" class="nav-link">
                         <span class="material-symbols-rounded">settings</span>
                         <span class="nav-label">Configuración</span>
                     </a>
@@ -990,7 +990,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
             <!-- Secondary Bottom Nav -->
             <ul class="nav-list secondary-nav">
                 <li class="nav-item">
-                    <a href="/AMIMBR3/modules/ayuda/ayuda_index.php" class="nav-link">
+                    <a href="/modules/ayuda/ayuda_index.php" class="nav-link">
                         <span class="material-symbols-rounded">help</span>
                         <span class="nav-label">Ayuda</span>
                     </a>
@@ -999,7 +999,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                     </ul>
                 </li>
                 <li class="nav-item">
-                    <a href="/AMIMBR3/auth/logout.php" class="nav-link">
+                    <a href="/auth/logout.php" class="nav-link">
                         <span class="material-symbols-rounded">logout</span>
                         <span class="nav-label">Cerrar Sesión</span>
                     </a>
@@ -1026,7 +1026,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
         <div class="fab-panel" id="fabPanel">
 
             <!-- Ayuda -->
-            <a href="/AMIMBR3/modules/ayuda/ayuda_index.php" class="fab-item fab-item--help">
+            <a href="/modules/ayuda/ayuda_index.php" class="fab-item fab-item--help">
                 <span class="fab-label">Ayuda</span>
                 <div class="fab-btn" aria-label="Ayuda">
                     <span class="material-symbols-rounded">help</span>
@@ -1061,7 +1061,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
     <div class="fab-notif-modal" id="fabNotifModal">
         <div class="fab-notif-header">
             <h4>Notificaciones</h4>
-            <a href="/AMIMBR3/modules/notificaciones/index.php">Ver todas</a>
+            <a href="/modules/notificaciones/index.php">Ver todas</a>
         </div>
         <div class="fab-notif-list" id="fabNotifList">
             <div class="fab-notif-loading">
@@ -1167,7 +1167,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
         fabNotifModal.addEventListener('click', (e) => e.stopPropagation());
 
         function loadNotificaciones() {
-            fetch('/AMIMBR3/includes/header.php?action=notificaciones_recientes')
+            fetch('/includes/header.php?action=notificaciones_recientes')
                 .then(r => r.json())
                 .then(data => {
                     notifLoaded = true;
@@ -1222,7 +1222,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                 el.addEventListener('click', () => {
                     const id = el.dataset.id;
                     el.classList.remove('unread');
-                    fetch(`/AMIMBR3/includes/header.php?action=marcar_leida&id=${id}`, { method: 'POST' });
+                    fetch(`/includes/header.php?action=marcar_leida&id=${id}`, { method: 'POST' });
                     // Reducir badge
                     const badge = document.getElementById('fabBadge');
                     if (badge) {

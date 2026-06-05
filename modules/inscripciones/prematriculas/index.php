@@ -88,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'Nueva matrícula creada',
                 "Se aprobó la preinscripción de {$pre['nombres_apellidos']} y se creó su matrícula. Pendiente asignar grupo.",
                 $user['nombre'], 'alta',
-                '/AMIMBR3/modules/inscripciones/matriculas/index.php'
+                '/modules/inscripciones/matriculas/index.php'
             );
             NotificacionesHelper::estadoPreinscripcionCambiado($pdo, $nuevo_usuario_id, 'matriculado');
 

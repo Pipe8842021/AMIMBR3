@@ -1,9 +1,4 @@
 <?php
-/**
- * Gestión de Usuarios – Desactivar / Activar
- * Solo lógica, sin HTML. Redirige siempre.
- */
-
 require_once '../../config/session.php';
 require_once '../../config/database.php';
 require_once '../../includes/auth_check.php';
@@ -18,14 +13,12 @@ if (!$id || !in_array($action, ['activar', 'desactivar'])) {
     exit;
 }
 
-// No puede desactivarse a sí mismo
 if ($id === (int)$_SESSION['user_id'] && $action === 'desactivar') {
     $_SESSION['flash'] = ['type' => 'error', 'message' => 'No puedes desactivar tu propia cuenta.'];
     header("Location: index.php");
     exit;
 }
 
-// Verificar que el usuario existe
 try {
     $stmt = $pdo->prepare("SELECT id, nombre FROM usuarios WHERE id = ?");
     $stmt->execute([$id]);
@@ -40,7 +33,6 @@ if (!$target) {
     exit;
 }
 
-// Ejecutar cambio
 $nuevo_estado = ($action === 'activar') ? 'activo' : 'inactivo';
 $verbo        = ($action === 'activar') ? 'activado' : 'desactivado';
 
@@ -55,7 +47,6 @@ try {
     $_SESSION['flash'] = ['type' => 'error', 'message' => 'No se pudo actualizar el estado del usuario.'];
 }
 
-// Redirigir al origen
 $referer = $_SERVER['HTTP_REFERER'] ?? '';
 if (strpos($referer, 'editar.php') !== false) {
     header("Location: editar.php?id=$id");

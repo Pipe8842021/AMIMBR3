@@ -1,15 +1,10 @@
 <?php
-/**
- * Dashboard Profesor – Amimbré
- */
-
 require_once '../../config/session.php';
 require_once '../../config/database.php';
 require_once '../../includes/auth_check.php';
 
 require_role('profesor');
 
-// ─── Datos del usuario ───────────────────────────────────────────────────────
 try {
     $stmt = $pdo->prepare("
         SELECT id, nombre, email, rol, estado, foto_perfil
@@ -31,11 +26,9 @@ try {
 
 $flash = function_exists('get_flash_message') ? get_flash_message() : null;
 
-// ─── Estadísticas del profesor ───────────────────────────────────────────────
 try {
     $pid = $user['id'];
 
-    // Grupos activos del profesor
     $stmt = $pdo->prepare("
         SELECT COUNT(*) FROM grupos
         WHERE profesor_id = ? AND estado = 'activo'
@@ -43,7 +36,6 @@ try {
     $stmt->execute([$pid]);
     $grupos_activos = (int)$stmt->fetchColumn();
 
-    // Total de estudiantes en sus grupos
     $stmt = $pdo->prepare("
         SELECT COUNT(DISTINCT m.estudiante_id)
         FROM matriculas m
@@ -53,7 +45,6 @@ try {
     $stmt->execute([$pid]);
     $total_estudiantes = (int)$stmt->fetchColumn();
 
-    // Bitácoras registradas por este profesor
     $stmt = $pdo->prepare("
         SELECT COUNT(*) FROM bitacoras
         WHERE profesor_id = ? AND estado = 'activo'
@@ -61,7 +52,6 @@ try {
     $stmt->execute([$pid]);
     $total_bitacoras = (int)$stmt->fetchColumn();
 
-    // Promedio de asistencia desde bitacoras_asistencias → bitacoras → grupos
     $stmt = $pdo->prepare("
         SELECT
             COUNT(*) AS total,
@@ -77,7 +67,6 @@ try {
         ? round(($row['presentes'] / $row['total']) * 100)
         : 0;
 
-    // ─── Grupos del profesor con info completa ───────────────────────────────
     $stmt = $pdo->prepare("
         SELECT
             g.id,
@@ -99,7 +88,6 @@ try {
     $stmt->execute([$pid]);
     $mis_grupos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // ─── Próximas clases (horarios de la semana actual) ──────────────────────
     $stmt = $pdo->prepare("
         SELECT
             h.dia_semana,
@@ -119,7 +107,6 @@ try {
     $stmt->execute([$pid]);
     $proximas_clases = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // ─── Últimas bitácoras registradas ───────────────────────────────────────
     $stmt = $pdo->prepare("
         SELECT
             b.titulo,
@@ -137,7 +124,6 @@ try {
     $stmt->execute([$pid]);
     $ultimas_bitacoras = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // ─── Top 5 estudiantes por asistencia desde bitacoras_asistencias ───────
     $stmt = $pdo->prepare("
         SELECT
             u.nombre,
@@ -163,7 +149,6 @@ try {
     $mis_grupos = $proximas_clases = $ultimas_bitacoras = $top_estudiantes = [];
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
 function tiempo_transcurrido_p($fecha) {
     $ahora  = new DateTime();
     $tiempo = new DateTime($fecha);
@@ -191,13 +176,11 @@ $nivel_badge = [
     'avanzado'     => 'badge-danger',
 ];
 
-// Fecha en español
 date_default_timezone_set('America/Bogota');
 $dias_semana = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 $meses       = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 $fecha_hoy   = $dias_semana[date('w')] . ', ' . date('d') . ' de ' . $meses[date('n')] . ' de ' . date('Y');
 
-// Iniciales del profesor para avatar
 $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(explode(' ', $user['nombre']), 0, 2)));
 ?>
 <!DOCTYPE html>
@@ -224,7 +207,6 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
 
 <main class="main-content">
 
-    <!-- ── Encabezado ────────────────────────────────────────────────────── -->
     <div class="dashboard-header">
         <div class="dashboard-title">
             <h1>Menú principal</h1>
@@ -243,7 +225,6 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
     </div>
     <?php endif; ?>
 
-    <!-- ── Tarjetas de estadísticas ─────────────────────────────────────── -->
     <div class="stats-grid">
 
         <div class="stat-card">
@@ -306,10 +287,8 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
 
     </div><!-- /stats-grid -->
 
-    <!-- ── Fila 1: Mis grupos + Perfil / Acciones rápidas ───────────────── -->
     <div class="content-grid">
 
-        <!-- Mis grupos -->
         <div class="card">
             <div class="section-header">
                 <div>
@@ -368,10 +347,8 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
             <?php endif; ?>
         </div>
 
-        <!-- Columna derecha: Perfil-->
         <div style="display: flex; flex-direction: column; gap: 20px;">
 
-            <!-- Perfil del profesor -->
             <div class="card profile-card">
                 <?php
                 $foto_path = !empty($user['foto_perfil'])
@@ -411,10 +388,8 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
 
     </div><!-- /content-grid -->
 
-    <!-- ── Fila 2: Próximas clases + Top estudiantes ─────────────────────── -->
     <div class="content-grid content-grid--halves">
 
-        <!-- Próximas clases (horarios) -->
         <div class="card">
             <div class="section-header">
                 <div>
@@ -460,7 +435,6 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
             <?php endif; ?>
         </div>
 
-        <!-- Top estudiantes por asistencia -->
         <div class="card">
             <div class="section-header">
                 <div>
@@ -501,7 +475,6 @@ $iniciales = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(expl
 
     </div><!-- /content-grid halves -->
 
-    <!-- ── Fila 3: Últimas bitácoras ─────────────────────────────────────── -->
     <div class="content-grid content-grid--halves">
 
         <div class="card" style="grid-column: 1 / -1;">

@@ -1,15 +1,9 @@
 <?php
-/**
- * Eliminar Curso
- * Sistema Amimbré
- */
-
 require_once '../../config/session.php';
 require_once '../../config/database.php';
 require_once '../../includes/auth_check.php';
 require_role('admin');
 
-// Obtener ID del curso
 $curso_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
 if ($curso_id <= 0) {
@@ -18,7 +12,6 @@ if ($curso_id <= 0) {
 }
 
 try {
-    // Verificar que el curso existe
     $stmt = $pdo->prepare("SELECT * FROM cursos WHERE id = ?");
     $stmt->execute([$curso_id]);
     $curso = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -28,12 +21,10 @@ try {
         exit;
     }
     
-    // Verificar si hay grupos asociados
     $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM grupos WHERE curso_id = ?");
     $stmt->execute([$curso_id]);
     $grupos_count = $stmt->fetch()['total'];
     
-    // Verificar si hay matrículas activas
     $stmt = $pdo->prepare("
         SELECT COUNT(*) as total 
         FROM matriculas m
@@ -48,26 +39,21 @@ try {
         exit;
     }
     
-    // Iniciar transacción
     $pdo->beginTransaction();
-    
-    // Eliminar el curso (las relaciones se eliminan en cascada por las FK)
+
     $stmt = $pdo->prepare("DELETE FROM cursos WHERE id = ?");
     $stmt->execute([$curso_id]);
-    
-    // Eliminar imagen si existe
+
     if ($curso['imagen'] && file_exists("../../assets/img/cursos/" . $curso['imagen'])) {
         unlink("../../assets/img/cursos/" . $curso['imagen']);
     }
-    
-    // Confirmar transacción
+
     $pdo->commit();
     
     header("Location: index.php?success=curso_eliminado");
     exit;
     
 } catch (PDOException $e) {
-    // Revertir transacción en caso de error
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
