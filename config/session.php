@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/paths.php';
+
 if (session_status() === PHP_SESSION_NONE) {
     ini_set('session.cookie_httponly', 1);
     ini_set('session.use_only_cookies', 1);
@@ -33,22 +35,25 @@ function has_any_role($roles) {
     return in_array($_SESSION['user_rol'], $roles);
 }
 
-function require_login($redirect = '../auth/login.php') {
+function require_login($redirect = null) {
     if (!is_logged_in()) {
+        $redirect = $redirect ?? url('/auth/login.php');
         header("Location: $redirect");
         exit;
     }
 }
 
-function require_role($role, $redirect = '../public/index.html') {
+function require_role($role, $redirect = null) {
     require_login();
     if (!has_role($role)) {
+        $redirect = $redirect ?? url('/public/');
         header("Location: $redirect");
         exit;
     }
 }
 
-function logout($redirect = '../public/index.html') {
+function logout($redirect = null) {
+    $redirect = $redirect ?? url('/public/');
     $_SESSION = array();
 
     if (isset($_COOKIE[session_name()])) {

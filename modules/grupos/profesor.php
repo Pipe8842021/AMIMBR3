@@ -607,7 +607,7 @@ $fecha_hoy   = $dias_semana[date('w')] . ', ' . date('d') . ' de ' . $meses[date
             document.getElementById('modalAsistencia').classList.add('active');
 
             try {
-                const res  = await fetch(`/modules/documentos/institucionales/bitacoras/get_estudiantes.php?grupo_id=${grupoId}`);
+                const res  = await fetch(`${APP_BASE}/modules/documentos/institucionales/bitacoras/get_estudiantes.php?grupo_id=${grupoId}`);
                 const data = await res.json();
 
                 if (data.error || !data.estudiantes) {

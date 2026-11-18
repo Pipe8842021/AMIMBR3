@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/paths.php';
+
 define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
 define('DB_PORT', getenv('DB_PORT') ?: '3306');
 define('DB_NAME', getenv('DB_NAME') ?: 'amimbre_db');
@@ -8,7 +10,12 @@ define('DB_PASS', getenv('DB_PASS') ?: '');
 define('DB_CHARSET', 'utf8mb4');
 
 define('APP_NAME', 'Amimbré');
-define('APP_URL', getenv('APP_URL') ?: 'http://localhost/AMIMBR3');
+// URL pública de la app. Si no hay APP_URL en el entorno se deduce del
+// host y del prefijo detectado (BASE_URL), en lugar de fijar localhost.
+define('APP_URL', getenv('APP_URL') ?: (
+    (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http')
+    . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . BASE_URL
+));
 define('APP_VERSION', '1.0.0');
 
 date_default_timezone_set('America/Bogota');

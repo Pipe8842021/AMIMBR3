@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../config/paths.php';
+
 if (isset($_GET['action'])) {
     require_once __DIR__ . '/../config/session.php';
     require_once __DIR__ . '/../config/database.php';
@@ -39,7 +41,7 @@ if (isset($_GET['action'])) {
                     'id'                  => (int)$n['id'],
                     'tipo'                => $tipo_map[$n['tipo']] ?? 'info',
                     'mensaje'             => $n['mensaje'],
-                    'url'                 => $n['enlace'] ?? null,
+                    'url'                 => app_link($n['enlace'] ?? '') ?: null,
                     'leida'               => (int)$n['leida'],
                     'tiempo_transcurrido' => tiempo_transcurrido_header($n['fecha_creacion']),
                 ];
@@ -93,7 +95,7 @@ if (isset($_GET['action'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Responsive Sidebar with Dropdown Menu by AbdulDev</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
-    <link rel="stylesheet" href="/assets/css/colores.css">
+    <link rel="stylesheet" href="<?php echo url('/assets/css/colores.css'); ?>">
 </head>
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
@@ -841,7 +843,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
         <!-- Sidebar Header -->
         <header class="sidebar-header">
             <div class="header-logo">
-                <img src="/assets/img/3.png" alt="Amimbré">
+                <img src="<?php echo url('/assets/img/3.png'); ?>" alt="Amimbré">
             </div>
             <button class="sidebar-toggler">
                 <span class="material-symbols-rounded">chevron_left</span>
@@ -854,7 +856,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
 
                 <?php if (has_any_role(['admin', 'profesor', 'estudiante'])): ?>
                 <li class="nav-item">
-                    <a href="/modules/dashboard/" class="nav-link">
+                    <a href="<?php echo url('/modules/dashboard/'); ?>" class="nav-link">
                         <span class="material-symbols-rounded">dashboard</span>
                         <span class="nav-label">Menú principal</span>
                     </a>
@@ -873,15 +875,15 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                     </a>
                     <ul class="header-dropdown-menu">
                         <li class="nav-item"><a class="nav-link dropdown-title">Inscripciones</a></li>
-                        <li class="nav-item"><a href="/modules/inscripciones/prematriculas/index.php" class="nav-link dropdown-link">Prematrículas</a></li>
-                        <li class="nav-item"><a href="/modules/inscripciones/matriculas/index.php" class="nav-link dropdown-link">Matrículas</a></li>
+                        <li class="nav-item"><a href="<?php echo url('/modules/inscripciones/prematriculas/index.php'); ?>" class="nav-link dropdown-link">Prematrículas</a></li>
+                        <li class="nav-item"><a href="<?php echo url('/modules/inscripciones/matriculas/index.php'); ?>" class="nav-link dropdown-link">Matrículas</a></li>
                     </ul>
                 </li>
                 <?php endif; ?>
 
                 <?php if (has_any_role(['admin'])): ?>
                 <li class="nav-item">
-                    <a href="/modules/usuarios/index.php" class="nav-link">
+                    <a href="<?php echo url('/modules/usuarios/index.php'); ?>" class="nav-link">
                         <span class="material-symbols-rounded">group</span>
                         <span class="nav-label">Usuarios</span>
                     </a>
@@ -893,7 +895,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
 
                 <?php if (has_any_role(['admin', 'profesor', 'estudiante'])): ?>
                 <li class="nav-item">
-                    <a href="/modules/cursos/index.php" class="nav-link">
+                    <a href="<?php echo url('/modules/cursos/index.php'); ?>" class="nav-link">
                         <span class="material-symbols-rounded">menu_book</span>
                         <span class="nav-label">Cursos</span>
                     </a>
@@ -913,16 +915,16 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                     <ul class="header-dropdown-menu">
                         <li class="nav-item"><a class="nav-link dropdown-title">Documentación</a></li>
                         <?php if (has_any_role(['admin', 'profesor'])): ?>
-                        <li class="nav-item"><a href="/modules/documentos/administrativos/index.php" class="nav-link dropdown-link">Administrativa</a></li>
+                        <li class="nav-item"><a href="<?php echo url('/modules/documentos/administrativos/index.php'); ?>" class="nav-link dropdown-link">Administrativa</a></li>
                         <?php endif; ?>
-                        <li class="nav-item"><a href="/modules/documentos/institucionales/index.php" class="nav-link dropdown-link">Institucional</a></li>
+                        <li class="nav-item"><a href="<?php echo url('/modules/documentos/institucionales/index.php'); ?>" class="nav-link dropdown-link">Institucional</a></li>
                     </ul>
                 </li>
                 <?php endif; ?>
 
                 <?php if (has_any_role(['admin', 'profesor'])): ?>
                 <li class="nav-item">
-                    <a href="/modules/grupos/index.php" class="nav-link">
+                    <a href="<?php echo url('/modules/grupos/index.php'); ?>" class="nav-link">
                         <span class="material-symbols-rounded">group_add</span>
                         <span class="nav-label">Grupos</span>
                     </a>
@@ -934,7 +936,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
 
                 <?php if (has_any_role(['admin', 'profesor', 'estudiante'])): ?>
                 <li class="nav-item">
-                    <a href="/modules/notificaciones/index.php" class="nav-link">
+                    <a href="<?php echo url('/modules/notificaciones/index.php'); ?>" class="nav-link">
                         <span class="material-symbols-rounded">notifications</span>
                         <span class="nav-label">Notificaciones</span>
                         <?php if ($badge_sin_leer > 0): ?>
@@ -951,7 +953,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
 
                 <?php if (has_any_role(['admin'])): ?>
                 <li class="nav-item">
-                    <a href="/modules/reportes/index.php" class="nav-link">
+                    <a href="<?php echo url('/modules/reportes/index.php'); ?>" class="nav-link">
                         <span class="material-symbols-rounded">assessment</span>
                         <span class="nav-label">Reportes</span>
                     </a>
@@ -963,7 +965,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
 
                 <?php if (has_any_role(['admin', 'profesor', 'estudiante'])): ?>
                 <li class="nav-item">
-                    <a href="/modules/horarios/index.php" class="nav-link">
+                    <a href="<?php echo url('/modules/horarios/index.php'); ?>" class="nav-link">
                         <span class="material-symbols-rounded">calendar_today</span>
                         <span class="nav-label">Horario</span>
                     </a>
@@ -975,7 +977,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
 
                 <?php if (has_any_role(['admin', 'profesor', 'estudiante'])): ?>
                 <li class="nav-item">
-                    <a href="/modules/configuracion/configuraciones.php" class="nav-link">
+                    <a href="<?php echo url('/modules/configuracion/configuraciones.php'); ?>" class="nav-link">
                         <span class="material-symbols-rounded">settings</span>
                         <span class="nav-label">Configuración</span>
                     </a>
@@ -990,7 +992,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
             <!-- Secondary Bottom Nav -->
             <ul class="nav-list secondary-nav">
                 <li class="nav-item">
-                    <a href="/modules/ayuda/ayuda_index.php" class="nav-link">
+                    <a href="<?php echo url('/modules/ayuda/ayuda_index.php'); ?>" class="nav-link">
                         <span class="material-symbols-rounded">help</span>
                         <span class="nav-label">Ayuda</span>
                     </a>
@@ -999,7 +1001,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                     </ul>
                 </li>
                 <li class="nav-item">
-                    <a href="/auth/logout.php" class="nav-link">
+                    <a href="<?php echo url('/auth/logout.php'); ?>" class="nav-link">
                         <span class="material-symbols-rounded">logout</span>
                         <span class="nav-label">Cerrar Sesión</span>
                     </a>
@@ -1026,7 +1028,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
         <div class="fab-panel" id="fabPanel">
 
             <!-- Ayuda -->
-            <a href="/modules/ayuda/ayuda_index.php" class="fab-item fab-item--help">
+            <a href="<?php echo url('/modules/ayuda/ayuda_index.php'); ?>" class="fab-item fab-item--help">
                 <span class="fab-label">Ayuda</span>
                 <div class="fab-btn" aria-label="Ayuda">
                     <span class="material-symbols-rounded">help</span>
@@ -1061,7 +1063,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
     <div class="fab-notif-modal" id="fabNotifModal">
         <div class="fab-notif-header">
             <h4>Notificaciones</h4>
-            <a href="/modules/notificaciones/index.php">Ver todas</a>
+            <a href="<?php echo url('/modules/notificaciones/index.php'); ?>">Ver todas</a>
         </div>
         <div class="fab-notif-list" id="fabNotifList">
             <div class="fab-notif-loading">
@@ -1072,6 +1074,10 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
     </div>
 
     <script>
+        /* Prefijo de la app: "/AMIMBR3" en local, "" en producción.
+           Se usa para construir URLs absolutas desde JS. */
+        const APP_BASE = <?php echo json_encode(BASE_URL); ?>;
+
         /* ─────────────────────────────────────────────────────────
            FAB — lógica completa
         ───────────────────────────────────────────────────────── */
@@ -1107,8 +1113,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
         document.addEventListener('click', (e) => {
             if (
                 !fabContainer.contains(e.target) &&
-                !fabNotifModal.contains(e.target) &&
-                !fabHelpModal.contains(e.target)
+                !fabNotifModal.contains(e.target)
             ) {
                 toggleFab(false);
                 closeAllSubModals();
@@ -1117,9 +1122,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
 
         function closeAllSubModals() {
             fabNotifModal.classList.remove('open');
-            fabHelpModal.classList.remove('open');
             notifOpen = false;
-            helpOpen  = false;
         }
 
         /* ── 3. Toggle de tema claro / oscuro ───────────────── */
@@ -1167,7 +1170,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
         fabNotifModal.addEventListener('click', (e) => e.stopPropagation());
 
         function loadNotificaciones() {
-            fetch('/includes/header.php?action=notificaciones_recientes')
+            fetch(`${APP_BASE}/includes/header.php?action=notificaciones_recientes`)
                 .then(r => r.json())
                 .then(data => {
                     notifLoaded = true;
@@ -1222,7 +1225,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                 el.addEventListener('click', () => {
                     const id = el.dataset.id;
                     el.classList.remove('unread');
-                    fetch(`/includes/header.php?action=marcar_leida&id=${id}`, { method: 'POST' });
+                    fetch(`${APP_BASE}/includes/header.php?action=marcar_leida&id=${id}`, { method: 'POST' });
                     // Reducir badge
                     const badge = document.getElementById('fabBadge');
                     if (badge) {

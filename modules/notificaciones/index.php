@@ -386,7 +386,7 @@ if (file_exists('../../includes/header.php')) require_once '../../includes/heade
                  data-emisor="<?php echo htmlspecialchars($notif['emisor']); ?>"
                  data-fecha="<?php echo htmlspecialchars($notif['fecha_creacion']); ?>"
                  data-prioridad="<?php echo htmlspecialchars($notif['prioridad']); ?>"
-                 data-enlace="<?php echo htmlspecialchars($notif['enlace'] ?? ''); ?>"
+                 data-enlace="<?php echo htmlspecialchars(app_link($notif['enlace'] ?? '')); ?>"
                  data-leida="<?php echo $notif['leida']; ?>">
 
                 <div class="notification-indicator"></div>
