@@ -1,18 +1,13 @@
 <?php
+require_once __DIR__ . '/../config/paths.php';
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_rol'])) {
     $_SESSION['redirect_after_login'] = $_SERVER['REQUEST_URI'];
-    $login_path = '/auth/login.php';
-    $current_dir = dirname($_SERVER['PHP_SELF']);
-    if (strpos($current_dir, '/modules/') !== false) {
-        $login_path = '/auth/login.php';
-    } elseif (strpos($current_dir, '/auth/') !== false) {
-        $login_path = '/auth/login.php';
-    }
-    header("Location: $login_path");
+    header('Location: ' . url('/auth/login.php'));
     exit;
 }
 
@@ -31,7 +26,7 @@ if (!function_exists('has_any_role')) {
 if (!function_exists('require_role')) {
     function require_role($rol) {
         if (!has_role($rol)) {
-            header("Location: ../../auth/login.php?error=acceso_denegado");
+            header('Location: ' . url('/auth/login.php?error=acceso_denegado'));
             exit;
         }
     }
@@ -40,7 +35,7 @@ if (!function_exists('require_role')) {
 if (!function_exists('require_any_role')) {
     function require_any_role($roles) {
         if (!has_any_role($roles)) {
-            header("Location: ../../auth/login.php?error=acceso_denegado");
+            header('Location: ' . url('/auth/login.php?error=acceso_denegado'));
             exit;
         }
     }

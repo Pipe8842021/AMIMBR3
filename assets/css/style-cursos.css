@@ -509,9 +509,14 @@ body {
 /* =====================================================
    BADGES — compartidos index + ver
    ===================================================== */
-.nivel-basico   { background: var(--subtle-green);              color: var(--primary-green);  }
-.nivel-intermedio{ background: var(--subtle-blue);             color: var(--primary-blue);   }
-.nivel-avanzado { background: var(--subtle-orange);             color: var(--primary-orange); }
+.nivel-basico    { background: var(--subtle-green);  color: var(--primary-green);  }
+.nivel-intermedio{ background: var(--subtle-blue);   color: var(--primary-blue);   }
+.nivel-avanzado  { background: var(--subtle-orange); color: var(--primary-orange); }
+
+/* Badge sobre imagen: fondo sólido para que no se transparente */
+.badge-nivel.nivel-basico    { background: #4ec336; color: #fff; }
+.badge-nivel.nivel-intermedio{ background: #1479b0; color: #fff; }
+.badge-nivel.nivel-avanzado  { background: #ff6d00; color: #fff; }
 
 /* badge-estado: usado en index (cards) y en ver (grupos) */
 .badge-estado {

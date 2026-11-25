@@ -10,4 +10,4 @@ if (is_logged_in()) {
     }
 }
 
-logout('../public/index.php');
+logout(url('/public/'));

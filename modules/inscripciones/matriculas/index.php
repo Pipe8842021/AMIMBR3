@@ -42,6 +42,42 @@ try {
     // Marcar como vencidos todos los pagos pendientes cuya fecha ya pasó
     $pdo->exec("UPDATE pagos SET estado = 'vencido' WHERE estado = 'pendiente' AND fecha_vencimiento < CURDATE()");
 
+    // Auto-generar próxima cuota si faltan ≤ 7 días para el siguiente vencimiento
+    $rows_auto = $pdo->query("
+        SELECT m.id AS mat_id, m.estudiante_id, c.precio_mensual, c.nombre AS curso_nombre,
+               MAX(p.fecha_vencimiento) AS ultima_fv
+        FROM matriculas m
+        JOIN grupos g ON m.grupo_id = g.id
+        JOIN cursos c ON g.curso_id = c.id
+        JOIN pagos p ON p.matricula_id = m.id AND p.estado != 'anulado'
+        WHERE m.estado = 'activa' AND c.precio_mensual > 0
+        GROUP BY m.id, m.estudiante_id, c.precio_mensual, c.nombre
+    ")->fetchAll(PDO::FETCH_ASSOC);
+    $meses_auto = [1=>'Enero',2=>'Febrero',3=>'Marzo',4=>'Abril',5=>'Mayo',6=>'Junio',
+                   7=>'Julio',8=>'Agosto',9=>'Septiembre',10=>'Octubre',11=>'Noviembre',12=>'Diciembre'];
+    $chk_auto = $pdo->prepare("SELECT COUNT(*) FROM pagos WHERE matricula_id=? AND YEAR(fecha_vencimiento)=? AND MONTH(fecha_vencimiento)=? AND estado!='anulado'");
+    $ins_auto = $pdo->prepare("INSERT INTO pagos (estudiante_id,matricula_id,monto,concepto,metodo_pago,estado,fecha_vencimiento,registrado_por) VALUES (?,?,?,?,'efectivo',?,?,?)");
+    $hoy_auto = new DateTime();
+    foreach ($rows_auto as $row_auto) {
+        $ultimo_dt = new DateTime($row_auto['ultima_fv']);
+        $dia_base  = (int)$ultimo_dt->format('j');
+        $prox_dt   = clone $ultimo_dt;
+        $prox_dt->modify('first day of next month');
+        $prox_dt->setDate((int)$prox_dt->format('Y'), (int)$prox_dt->format('n'), min($dia_base, (int)$prox_dt->format('t')));
+        $umbral_dt = clone $prox_dt;
+        $umbral_dt->modify('-7 days');
+        if ($hoy_auto >= $umbral_dt) {
+            $ay = (int)$prox_dt->format('Y'); $am = (int)$prox_dt->format('n');
+            $chk_auto->execute([$row_auto['mat_id'], $ay, $am]);
+            if ((int)$chk_auto->fetchColumn() === 0) {
+                $fv_auto = $prox_dt->format('Y-m-d');
+                $es_auto = ($fv_auto < $hoy_auto->format('Y-m-d')) ? 'vencido' : 'pendiente';
+                $co_auto = "Mensualidad {$meses_auto[$am]} $ay — {$row_auto['curso_nombre']}";
+                $ins_auto->execute([$row_auto['estudiante_id'], $row_auto['mat_id'], $row_auto['precio_mensual'], $co_auto, $es_auto, $fv_auto, $_SESSION['usuario_id'] ?? 1]);
+            }
+        }
+    }
+
     // Stats generales
     $total_activas    = (int)$pdo->query("SELECT COUNT(*) FROM matriculas WHERE estado='activa'")->fetchColumn();
     $total_al_dia     = (int)$pdo->query("SELECT COUNT(*) FROM (SELECT m.id FROM matriculas m LEFT JOIN pagos p ON p.matricula_id=m.id AND p.estado IN('pendiente','vencido') WHERE m.estado='activa' GROUP BY m.id HAVING COUNT(p.id)=0) s")->fetchColumn();
